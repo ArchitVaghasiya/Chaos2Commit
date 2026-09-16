@@ -1,0 +1,102 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model OrganizationSetting {
+  id                 String   @id @default("default-org")
+  companyName        String   @default("TechNova Solutions")
+  website            String   @default("https://technova.com")
+  description        String   @default("Cloud and Enterprise IT Solutions Provider")
+  productsCatalog    String   @default("Microsoft 365, SharePoint Implementation, Workflow Automation")
+  targetKeywords     String   @default("SharePoint, Microsoft 365, Cloud Migration, Workflow Automation")
+  voiceMinutesUsed   Int      @default(12450)
+  voiceMinutesLimit  Int      @default(20000)
+  aiPersonaName      String   @default("Ava (Sales Executive)")
+  aiLanguageDefault  String   @default("en")
+  isApprovedForAi    Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model Lead {
+  id                  String     @id @default(cuid())
+  name                String
+  email               String?
+  emailVerified       Boolean    @default(false)
+  phone               String?
+  phoneVerified       Boolean    @default(false)
+  linkedinProfile     String?
+  companyName         String
+  companyWebsite      String?
+  jobTitle            String
+  industry            String     @default("IT Services")
+  companySize         String     @default("51 - 200 employees")
+  sourcePlatform      String     @default("LinkedIn") // LinkedIn, X (Twitter), Company Websites, Directories, Freelance Platforms, CRM Integrations
+  originalPostUrl     String?
+  originalPostSnippet String?
+  discoveryDate       DateTime   @default(now())
+  
+  // Qualification & Predictive Intent Scoring
+  intentScore         Int        @default(85)
+  budgetSignal        String     @default("High")
+  urgencyLevel        String     @default("High")
+  decisionMaker       Boolean    @default(true)
+  activeRequirement   Boolean    @default(true)
+  
+  // Lifecycle status
+  status              String     @default("DISCOVERED") // DISCOVERED, ENRICHED, READY_TO_ENGAGE, CALL_SCHEDULED, CONTACTED, INTERESTED, MEETING_BOOKED
+  
+  campaignId          String?
+  campaign            Campaign?  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  calls               CallLog[]
+
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+}
+
+model Campaign {
+  id                 String    @id @default(cuid())
+  name               String
+  status             String    @default("RUNNING") // DRAFT, RUNNING, PAUSED, COMPLETED
+  targetIndustry     String    @default("All")
+  targetLocation     String    @default("Global")
+  progressPercent    Int       @default(0)
+  totalLeadsCount    Int       @default(0)
+  callsMadeCount     Int       @default(0)
+  conversationsCount Int       @default(0)
+  interestedCount    Int       @default(0)
+  meetingsBooked     Int       @default(0)
+  
+  leads              Lead[]
+  calls              CallLog[]
+
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+model CallLog {
+  id                 String    @id @default(cuid())
+  leadId             String
+  lead               Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  campaignId         String?
+  campaign           Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  
+  status             String    @default("CONNECTED") // CONNECTED, VOICEMAIL, RETRY_SCHEDULED, FAILED
+  outcome            String    @default("INTERESTED") // INTERESTED, MEETING_BOOKED, VOICEMAIL_LEFT, RETRY_SCHEDULED, NOT_INTERESTED
+  durationSeconds    Int       @default(145)
+  language           String    @default("en")
+  
+  // Call artifacts
+  callSummary        String?
+  nextBestAction     String?
+  transcriptJson     String?   // JSON array of { speaker: "agent"|"prospect", text: string, timestamp: string }
+  meetingScheduledAt DateTime?
+  recordingUrl       String?
+
+  createdAt          DateTime  @default(now())
+}
