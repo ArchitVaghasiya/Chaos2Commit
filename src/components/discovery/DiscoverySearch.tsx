@@ -55,12 +55,12 @@ export default function DiscoverySearch({
   const [dateRange, setDateRange] = useState('Last 7 Days');
 
   const platforms = [
-    { id: 'LinkedIn', label: 'LinkedIn', count: '12,568', icon: LinkedinIcon, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-    { id: 'X (Twitter)', label: 'X (Twitter)', count: '8,421', icon: TwitterIcon, color: 'text-sky-400', bg: 'bg-sky-500/10' },
-    { id: 'Company Websites', label: 'Company Websites', count: '6,532', icon: Globe, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
-    { id: 'Directories', label: 'Directories', count: '4,321', icon: FolderArchive, color: 'text-purple-400', bg: 'bg-purple-500/10' },
-    { id: 'Freelance Platforms', label: 'Freelance Platforms', count: '2,845', icon: Handshake, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-    { id: 'CRM Integrations', label: 'CRM Integrations', count: '3,214', icon: Database, color: 'text-pink-400', bg: 'bg-pink-500/10' },
+    { id: 'LinkedIn', label: 'LinkedIn', count: '12,568', poolDesc: 'Monitored Posts', icon: LinkedinIcon, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+    { id: 'X (Twitter)', label: 'X (Twitter)', count: '8,421', poolDesc: 'Public Tweets', icon: TwitterIcon, color: 'text-sky-400', bg: 'bg-sky-500/10' },
+    { id: 'Company Websites', label: 'Company Websites', count: '6,532', poolDesc: 'Career & RFPs', icon: Globe, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
+    { id: 'Directories', label: 'Directories', count: '4,321', poolDesc: 'Vendor RFPs', icon: FolderArchive, color: 'text-purple-400', bg: 'bg-purple-500/10' },
+    { id: 'Freelance Platforms', label: 'Freelance Platforms', count: '2,845', poolDesc: 'Project Postings', icon: Handshake, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+    { id: 'CRM Integrations', label: 'CRM Integrations', count: '3,214', poolDesc: 'Synced Records', icon: Database, color: 'text-pink-400', bg: 'bg-pink-500/10' },
   ];
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -214,32 +214,45 @@ export default function DiscoverySearch({
       </form>
 
       {/* Source Platform Metric Badges - clicking these only toggles filter selection, does NOT trigger search */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 mt-4 pt-4 border-t border-white/[0.06]">
-        {platforms.map((p) => {
-          const Icon = p.icon;
-          const isSelected = selectedPlatform === p.id;
-          return (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => {
-                const next = isSelected ? 'All Sources' : p.id;
-                setSelectedPlatform(next);
-              }}
-              className={`flex flex-col items-center p-2.5 rounded-xl border transition-all text-center cursor-pointer ${
-                isSelected
-                  ? 'bg-indigo-600/20 border-indigo-500/60 shadow-md shadow-indigo-500/20 ring-1 ring-indigo-500/40'
-                  : 'bg-white/[0.02] border-white/[0.05] hover:border-white/[0.15] hover:bg-white/[0.04]'
-              }`}
-            >
-              <div className={`p-1.5 rounded-lg ${p.bg} ${p.color} mb-1.5`}>
-                <Icon className="w-4 h-4" />
-              </div>
-              <div className="text-[11px] font-medium text-slate-300 truncate w-full">{p.label}</div>
-              <div className="text-xs font-bold text-white mt-0.5">{p.count}</div>
-            </button>
-          );
-        })}
+      <div className="mt-4 pt-3 border-t border-white/[0.06]">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-[11px] font-semibold text-slate-400 flex items-center gap-1.5 uppercase tracking-wider">
+            <span>Global Ingestion Feeds</span>
+            <span className="text-[10px] lowercase font-normal text-slate-500">(click channel to filter search target)</span>
+          </div>
+          <span className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Live Crawl Index
+          </span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          {platforms.map((p) => {
+            const Icon = p.icon;
+            const isSelected = selectedPlatform === p.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => {
+                  const next = isSelected ? 'All Sources' : p.id;
+                  setSelectedPlatform(next);
+                }}
+                className={`flex flex-col items-center p-2.5 rounded-xl border transition-all text-center cursor-pointer ${
+                  isSelected
+                    ? 'bg-indigo-600/20 border-indigo-500/60 shadow-md shadow-indigo-500/20 ring-1 ring-indigo-500/40'
+                    : 'bg-white/[0.02] border-white/[0.05] hover:border-white/[0.15] hover:bg-white/[0.04]'
+                }`}
+              >
+                <div className={`p-1.5 rounded-lg ${p.bg} ${p.color} mb-1`}>
+                  <Icon className="w-4 h-4" />
+                </div>
+                <div className="text-[11px] font-medium text-slate-300 truncate w-full">{p.label}</div>
+                <div className="text-xs font-bold text-white mt-0.5">{p.count}</div>
+                <div className="text-[9px] text-slate-400 font-normal leading-tight mt-0.5">{p.poolDesc}</div>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
