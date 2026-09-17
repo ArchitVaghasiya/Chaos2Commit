@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import HeaderBanner from '@/components/layout/HeaderBanner';
 import Sidebar from '@/components/layout/Sidebar';
 import OverviewKpis from '@/components/dashboard/OverviewKpis';
@@ -139,6 +139,9 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [currentLanguage, setCurrentLanguage] = useState('English');
   const [selectedPlatform, setSelectedPlatform] = useState('All Sources');
+  const [selectedIndustry, setSelectedIndustry] = useState('All Industries');
+  const [selectedLocation, setSelectedLocation] = useState('Global');
+  const [selectedDateRange, setSelectedDateRange] = useState('Last 7 Days');
   const [leads, setLeads] = useState<LeadItem[]>(INITIAL_FALLBACK_LEADS);
   const [selectedLead, setSelectedLead] = useState<LeadItem | null>(INITIAL_FALLBACK_LEADS[0]);
   const [isCallModalOpen, setIsCallModalOpen] = useState(false);
@@ -147,6 +150,42 @@ export default function HomePage() {
   const [stats, setStats] = useState<any>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [searchEmptyMessage, setSearchEmptyMessage] = useState<string | null>(null);
+
+  // Live in-memory filtered leads based on selectedPlatform & active filters (0 network requests)
+  const visibleLeads = useMemo(() => {
+    return leads.filter((l) => {
+      // Filter by platform
+      if (selectedPlatform && selectedPlatform !== 'All Sources') {
+        const pNorm = selectedPlatform.toLowerCase();
+        const leadPNorm = (l.sourcePlatform || '').toLowerCase();
+        if (pNorm.includes('twitter') || pNorm.includes('x')) {
+          if (!leadPNorm.includes('twitter') && !leadPNorm.includes('x')) return false;
+        } else if (!leadPNorm.includes(pNorm)) {
+          return false;
+        }
+      }
+
+      // Filter by industry
+      if (selectedIndustry && selectedIndustry !== 'All Industries') {
+        if (l.industry && !l.industry.toLowerCase().includes(selectedIndustry.toLowerCase())) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [leads, selectedPlatform, selectedIndustry]);
+
+  // Keep selectedLead in sync with the filtered view
+  useEffect(() => {
+    if (visibleLeads.length > 0) {
+      if (!selectedLead || !visibleLeads.some((l) => l.id === selectedLead.id)) {
+        setSelectedLead(visibleLeads[0]);
+      }
+    } else if (leads.length > 0) {
+      setSelectedLead(null);
+    }
+  }, [visibleLeads, selectedLead, leads.length]);
 
   // Initial data load
   const loadInitialData = useCallback(async () => {
@@ -287,6 +326,12 @@ export default function HomePage() {
                       onSearch={handleSearch}
                       selectedPlatform={selectedPlatform}
                       setSelectedPlatform={setSelectedPlatform}
+                      industry={selectedIndustry}
+                      setIndustry={setSelectedIndustry}
+                      location={selectedLocation}
+                      setLocation={setSelectedLocation}
+                      dateRange={selectedDateRange}
+                      setDateRange={setSelectedDateRange}
                       loading={loading}
                     />
 
@@ -303,11 +348,17 @@ export default function HomePage() {
                           <Search className="w-5 h-5" />
                         </div>
                         <h3 className="text-sm font-bold text-white mb-1">
-                          {hasSearched ? 'No Discovered Opportunities' : 'Ready to Discover Leads'}
+                          {hasSearched
+                            ? 'No Discovered Opportunities'
+                            : visibleLeads.length === 0 && leads.length > 0
+                            ? 'No Leads Matching Active Filter'
+                            : 'Ready to Discover Leads'}
                         </h3>
                         <p className="text-xs text-slate-400 max-w-md">
                           {searchEmptyMessage ||
-                            'Enter search keywords above and click Search to let the AI identify and qualify high-intent opportunities.'}
+                            (visibleLeads.length === 0 && leads.length > 0
+                              ? `No loaded leads currently match ${selectedPlatform}${selectedIndustry !== 'All Industries' ? ` • ${selectedIndustry}` : ''}. Click "Search" to let AI crawl live feeds, or reset your filters.`
+                              : 'Enter search keywords above and click Search to let the AI identify and qualify high-intent opportunities.')}
                         </p>
                       </div>
                     )}
@@ -350,6 +401,12 @@ export default function HomePage() {
                   onSearch={handleSearch}
                   selectedPlatform={selectedPlatform}
                   setSelectedPlatform={setSelectedPlatform}
+                  industry={selectedIndustry}
+                  setIndustry={setSelectedIndustry}
+                  location={selectedLocation}
+                  setLocation={setSelectedLocation}
+                  dateRange={selectedDateRange}
+                  setDateRange={setSelectedDateRange}
                   loading={loading}
                 />
 
@@ -365,11 +422,17 @@ export default function HomePage() {
                       <Search className="w-5 h-5" />
                     </div>
                     <h3 className="text-sm font-bold text-white mb-1">
-                      {hasSearched ? 'No Discovered Opportunities' : 'Ready to Discover Leads'}
+                      {hasSearched
+                        ? 'No Discovered Opportunities'
+                        : visibleLeads.length === 0 && leads.length > 0
+                        ? 'No Leads Matching Active Filter'
+                        : 'Ready to Discover Leads'}
                     </h3>
                     <p className="text-xs text-slate-400 max-w-md">
                       {searchEmptyMessage ||
-                        'Enter search keywords above and click Search to let the AI identify and qualify high-intent opportunities.'}
+                        (visibleLeads.length === 0 && leads.length > 0
+                          ? `No loaded leads currently match ${selectedPlatform}${selectedIndustry !== 'All Industries' ? ` • ${selectedIndustry}` : ''}. Click "Search" to let AI crawl live feeds, or reset your filters.`
+                          : 'Enter search keywords above and click Search to let the AI identify and qualify high-intent opportunities.')}
                     </p>
                   </div>
                 )}
@@ -377,75 +440,90 @@ export default function HomePage() {
                 {/* Discovered Opportunities Grid */}
                 {leads.length > 0 && (
                   <div className="glass-card p-5 border-white/[0.06] shadow-xl">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4 text-blue-400" />
-                      <h3 className="text-sm font-bold text-white">Discovered Leads Pipeline</h3>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-bold">
-                        {leads.length} Available
-                      </span>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-blue-400" />
+                        <h3 className="text-sm font-bold text-white">Discovered Leads Pipeline</h3>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-bold">
+                          {visibleLeads.length} Available {selectedPlatform !== 'All Sources' ? `(${selectedPlatform})` : ''}
+                        </span>
+                      </div>
+                      <span className="text-xs text-slate-400">Click lead to preview opportunity</span>
                     </div>
-                    <span className="text-xs text-slate-400">Click lead to preview opportunity</span>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {leads.map((l) => {
-                      const isCurrent = l.id === selectedLead?.id;
-                      return (
-                        <div
-                          key={l.id}
-                          onClick={() => setSelectedLead(l)}
-                          className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
-                            isCurrent
-                              ? 'bg-indigo-600/15 border-indigo-500/50 shadow-md ring-1 ring-indigo-500/40'
-                              : 'bg-white/[0.02] border-white/[0.05] hover:bg-white/[0.04] hover:border-white/[0.1]'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <div className="truncate">
-                              <div className="text-xs font-bold text-white truncate flex items-center gap-1.5">
-                                {l.name}
-                                {l.emailVerified && (
-                                  <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
-                                )}
-                              </div>
-                              <div className="text-[11px] text-slate-400 truncate">
-                                {l.jobTitle} • {l.companyName}
-                              </div>
-                            </div>
-                            <span
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ${
-                                l.intentScore >= 90
-                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                                  : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                    {visibleLeads.length === 0 ? (
+                      <div className="p-8 text-center bg-white/[0.02] border border-white/[0.05] rounded-xl">
+                        <p className="text-xs text-slate-400 mb-2">
+                          No leads in current loaded pool matching{' '}
+                          <span className="text-white font-semibold">{selectedPlatform}</span>
+                          {selectedIndustry !== 'All Industries' && (
+                            <> &bull; <span className="text-white font-semibold">{selectedIndustry}</span></>
+                          )}
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          Click the &quot;Search&quot; button above to prompt the autonomous AI agent to crawl live feeds for this channel, or select &quot;All Sources&quot;.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {visibleLeads.map((l) => {
+                          const isCurrent = l.id === selectedLead?.id;
+                          return (
+                            <div
+                              key={l.id}
+                              onClick={() => setSelectedLead(l)}
+                              className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
+                                isCurrent
+                                  ? 'bg-indigo-600/15 border-indigo-500/50 shadow-md ring-1 ring-indigo-500/40'
+                                  : 'bg-white/[0.02] border-white/[0.05] hover:bg-white/[0.04] hover:border-white/[0.1]'
                               }`}
                             >
-                              {l.intentScore} Intent
-                            </span>
-                          </div>
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <div className="truncate">
+                                  <div className="text-xs font-bold text-white truncate flex items-center gap-1.5">
+                                    {l.name}
+                                    {l.emailVerified && (
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                                    )}
+                                  </div>
+                                  <div className="text-[11px] text-slate-400 truncate">
+                                    {l.jobTitle} • {l.companyName}
+                                  </div>
+                                </div>
+                                <span
+                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ${
+                                    l.intentScore >= 90
+                                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                      : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                                  }`}
+                                >
+                                  {l.intentScore} Intent
+                                </span>
+                              </div>
 
-                          <p className="text-[11px] text-slate-300 line-clamp-2 bg-white/[0.02] p-2 rounded-lg mb-2.5">
-                            &quot;{l.originalPostSnippet}&quot;
-                          </p>
+                              <p className="text-[11px] text-slate-300 line-clamp-2 bg-white/[0.02] p-2 rounded-lg mb-2.5">
+                                &quot;{l.originalPostSnippet}&quot;
+                              </p>
 
-                          <div className="flex items-center justify-between text-[10px] text-slate-400 pt-2 border-t border-white/[0.04]">
-                            <span className="text-slate-400">{l.sourcePlatform}</span>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openCallModalForLead(l);
-                              }}
-                              className="px-2.5 py-1 rounded bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 font-semibold border border-emerald-500/30 flex items-center gap-1 transition-all cursor-pointer"
-                            >
-                              <Headphones className="w-3 h-3" /> Call
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
+                              <div className="flex items-center justify-between text-[10px] text-slate-400 pt-2 border-t border-white/[0.04]">
+                                <span className="text-slate-400">{l.sourcePlatform}</span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openCallModalForLead(l);
+                                  }}
+                                  className="px-2.5 py-1 rounded bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 font-semibold border border-emerald-500/30 flex items-center gap-1 transition-all cursor-pointer"
+                                >
+                                  <Headphones className="w-3 h-3" /> Call
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                </div>
                 )}
               </div>
             )}

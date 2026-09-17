@@ -40,6 +40,12 @@ interface DiscoverySearchProps {
   onSearch: (params: DiscoverySearchParams) => void;
   selectedPlatform: string;
   setSelectedPlatform: (platform: string) => void;
+  industry?: string;
+  setIndustry?: (industry: string) => void;
+  location?: string;
+  setLocation?: (location: string) => void;
+  dateRange?: string;
+  setDateRange?: (dateRange: string) => void;
   loading?: boolean;
 }
 
@@ -47,12 +53,25 @@ export default function DiscoverySearch({
   onSearch,
   selectedPlatform,
   setSelectedPlatform,
+  industry: controlledIndustry,
+  setIndustry: controlledSetIndustry,
+  location: controlledLocation,
+  setLocation: controlledSetLocation,
+  dateRange: controlledDateRange,
+  setDateRange: controlledSetDateRange,
   loading = false,
 }: DiscoverySearchProps) {
   const [keyword, setKeyword] = useState('');
-  const [industry, setIndustry] = useState('All Industries');
-  const [location, setLocation] = useState('Global');
-  const [dateRange, setDateRange] = useState('Last 7 Days');
+  const [internalIndustry, setInternalIndustry] = useState('All Industries');
+  const [internalLocation, setInternalLocation] = useState('Global');
+  const [internalDateRange, setInternalDateRange] = useState('Last 7 Days');
+
+  const industry = controlledIndustry ?? internalIndustry;
+  const setIndustry = controlledSetIndustry ?? setInternalIndustry;
+  const location = controlledLocation ?? internalLocation;
+  const setLocation = controlledSetLocation ?? setInternalLocation;
+  const dateRange = controlledDateRange ?? internalDateRange;
+  const setDateRange = controlledSetDateRange ?? setInternalDateRange;
 
   const platforms = [
     { id: 'LinkedIn', label: 'LinkedIn', count: '12,568', poolDesc: 'Monitored Posts', icon: LinkedinIcon, color: 'text-blue-400', bg: 'bg-blue-500/10' },
