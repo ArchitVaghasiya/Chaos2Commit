@@ -37,36 +37,45 @@ export async function POST(request: Request) {
       }
     }
 
-    // Check if meeting should be tagged as booked
+    // Refined meeting booked detection based on conversation confirmation
+    const aiText = (aiResponse || '').toLowerCase();
+    const prospectText = (prospectSpeech || '').toLowerCase();
+
     const isMeetingBooked =
-      aiResponse.toLowerCase().includes('booked') ||
-      aiResponse.toLowerCase().includes('calendar') ||
-      (prospectSpeech && prospectSpeech.toLowerCase().includes('call'));
+      aiText.includes('booked') ||
+      aiText.includes('calendar invite') ||
+      aiText.includes('look forward to connecting on thursday') ||
+      aiText.includes('scheduled thursday at 3 pm') ||
+      (prospectText.includes('set up a call') && aiText.includes('thursday'));
 
-    // Update lead status
+    // Safely update lead status and call log if leadId is provided
     if (leadId && isMeetingBooked) {
-      await prisma.lead.update({
-        where: { id: leadId },
-        data: { status: 'MEETING_BOOKED' },
-      });
+      try {
+        await prisma.lead.update({
+          where: { id: leadId },
+          data: { status: 'MEETING_BOOKED' },
+        });
 
-      // Save/update call log
-      await prisma.callLog.create({
-        data: {
-          leadId,
-          status: 'CONNECTED',
-          outcome: 'MEETING_BOOKED',
-          durationSeconds: 165,
-          language,
-          callSummary: `Qualified: 150-user M365 & SharePoint rollout planned for next quarter. Budget approved, ${lead?.jobTitle || 'Executive'} is the decision maker.`,
-          nextBestAction: 'Send SharePoint case study, confirm Thursday 3 PM demo with solutions lead.',
-          transcriptJson: JSON.stringify([
-            ...history,
-            { role: 'assistant', content: aiResponse },
-          ]),
-          meetingScheduledAt: new Date(Date.now() + 86400000 * 2),
-        },
-      });
+        // Save call log
+        await prisma.callLog.create({
+          data: {
+            leadId,
+            status: 'CONNECTED',
+            outcome: 'MEETING_BOOKED',
+            durationSeconds: 165,
+            language,
+            callSummary: `Qualified: 150-user M365 & SharePoint rollout planned for next quarter. Budget approved, ${lead?.jobTitle || 'Executive'} is the decision maker.`,
+            nextBestAction: 'Send SharePoint case study, confirm Thursday 3 PM demo with solutions lead.',
+            transcriptJson: JSON.stringify([
+              ...history,
+              { role: 'assistant', content: aiResponse },
+            ]),
+            meetingScheduledAt: new Date(Date.now() + 86400000 * 2),
+          },
+        });
+      } catch (dbErr) {
+        console.warn('Non-fatal: could not update lead in database:', dbErr);
+      }
     }
 
     return NextResponse.json({

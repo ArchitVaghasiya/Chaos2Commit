@@ -1,4 +1,4 @@
-import { analyzeLeadIntentWithGemini } from './gemini';
+import { analyzeLeadIntentWithGemini, generateDynamicLeadsWithGemini } from './gemini';
 
 export interface DiscoveredLeadRaw {
   name: string;
@@ -28,7 +28,7 @@ export const SEED_LEADS_CATALOG: DiscoveredLeadRaw[] = [
     linkedinProfile: 'https://linkedin.com/in/john-smith-cloud',
     sourcePlatform: 'LinkedIn',
     originalPostUrl: 'https://www.linkedin.com/posts/john-smith-technova_sharepoint-m365-migration',
-    originalPostSnippet: 'We are looking for a Microsoft 365 & SharePoint implementation partner to streamline our document management and workflow automation. Please DM if you can help! #Microsoft365 #SharePoint #Workflow #DigitalTransformation'
+    originalPostSnippet: 'Looking for a SharePoint Implementation Partner !! We are currently seeking a reliable and experienced SharePoint implementation partner company to support an upcoming project focused on enhancing collaboration, document management, and workflow automation. Key areas: SharePoint Online setup, custom development, and Microsoft 365 migration.'
   },
   {
     name: 'Priya Nair',
@@ -117,8 +117,17 @@ export const SEED_LEADS_CATALOG: DiscoveredLeadRaw[] = [
 ];
 
 export async function discoverLeads(query: string, platform = 'All Sources') {
-  // Filter by query and platform
   const lowerQuery = query.toLowerCase().trim();
+
+  // If a custom query is entered, try generating dynamic real-time leads with Gemini
+  if (lowerQuery && lowerQuery !== 'all' && lowerQuery !== 'sharepoint') {
+    const dynamicLeads = await generateDynamicLeadsWithGemini(query, platform);
+    if (dynamicLeads && dynamicLeads.length > 0) {
+      return dynamicLeads;
+    }
+  }
+
+  // Filter by query and platform from benchmark catalog
   let results = SEED_LEADS_CATALOG.filter((lead) => {
     const matchesQuery =
       !lowerQuery ||
@@ -135,10 +144,14 @@ export async function discoverLeads(query: string, platform = 'All Sources') {
   });
 
   if (results.length === 0) {
-    results = SEED_LEADS_CATALOG;
+    // If platform filter was chosen with no match, filter whole catalog by platform
+    const platformResults = SEED_LEADS_CATALOG.filter(
+      (l) => platform === 'All Sources' || l.sourcePlatform.toLowerCase() === platform.toLowerCase()
+    );
+    results = platformResults.length > 0 ? platformResults : SEED_LEADS_CATALOG;
   }
 
-  // Attempt Gemini enrichment if API key exists
+  // Attempt Gemini enrichment for benchmark leads
   const enrichedResults = await Promise.all(
     results.map(async (lead) => {
       const geminiAnalysis = await analyzeLeadIntentWithGemini(

@@ -37,20 +37,30 @@ Your goal:
 4. When they express interest or ask to connect, propose a meeting for "Thursday at 3 PM with our solutions lead".
 5. Sound natural, friendly, professional, and consultative.`;
 
-  try {
-    const completion = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...messages
-      ],
-      temperature: 0.6,
-      max_tokens: 150,
-    });
+  const modelsToTry = ['groq/compound-mini', 'openai/gpt-oss-20b'];
 
-    return completion.choices[0]?.message?.content || null;
-  } catch (error) {
-    console.warn('Groq API call failed, using fallback engine:', error);
-    return null;
+  for (const model of modelsToTry) {
+    try {
+      const completion = await groq.chat.completions.create({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...messages
+        ],
+        temperature: 0.6,
+        max_tokens: 150,
+      });
+
+      let reply = completion.choices[0]?.message?.content?.trim() || null;
+      if (reply) {
+        // Strip any accidental AI name prefix like "Ava: " or markdown quotes
+        reply = reply.replace(/^Ava:\s*/i, '').replace(/^"|"$/g, '').trim();
+        return reply;
+      }
+    } catch (error) {
+      console.warn(`Groq model ${model} turn failed, trying next:`, error);
+    }
   }
+
+  return null;
 }

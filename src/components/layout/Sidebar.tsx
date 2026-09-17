@@ -43,6 +43,7 @@ export default function Sidebar({
     { id: 'integrations', label: 'Integrations', icon: SlidersHorizontal },
     { id: 'billing', label: 'Billing & Plans', icon: CreditCard },
     { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'admin', label: 'Admin & Audit', icon: Sparkles },
   ];
 
   return (

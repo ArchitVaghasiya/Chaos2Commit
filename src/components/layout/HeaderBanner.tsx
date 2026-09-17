@@ -1,9 +1,41 @@
 'use client';
 
 import React from 'react';
-import { Bot, Search, Headphones, FileCheck2, TrendingUp, Rocket, Sparkles } from 'lucide-react';
+import { 
+  Bot, 
+  Search, 
+  Headphones, 
+  FileCheck2, 
+  TrendingUp, 
+  Rocket, 
+  Sparkles,
+  Globe2,
+  Upload,
+  Plus
+} from 'lucide-react';
 
-export default function HeaderBanner() {
+interface HeaderBannerProps {
+  currentLanguage?: string;
+  onLanguageChange?: (lang: string) => void;
+  onOpenCsvImport?: () => void;
+  onOpenNewCampaign?: () => void;
+}
+
+export default function HeaderBanner({
+  currentLanguage = 'English',
+  onLanguageChange,
+  onOpenCsvImport,
+  onOpenNewCampaign,
+}: HeaderBannerProps) {
+  const languages = [
+    { code: 'en', label: 'English' },
+    { code: 'es', label: 'Español' },
+    { code: 'hi', label: 'हिन्दी' },
+    { code: 'fr', label: 'Français' },
+    { code: 'de', label: 'Deutsch' },
+    { code: 'ar', label: 'العربية' },
+  ];
+
   return (
     <header className="w-full glass-card p-4 sm:p-5 mb-6 border-indigo-500/20 bg-gradient-to-r from-[#0c1228]/95 via-[#0e1738]/90 to-[#101432]/95 shadow-2xl relative overflow-hidden">
       {/* Background ambient lighting */}
@@ -61,7 +93,7 @@ export default function HeaderBanner() {
             </div>
             <div>
               <div className="text-xs font-bold text-slate-200">AI Voice Agents</div>
-              <div className="text-[10px] text-slate-400 leading-tight">Multilingual calls that qualify & book meetings</div>
+              <div className="text-[10px] text-slate-400 leading-tight">Multilingual calls that qualify &amp; book meetings</div>
             </div>
           </div>
 
@@ -71,7 +103,7 @@ export default function HeaderBanner() {
             </div>
             <div>
               <div className="text-xs font-bold text-slate-200">Smart Enrichment</div>
-              <div className="text-[10px] text-slate-400 leading-tight">Verified contacts & company intelligence</div>
+              <div className="text-[10px] text-slate-400 leading-tight">Verified contacts &amp; company intelligence</div>
             </div>
           </div>
 
@@ -81,22 +113,65 @@ export default function HeaderBanner() {
             </div>
             <div>
               <div className="text-xs font-bold text-slate-200">Actionable Insights</div>
-              <div className="text-[10px] text-slate-400 leading-tight">Real-time pipeline ROI & conversation metrics</div>
+              <div className="text-[10px] text-slate-400 leading-tight">Real-time pipeline ROI &amp; conversation metrics</div>
             </div>
           </div>
         </div>
 
-        {/* Right: Growth Banner Pill */}
-        <div className="hidden 2xl:flex items-center gap-3.5 px-4 py-3 rounded-xl bg-gradient-to-br from-indigo-600/30 via-blue-600/20 to-purple-600/30 border border-indigo-400/30 shadow-lg shrink-0">
-          <div className="w-10 h-10 rounded-lg bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300">
-            <Rocket className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xs font-bold text-white tracking-wide">
-              More Conversations. More Meetings.
+        {/* Right: Growth Banner & Global Controls */}
+        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3 shrink-0 w-full xl:w-auto justify-between xl:justify-end">
+          {/* Quick Action Buttons */}
+          <div className="flex items-center gap-2">
+            {onOpenNewCampaign && (
+              <button
+                onClick={onOpenNewCampaign}
+                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/20 flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>New Campaign</span>
+              </button>
+            )}
+
+            {onOpenCsvImport && (
+              <button
+                onClick={onOpenCsvImport}
+                className="px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-200 border border-white/[0.08] text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Upload className="w-3.5 h-3.5 text-slate-400" />
+                <span>Import CSV</span>
+              </button>
+            )}
+
+            {/* Global Multilingual Selector (PDF Page 4 Note 1) */}
+            <div className="relative flex items-center">
+              <Globe2 className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none" />
+              <select
+                value={currentLanguage}
+                onChange={(e) => onLanguageChange?.(e.target.value)}
+                aria-label="Select platform language"
+                className="pl-7 pr-3 py-1.5 rounded-xl bg-[#080d20] border border-white/[0.1] text-xs text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer appearance-none"
+              >
+                {languages.map((lang) => (
+                  <option key={lang.code} value={lang.label}>
+                    {lang.label}
+                  </option>
+                ))}
+              </select>
             </div>
-            <div className="text-[11px] text-indigo-200">
-              Let AI do the prospecting while you close deals.
+          </div>
+
+          {/* Right: Growth Banner Pill */}
+          <div className="hidden 2xl:flex items-center gap-3 px-3.5 py-2 rounded-xl bg-gradient-to-br from-indigo-600/30 via-blue-600/20 to-purple-600/30 border border-indigo-400/30 shadow-lg">
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300">
+              <Rocket className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-[11px] font-bold text-white tracking-wide">
+                More Conversations. More Meetings.
+              </div>
+              <div className="text-[10px] text-indigo-200">
+                Let AI do the prospecting while you close deals.
+              </div>
             </div>
           </div>
         </div>

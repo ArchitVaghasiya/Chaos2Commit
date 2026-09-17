@@ -16,6 +16,8 @@ import {
   CheckCircle2,
   Clock,
   Globe2,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react';
 import { LeadItem } from '../discovery/DiscoveredLeadCard';
 
@@ -43,6 +45,8 @@ export default function LiveCallSimulatorModal({
   const [duration, setDuration] = useState(0);
   const [inputText, setInputText] = useState('');
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
+  const [isAiThinking, setIsAiThinking] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isMeetingBooked, setIsMeetingBooked] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [callSummary, setCallSummary] = useState(
@@ -54,34 +58,53 @@ export default function LiveCallSimulatorModal({
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const currentLeadIdRef = useRef<string | null>(null);
+  const isOpenRef = useRef<boolean>(false);
 
-  // Initialize or reset call when modal opens
+  // Initialize or reset call only when modal is newly opened or lead ID changes
   useEffect(() => {
     if (isOpen && lead) {
-      setCallStatus('RINGING');
-      setDuration(0);
-      setIsMeetingBooked(false);
-      setCallSummary('Evaluating requirement fit, timeline, and decision maker authority...');
-      setNextBestAction('Qualify company rollout scale and propose solutions demo.');
+      if (!isOpenRef.current || currentLeadIdRef.current !== lead.id) {
+        isOpenRef.current = true;
+        currentLeadIdRef.current = lead.id;
+        setCallStatus('RINGING');
+        setDuration(0);
+        setIsMeetingBooked(false);
+        setErrorMessage(null);
+        setCallSummary('Evaluating requirement fit, timeline, and decision maker authority...');
+        setNextBestAction('Qualify company rollout scale and propose solutions demo.');
 
-      // Ring for 1.8 seconds then connect
-      const ringTimer = setTimeout(() => {
-        setCallStatus('CONNECTED');
-        const initialAiGreeting: Message = {
-          speaker: 'agent',
-          text: `Hello ${lead.name.split(' ')[0]}, I'm Ava from TechNova Solutions. I'm calling about your public Microsoft 365 & SharePoint automation requirement.`,
-          timestamp: '00:03',
-        };
-        setMessages([initialAiGreeting]);
-        speakText(initialAiGreeting.text);
-      }, 1800);
+        // Ring for 1.8 seconds then connect
+        const ringTimer = setTimeout(() => {
+          setCallStatus('CONNECTED');
+          const firstName = lead.name ? lead.name.split(' ')[0] : 'there';
+          const requirementTopic = lead.companyName
+            ? `your active requirement at ${lead.companyName}`
+            : 'your public requirement';
 
-      return () => clearTimeout(ringTimer);
-    } else {
+          const initialAiGreeting: Message = {
+            speaker: 'agent',
+            text: `Hello ${firstName}, I'm Ava from TechNova Solutions. I'm calling about ${requirementTopic}.`,
+            timestamp: '00:03',
+          };
+          setMessages([initialAiGreeting]);
+          speakText(initialAiGreeting.text);
+        }, 1800);
+
+        return () => clearTimeout(ringTimer);
+      }
+    } else if (!isOpen) {
+      isOpenRef.current = false;
+      currentLeadIdRef.current = null;
       setMessages([]);
+      setCallStatus('RINGING');
+      setErrorMessage(null);
       if (timerRef.current) clearInterval(timerRef.current);
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
     }
-  }, [isOpen, lead]);
+  }, [isOpen, lead?.id]);
 
   // Duration timer
   useEffect(() => {
@@ -100,7 +123,7 @@ export default function LiveCallSimulatorModal({
   // Auto scroll
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isAiSpeaking]);
+  }, [messages, isAiSpeaking, isAiThinking]);
 
   // Free in-browser speech synthesis (Text-to-Speech)
   const speakText = (text: string) => {
@@ -123,7 +146,7 @@ export default function LiveCallSimulatorModal({
   };
 
   const handleSendProspectMessage = async (textToSend: string) => {
-    if (!textToSend.trim() || callStatus !== 'CONNECTED') return;
+    if (!textToSend.trim() || callStatus !== 'CONNECTED' || isAiThinking) return;
 
     const userMsg: Message = {
       speaker: 'prospect',
@@ -134,6 +157,8 @@ export default function LiveCallSimulatorModal({
     const newHistory = [...messages, userMsg];
     setMessages(newHistory);
     setInputText('');
+    setIsAiThinking(true);
+    setErrorMessage(null);
 
     try {
       // Call backend AI voice agent API
@@ -152,7 +177,7 @@ export default function LiveCallSimulatorModal({
       });
 
       const data = await res.json();
-      if (data.success && data.reply) {
+      if (res.ok && data.success && data.reply) {
         const agentReply: Message = {
           speaker: 'agent',
           text: data.reply,
@@ -164,14 +189,20 @@ export default function LiveCallSimulatorModal({
         if (data.meetingBooked) {
           setIsMeetingBooked(true);
           setCallSummary(
-            `Qualified: 150-user M365 & SharePoint rollout planned for next quarter. Budget approved, ${lead?.jobTitle} is decision maker.`
+            data.summary ||
+              `Qualified: requirement verified. Budget approved, ${lead?.jobTitle || 'Decision maker'} confirmed.`
           );
-          setNextBestAction('Send SharePoint case study, confirm Thursday 3 PM demo.');
+          setNextBestAction(data.nextBestAction || 'Send case study, confirm Thursday 3 PM demo.');
           onMeetingBookedSuccess?.();
         }
+      } else {
+        setErrorMessage(data?.error || 'Voice response could not be generated. Please retry.');
       }
     } catch (err) {
       console.error('Call turn error:', err);
+      setErrorMessage('Connection issue to Voice Agent. Please try again.');
+    } finally {
+      setIsAiThinking(false);
     }
   };
 
@@ -299,14 +330,40 @@ export default function LiveCallSimulatorModal({
                   AI Agent is speaking...
                 </div>
               )}
+
+              {isAiThinking && (
+                <div className="flex items-center gap-2 text-xs text-indigo-400 font-medium pl-9">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+                  <span>Ava is listening &amp; formulating response...</span>
+                </div>
+              )}
+
+              {errorMessage && (
+                <div className="p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between gap-2 animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                    <span>{errorMessage}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setErrorMessage(null)}
+                    className="text-[11px] text-rose-400 hover:text-white underline cursor-pointer shrink-0"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
               <div ref={chatEndRef} />
             </div>
 
-            {/* Interactive Speak / Reply Controls for John */}
+            {/* Interactive Speak / Reply Controls */}
             <div className="pt-3 border-t border-white/[0.06] mt-2 space-y-2">
               <div className="text-[11px] text-slate-400 flex items-center justify-between">
-                <span>Simulate or Speak John&apos;s Response:</span>
-                <span className="text-[10px] text-indigo-400">Groq Llama 3.3 Active</span>
+                <span>Simulate or Speak {lead.name.split(' ')[0]}&apos;s Response:</span>
+                <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                  Groq Ultra-Fast Engine Active
+                </span>
               </div>
 
               {/* Quick Prompt Suggestions */}
@@ -315,12 +372,13 @@ export default function LiveCallSimulatorModal({
                   type="button"
                   onClick={() =>
                     handleSendProspectMessage(
-                      'Yes – we need a partner for SharePoint and workflow automation.'
+                      'Yes – we need a qualified partner for this implementation and automation.'
                     )
                   }
-                  className="px-2.5 py-1 rounded-lg text-[11px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/[0.08] transition-all cursor-pointer"
+                  disabled={isAiThinking || callStatus !== 'CONNECTED'}
+                  className="px-2.5 py-1 rounded-lg text-[11px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/[0.08] transition-all cursor-pointer disabled:opacity-40"
                 >
-                  &quot;Yes, we need a partner for SharePoint...&quot;
+                  &quot;Yes, we need a partner for this implementation...&quot;
                 </button>
                 <button
                   type="button"
@@ -329,7 +387,8 @@ export default function LiveCallSimulatorModal({
                       'Next quarter, around 150 users. Can we set up a call with your team?'
                     )
                   }
-                  className="px-2.5 py-1 rounded-lg text-[11px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/[0.08] transition-all cursor-pointer"
+                  disabled={isAiThinking || callStatus !== 'CONNECTED'}
+                  className="px-2.5 py-1 rounded-lg text-[11px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/[0.08] transition-all cursor-pointer disabled:opacity-40"
                 >
                   &quot;Next quarter, 150 users. Can we set up a call?&quot;
                 </button>
@@ -341,15 +400,16 @@ export default function LiveCallSimulatorModal({
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSendProspectMessage(inputText)}
-                  placeholder="Type John's spoken words or click suggestions above..."
-                  className="flex-1 px-3 py-2 rounded-xl bg-[#090d1f] border border-white/[0.1] text-xs text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                  placeholder={`Type ${lead.name.split(' ')[0]}'s spoken words or click suggestions above...`}
+                  disabled={isAiThinking || callStatus !== 'CONNECTED'}
+                  className="flex-1 px-3 py-2 rounded-xl bg-[#090d1f] border border-white/[0.1] text-xs text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 disabled:opacity-50"
                 />
                 <button
                   onClick={() => handleSendProspectMessage(inputText)}
-                  disabled={!inputText.trim()}
-                  className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 transition-all cursor-pointer"
+                  disabled={!inputText.trim() || isAiThinking || callStatus !== 'CONNECTED'}
+                  className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 transition-all cursor-pointer flex items-center justify-center"
                 >
-                  <Send className="w-4 h-4" />
+                  {isAiThinking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 </button>
               </div>
             </div>
