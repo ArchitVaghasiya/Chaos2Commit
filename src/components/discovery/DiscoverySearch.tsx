@@ -28,8 +28,16 @@ function TwitterIcon({ className = 'w-4 h-4' }: { className?: string }) {
   );
 }
 
+export interface DiscoverySearchParams {
+  keyword: string;
+  platform: string;
+  industry: string;
+  location: string;
+  dateRange: string;
+}
+
 interface DiscoverySearchProps {
-  onSearch: (query: string, platform: string) => void;
+  onSearch: (params: DiscoverySearchParams) => void;
   selectedPlatform: string;
   setSelectedPlatform: (platform: string) => void;
   loading?: boolean;
@@ -41,7 +49,7 @@ export default function DiscoverySearch({
   setSelectedPlatform,
   loading = false,
 }: DiscoverySearchProps) {
-  const [keyword, setKeyword] = useState('Microsoft 365 implementation partner');
+  const [keyword, setKeyword] = useState('');
   const [industry, setIndustry] = useState('All Industries');
   const [location, setLocation] = useState('Global');
   const [dateRange, setDateRange] = useState('Last 7 Days');
@@ -57,8 +65,22 @@ export default function DiscoverySearch({
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSearch(keyword, selectedPlatform);
+    // Trigger AI discovery ONLY when Search button is clicked
+    onSearch({
+      keyword,
+      platform: selectedPlatform,
+      industry,
+      location,
+      dateRange,
+    });
   };
+
+  const sampleKeywords = [
+    'Microsoft 365 implementation',
+    'SharePoint Online partner',
+    'Healthcare EHR workflow',
+    'Cloud zero trust security',
+  ];
 
   return (
     <div className="glass-card p-5 mb-6 border-indigo-500/20 shadow-xl">
@@ -80,7 +102,7 @@ export default function DiscoverySearch({
               type="text"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              placeholder="Search by Keyword, Industry, Location, Company..."
+              placeholder="Search by Keyword, Requirement, Industry, Company (e.g. SharePoint, Healthcare EHR)..."
               className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#090d1f] border border-white/[0.1] text-sm text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
             />
           </div>
@@ -93,7 +115,7 @@ export default function DiscoverySearch({
             {loading ? (
               <span className="flex items-center gap-2">
                 <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                Scanning...
+                AI Identifying...
               </span>
             ) : (
               <>
@@ -104,14 +126,35 @@ export default function DiscoverySearch({
           </button>
         </div>
 
-        {/* Filter Dropdown Controls */}
+        {/* Suggested Query Tags */}
+        <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-[11px] text-slate-400">
+          <span className="text-slate-500">Quick queries:</span>
+          {sampleKeywords.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => setKeyword(tag)}
+              className="px-2 py-0.5 rounded-md bg-white/[0.03] hover:bg-white/[0.08] text-slate-300 border border-white/[0.06] transition-all cursor-pointer"
+            >
+              {tag}
+            </button>
+          ))}
+          {keyword && (
+            <button
+              type="button"
+              onClick={() => setKeyword('')}
+              className="ml-auto text-slate-400 hover:text-white underline cursor-pointer text-[10px]"
+            >
+              Clear Search
+            </button>
+          )}
+        </div>
+
+        {/* Filter Dropdown Controls - changing these does NOT trigger search */}
         <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
           <select
             value={selectedPlatform}
-            onChange={(e) => {
-              setSelectedPlatform(e.target.value);
-              onSearch(keyword, e.target.value);
-            }}
+            onChange={(e) => setSelectedPlatform(e.target.value)}
             aria-label="Platform Source Filter"
             className="px-3 py-1.5 rounded-lg bg-[#090d1f] border border-white/[0.08] text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer"
           >
@@ -132,7 +175,7 @@ export default function DiscoverySearch({
           >
             <option value="All Industries">Industry: All</option>
             <option value="IT Services">IT Services</option>
-            <option value="Software">Software & SaaS</option>
+            <option value="Software">Software &amp; SaaS</option>
             <option value="Consulting">Consulting</option>
             <option value="Manufacturing">Manufacturing</option>
             <option value="Healthcare">Healthcare</option>
@@ -170,7 +213,7 @@ export default function DiscoverySearch({
         </div>
       </form>
 
-      {/* Source Platform Metric Badges */}
+      {/* Source Platform Metric Badges - clicking these only toggles filter selection, does NOT trigger search */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 mt-4 pt-4 border-t border-white/[0.06]">
         {platforms.map((p) => {
           const Icon = p.icon;
@@ -178,14 +221,14 @@ export default function DiscoverySearch({
           return (
             <button
               key={p.id}
+              type="button"
               onClick={() => {
                 const next = isSelected ? 'All Sources' : p.id;
                 setSelectedPlatform(next);
-                onSearch(keyword, next);
               }}
-              className={`flex flex-col items-center p-2.5 rounded-xl border transition-all text-center ${
+              className={`flex flex-col items-center p-2.5 rounded-xl border transition-all text-center cursor-pointer ${
                 isSelected
-                  ? 'bg-indigo-600/20 border-indigo-500/60 shadow-md shadow-indigo-500/20'
+                  ? 'bg-indigo-600/20 border-indigo-500/60 shadow-md shadow-indigo-500/20 ring-1 ring-indigo-500/40'
                   : 'bg-white/[0.02] border-white/[0.05] hover:border-white/[0.15] hover:bg-white/[0.04]'
               }`}
             >

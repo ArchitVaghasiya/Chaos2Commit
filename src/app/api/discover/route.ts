@@ -4,8 +4,25 @@ import { prisma } from '@/lib/prisma';
 
 export async function POST(request: Request) {
   try {
-    const { query, platform } = await request.json();
-    const discovered = await discoverLeads(query || '', platform || 'All Sources');
+    const { query, platform, industry, location } = await request.json();
+
+    // If query is empty, do NOT search or generate anything
+    if (!query || !query.trim()) {
+      return NextResponse.json({
+        success: true,
+        query: '',
+        platform: platform || 'All Sources',
+        totalDiscovered: 0,
+        leads: [],
+      });
+    }
+
+    const discovered = await discoverLeads(
+      query.trim(),
+      platform || 'All Sources',
+      industry,
+      location
+    );
 
     // Automatically sync or upsert discovered leads to SQLite database
     const savedLeads = await Promise.all(
