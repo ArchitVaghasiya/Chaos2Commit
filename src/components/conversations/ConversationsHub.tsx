@@ -103,36 +103,36 @@ export default function ConversationsHub() {
   return (
     <div className="space-y-6">
       {/* Top Bar */}
-      <div className="glass-card p-6 border-white/[0.06] shadow-xl">
+      <div className="glass-card p-6 border-slate-200 dark:border-white/[0.06] shadow-xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <div>
             <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
               <Headphones className="w-3.5 h-3.5" /> AI Voice Conversations &amp; Transcripts
             </span>
-            <h2 className="text-xl font-bold text-white mt-0.5">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">
               Live Call Intelligence, Audio Audits &amp; Transcripts
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-600">
               Review conversational qualification logs, voicemail drops, retry schedules, and next-best actions.
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <div className="relative w-64">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 h-3.5 text-slate-600 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search call logs..."
-                className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-[#090d1f] border border-white/[0.08] text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-white dark:bg-[#090d1f] border border-slate-200 dark:border-white/[0.08] text-xs text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
               />
             </div>
           </div>
         </div>
 
         {/* Outcome Filter Pills */}
-        <div className="flex flex-wrap gap-2 pt-2 border-t border-white/[0.06] text-xs">
+        <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-200 dark:border-white/[0.06] text-xs">
           {[
             { id: 'ALL', label: 'All Call Records' },
             { id: 'MEETING_BOOKED', label: 'Meetings Booked' },
@@ -146,7 +146,7 @@ export default function ConversationsHub() {
               className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
                 outcomeFilter === item.id
                   ? 'bg-indigo-600 text-white shadow-md'
-                  : 'bg-white/[0.02] text-slate-400 hover:text-white border border-white/[0.04]'
+                  : 'bg-white/[0.02] text-slate-600 hover:text-slate-900 dark:text-white border border-slate-200 dark:border-white/[0.04]'
               }`}
             >
               {item.label}
@@ -168,16 +168,16 @@ export default function ConversationsHub() {
                 className={`p-4 rounded-xl border transition-all cursor-pointer ${
                   isSelected
                     ? 'bg-indigo-600/15 border-indigo-500/50 shadow-md ring-1 ring-indigo-500/30'
-                    : 'bg-[#090d20] border-white/[0.05] hover:bg-white/[0.03] hover:border-white/[0.1]'
+                    : 'bg-white dark:bg-[#090d20] border-slate-200 dark:border-white/[0.05] hover:bg-white/[0.03] hover:border-slate-200 dark:border-white/[0.1]'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2 mb-1.5">
                   <div>
-                    <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                       {call.contactName}
-                      <span className="text-[10px] text-slate-400 font-normal">({call.companyName})</span>
+                      <span className="text-[10px] text-slate-600 font-normal">({call.companyName})</span>
                     </div>
-                    <div className="text-[10px] text-slate-400">{call.phone} • {call.duration}</div>
+                    <div className="text-[10px] text-slate-600">{call.phone} • {call.duration}</div>
                   </div>
 
                   <span
@@ -193,11 +193,11 @@ export default function ConversationsHub() {
                   </span>
                 </div>
 
-                <p className="text-[11px] text-slate-300 line-clamp-2 bg-white/[0.02] p-2 rounded-lg mb-2">
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2 bg-white/[0.02] p-2 rounded-lg mb-2">
                   &quot;{call.summary}&quot;
                 </p>
 
-                <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-white/[0.04]">
+                <div className="flex items-center justify-between text-[10px] text-slate-600 pt-1 border-t border-slate-200 dark:border-white/[0.04]">
                   <span>{call.timestamp}</span>
                   <span className="text-indigo-400 font-semibold flex items-center gap-1">
                     Inspect Transcript &rarr;
@@ -211,13 +211,13 @@ export default function ConversationsHub() {
         {/* Right Column: Selected Call Dossier & Full Transcript (7 cols) */}
         <div className="lg:col-span-7 space-y-6">
           {/* Audio Player Simulator Card */}
-          <div className="glass-card p-5 border-white/[0.06] shadow-xl">
-            <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/[0.06]">
+          <div className="glass-card p-5 border-slate-200 dark:border-white/[0.06] shadow-xl">
+            <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-200 dark:border-white/[0.06]">
               <div>
-                <h3 className="text-sm font-bold text-white">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                   Audio Recording • {selectedCall.contactName} ({selectedCall.companyName})
                 </h3>
-                <div className="text-[11px] text-slate-400">Recorded: {selectedCall.timestamp} • Duration: {selectedCall.duration}</div>
+                <div className="text-[11px] text-slate-600">Recorded: {selectedCall.timestamp} • Duration: {selectedCall.duration}</div>
               </div>
 
               <button
@@ -237,7 +237,7 @@ export default function ConversationsHub() {
             </div>
 
             {/* Fake Waveform Visualizer */}
-            <div className="p-3 rounded-xl bg-[#060a18] border border-white/[0.04] flex items-center gap-1.5 justify-between mb-4">
+            <div className="p-3 rounded-xl bg-white dark:bg-[#060a18] border border-slate-200 dark:border-white/[0.04] flex items-center gap-1.5 justify-between mb-4">
               {Array.from({ length: 42 }).map((_, i) => (
                 <div
                   key={i}
@@ -253,11 +253,11 @@ export default function ConversationsHub() {
 
             {/* AI Summary & Next Best Action */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                <div className="text-[10px] font-bold uppercase text-slate-300 mb-1 flex items-center gap-1">
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-slate-200 dark:border-white/[0.04]">
+                <div className="text-[10px] font-bold uppercase text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1">
                   <Sparkles className="w-3 h-3 text-indigo-400" /> AI Call Summary
                 </div>
-                <p className="text-slate-300 leading-relaxed">{selectedCall.summary}</p>
+                <p className="text-slate-600 dark:text-slate-300 leading-relaxed">{selectedCall.summary}</p>
               </div>
 
               <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
@@ -270,8 +270,8 @@ export default function ConversationsHub() {
           </div>
 
           {/* Full Interactive Transcript Log */}
-          <div className="glass-card p-5 border-white/[0.06] shadow-xl">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-white mb-3 pb-2 border-b border-white/[0.06]">
+          <div className="glass-card p-5 border-slate-200 dark:border-white/[0.06] shadow-xl">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white mb-3 pb-2 border-b border-slate-200 dark:border-white/[0.06]">
               Timestamped Voice Transcript
             </h3>
 
@@ -289,7 +289,7 @@ export default function ConversationsHub() {
                     <div
                       className={`max-w-[80%] p-3 rounded-2xl leading-relaxed ${
                         isAgent
-                          ? 'bg-[#0f1536] border border-indigo-500/30 text-slate-100 rounded-tl-none'
+                          ? 'bg-slate-50 dark:bg-[#0f1536] border border-slate-200 dark:border-indigo-500/30 text-slate-900 dark:text-slate-100 rounded-tl-none'
                           : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-tr-none'
                       }`}
                     >
@@ -301,7 +301,7 @@ export default function ConversationsHub() {
                     </div>
 
                     {!isAgent && (
-                      <div className="w-7 h-7 rounded-lg bg-slate-700 flex items-center justify-center text-white shrink-0 text-[11px] font-bold">
+                      <div className="w-7 h-7 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-white shrink-0 text-[11px] font-bold">
                         <User className="w-3.5 h-3.5" />
                       </div>
                     )}
