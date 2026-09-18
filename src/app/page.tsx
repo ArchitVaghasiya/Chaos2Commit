@@ -6,11 +6,12 @@ import Sidebar from '@/components/layout/Sidebar';
 import OverviewKpis from '@/components/dashboard/OverviewKpis';
 import DiscoverySearch, { DiscoverySearchParams } from '@/components/discovery/DiscoverySearch';
 import DiscoveredLeadCard, { LeadItem } from '@/components/discovery/DiscoveredLeadCard';
-import HowItWorksStrip from '@/components/dashboard/HowItWorksStrip';
+
 import CampaignPerformanceChart from '@/components/dashboard/CampaignPerformanceChart';
 import DonutCharts from '@/components/dashboard/DonutCharts';
 import VoiceActivityRail from '@/components/dashboard/VoiceActivityRail';
-import MobileAppMockup from '@/components/dashboard/MobileAppMockup';
+import MobileDashboard from '@/components/dashboard/MobileDashboard';
+
 import CapabilitiesFooter from '@/components/layout/CapabilitiesFooter';
 import IntentScoreModal from '@/components/discovery/IntentScoreModal';
 import LiveCallSimulatorModal from '@/components/voice/LiveCallSimulatorModal';
@@ -289,9 +290,16 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen text-slate-100 p-3 sm:p-5 lg:p-6 max-w-[1720px] mx-auto flex flex-col justify-between">
-      <div>
-        {/* Top Banner Header with Multilingual Language Selector (PDF Page 4 Note 1) */}
+    <>
+      {/* Mobile View */}
+      <div className="block lg:hidden">
+        <MobileDashboard />
+      </div>
+
+      {/* Desktop View */}
+      <div className="hidden lg:flex min-h-screen text-slate-900 dark:text-slate-100 p-3 sm:p-5 lg:p-6 max-w-[1720px] mx-auto flex-col justify-between">
+        <div>
+          {/* Top Banner Header with Multilingual Language Selector (PDF Page 4 Note 1) */}
         <HeaderBanner
           currentLanguage={currentLanguage}
           onLanguageChange={(lang) => setCurrentLanguage(lang)}
@@ -363,32 +371,19 @@ export default function HomePage() {
                       </div>
                     )}
 
-                    {/* How It Works 6-Step Workflow Strip (From Master PNG) */}
-                    <HowItWorksStrip />
 
                     {/* Campaign Performance Multi-Line Trend Chart */}
                     <CampaignPerformanceChart />
 
-                    {/* Two Donut Charts (Top Industries & Lead Source Distribution) */}
-                    <DonutCharts />
                   </div>
 
                   {/* Right Rail: Voice Activity Rail & Mobile Mockup (4 cols) */}
                   <div className="xl:col-span-4 space-y-6">
                     {/* AI Voice Agent Activity Rail */}
                     <VoiceActivityRail onViewAll={() => setActiveTab('conversations')} />
-
-                    {/* Mobile App Device Showcase Mockup */}
-                    <div className="glass-card p-5 border-white/[0.06] shadow-xl text-center">
-                      <div className="text-xs font-bold text-white mb-1 flex items-center justify-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                        Mobile Sales Executive App
-                      </div>
-                      <p className="text-[11px] text-slate-400 mb-4">
-                        Real-time push alerts, call listen-in &amp; CRM sync on iOS &amp; Android.
-                      </p>
-                      <MobileAppMockup />
-                    </div>
+                    
+                    {/* Two Donut Charts (Top Industries & Lead Source Distribution) */}
+                    <DonutCharts />
                   </div>
                 </div>
               </div>
@@ -438,44 +433,48 @@ export default function HomePage() {
                 )}
 
                 {/* Discovered Opportunities Grid */}
-                {leads.length > 0 && (
-                  <div className="glass-card p-5 border-white/[0.06] shadow-xl">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <Users className="w-4 h-4 text-blue-400" />
-                        <h3 className="text-sm font-bold text-white">Discovered Leads Pipeline</h3>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-bold">
-                          {visibleLeads.length} Available {selectedPlatform !== 'All Sources' ? `(${selectedPlatform})` : ''}
-                        </span>
-                      </div>
-                      <span className="text-xs text-slate-400">Click lead to preview opportunity</span>
+                <div className="glass-card p-5 border-slate-200 dark:border-white/[0.06] shadow-xl">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">Discovered Leads Pipeline</h3>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-600 dark:text-blue-300 font-bold">
+                        {leads.length} Available
+                      </span>
                     </div>
+                    <span className="text-xs text-slate-700 dark:text-slate-400">Click lead to preview opportunity</span>
+                  </div>
 
-                    {visibleLeads.length === 0 ? (
-                      <div className="p-8 text-center bg-white/[0.02] border border-white/[0.05] rounded-xl">
-                        <p className="text-xs text-slate-400 mb-2">
-                          No leads in current loaded pool matching{' '}
-                          <span className="text-white font-semibold">{selectedPlatform}</span>
-                          {selectedIndustry !== 'All Industries' && (
-                            <> &bull; <span className="text-white font-semibold">{selectedIndustry}</span></>
-                          )}
-                        </p>
-                        <p className="text-[11px] text-slate-500">
-                          Click the &quot;Search&quot; button above to prompt the autonomous AI agent to crawl live feeds for this channel, or select &quot;All Sources&quot;.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {visibleLeads.map((l) => {
-                          const isCurrent = l.id === selectedLead?.id;
-                          return (
-                            <div
-                              key={l.id}
-                              onClick={() => setSelectedLead(l)}
-                              className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
-                                isCurrent
-                                  ? 'bg-indigo-600/15 border-indigo-500/50 shadow-md ring-1 ring-indigo-500/40'
-                                  : 'bg-white/[0.02] border-white/[0.05] hover:bg-white/[0.04] hover:border-white/[0.1]'
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {leads.map((l) => {
+                      const isCurrent = l.id === selectedLead?.id;
+                      return (
+                        <div
+                          key={l.id}
+                          onClick={() => setSelectedLead(l)}
+                          className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
+                            isCurrent
+                              ? 'bg-indigo-600/15 border-indigo-500/50 shadow-md ring-1 ring-indigo-500/40'
+                              : 'bg-slate-50 dark:bg-white/[0.02] border-slate-200 dark:border-white/[0.05] hover:bg-slate-100 dark:hover:bg-white/[0.04] hover:border-slate-300 dark:hover:border-slate-200 dark:border-white/[0.1]'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="truncate">
+                              <div className="text-xs font-bold text-slate-900 dark:text-white truncate flex items-center gap-1.5">
+                                {l.name}
+                                {l.emailVerified && (
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                )}
+                              </div>
+                              <div className="text-[11px] text-slate-700 dark:text-slate-400 truncate">
+                                {l.jobTitle} • {l.companyName}
+                              </div>
+                            </div>
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ${
+                                l.intentScore >= 90
+                                  ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30'
+                                  : 'bg-blue-500/20 text-blue-600 dark:text-blue-300 border border-blue-500/30'
                               }`}
                             >
                               <div className="flex items-start justify-between gap-2 mb-2">
@@ -501,28 +500,26 @@ export default function HomePage() {
                                 </span>
                               </div>
 
-                              <p className="text-[11px] text-slate-300 line-clamp-2 bg-white/[0.02] p-2 rounded-lg mb-2.5">
-                                &quot;{l.originalPostSnippet}&quot;
-                              </p>
+                          <p className="text-[11px] text-slate-800 dark:text-slate-300 line-clamp-2 bg-slate-100 dark:bg-white/[0.02] p-2 rounded-lg mb-2.5">
+                            &quot;{l.originalPostSnippet}&quot;
+                          </p>
 
-                              <div className="flex items-center justify-between text-[10px] text-slate-400 pt-2 border-t border-white/[0.04]">
-                                <span className="text-slate-400">{l.sourcePlatform}</span>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openCallModalForLead(l);
-                                  }}
-                                  className="px-2.5 py-1 rounded bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 font-semibold border border-emerald-500/30 flex items-center gap-1 transition-all cursor-pointer"
-                                >
-                                  <Headphones className="w-3 h-3" /> Call
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                          <div className="flex items-center justify-between text-[10px] text-slate-700 dark:text-slate-400 pt-2 border-t border-slate-200 dark:border-white/[0.04]">
+                            <span className="text-slate-800 dark:text-slate-400">{l.sourcePlatform}</span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openCallModalForLead(l);
+                              }}
+                              className="px-2.5 py-1 rounded bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-600 dark:text-emerald-300 font-semibold border border-emerald-500/30 flex items-center gap-1 transition-all cursor-pointer"
+                            >
+                              <Headphones className="w-3 h-3" /> Call
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -543,51 +540,45 @@ export default function HomePage() {
             {/* 5. AI Voice Agent Hub */}
             {activeTab === 'ai-voice-agent' && (
               <div className="space-y-6">
-                <div className="glass-card p-6 border-white/[0.06] shadow-xl">
+                <div className="glass-card p-6 border-slate-200 dark:border-white/[0.06] shadow-xl">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                     <div>
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
                         <Headphones className="w-3.5 h-3.5" /> Conversational Telephony
                       </span>
-                      <h2 className="text-xl font-bold text-white mt-0.5">
+                      <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">
                         Multilingual AI Voice Calling Agent (Groq Llama 3.3 + Gemini)
                       </h2>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-slate-800 dark:text-slate-400">
                         Sub-150ms voice conversational qualification, objection handling, voicemail detection, and calendar demo scheduling.
                       </p>
                     </div>
 
                     <button
-                      onClick={() => {
-                        if (selectedLead) {
-                          openCallModalForLead(selectedLead);
-                        } else if (leads.length > 0) {
-                          openCallModalForLead(leads[0]);
-                        }
-                      }}
-                      className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
+                      onClick={() => openCallModalForLead(selectedLead)}
+                      className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-slate-900 dark:text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
                     >
                       <PhoneCall className="w-4 h-4" /> Launch Live Voice Call
                     </button>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                    <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                      <div className="text-slate-400 mb-1">AI Voice Persona</div>
-                      <div className="text-sm font-bold text-white">Ava (Enterprise Solutions Lead)</div>
-                      <div className="text-[11px] text-emerald-400 mt-1">✓ Active &amp; Calibrated</div>
+                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]">
+                      <div className="text-slate-700 dark:text-slate-400 mb-1">AI Voice Persona</div>
+                      <div className="text-sm font-bold text-slate-900 dark:text-white">Ava (Enterprise Solutions Lead)</div>
+                      <div className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1">✓ Active &amp; Calibrated</div>
                     </div>
 
-                    <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                      <div className="text-slate-400 mb-1">Inference Latency</div>
-                      <div className="text-sm font-bold text-white">&lt; 150 ms (Groq Hardware)</div>
-                      <div className="text-[11px] text-blue-400 mt-1">Ultra-low latency streaming</div>
+                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]">
+                      <div className="text-slate-700 dark:text-slate-400 mb-1">Inference Latency</div>
+                      <div className="text-sm font-bold text-slate-900 dark:text-white">&lt; 150 ms (Groq Hardware)</div>
+                      <div className="text-[11px] text-blue-600 dark:text-blue-400 mt-1">Ultra-low latency streaming</div>
                     </div>
 
-                    <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                      <div className="text-slate-400 mb-1">Languages Supported</div>
-                      <div className="text-sm font-bold text-white">English, Hindi, Spanish, Arabic, French, German</div>
-                      <div className="text-[11px] text-purple-400 mt-1">Autonomous language detection</div>
+                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]">
+                      <div className="text-slate-700 dark:text-slate-400 mb-1">Languages Supported</div>
+                      <div className="text-sm font-bold text-slate-900 dark:text-white">English, Hindi, Spanish, Arabic, French, German</div>
+                      <div className="text-[11px] text-purple-600 dark:text-purple-400 mt-1">Autonomous language detection</div>
                     </div>
                   </div>
                 </div>
@@ -635,6 +626,7 @@ export default function HomePage() {
 
       {/* Master 6-Pillar Capabilities Footer (from PNG) */}
       <CapabilitiesFooter />
+      </div>
 
       {/* Interactive Modals */}
       <IntentScoreModal
@@ -663,6 +655,6 @@ export default function HomePage() {
             .catch(() => {});
         }}
       />
-    </div>
+    </>
   );
 }

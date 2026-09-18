@@ -217,16 +217,16 @@ export default function LiveCallSimulatorModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-4 animate-in fade-in duration-200">
-      <div className="w-full max-w-4xl glass-card border-indigo-500/30 shadow-2xl bg-[#090d24] overflow-hidden flex flex-col max-h-[92vh]">
+      <div className="w-full max-w-4xl glass-card border-indigo-500/30 shadow-2xl bg-white dark:bg-[#090d24] overflow-hidden flex flex-col max-h-[92vh]">
         {/* Top Header */}
-        <div className="p-4 bg-[#0d1334] border-b border-white/[0.08] flex items-center justify-between">
+        <div className="p-4 bg-white dark:bg-[#0d1334] border-b border-slate-200 dark:border-white/[0.08] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/30">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/30">
               <Bot className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold text-white">
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white">
                   Multilingual AI Voice Agent
                 </h2>
                 {callStatus === 'CONNECTED' && (
@@ -241,13 +241,13 @@ export default function LiveCallSimulatorModal({
                   </span>
                 )}
                 {callStatus === 'ENDED' && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/20 text-slate-300 border border-slate-500/30">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/20 text-slate-600 dark:text-slate-300 border border-slate-500/30">
                     CALL ENDED
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-slate-300">
-                Outbound call to <span className="font-semibold text-white">{lead.name}</span> ({lead.jobTitle} at {lead.companyName}) • {lead.phone}
+              <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                Outbound call to <span className="font-semibold text-slate-900 dark:text-white">{lead.name}</span> ({lead.jobTitle} at {lead.companyName}) • {lead.phone}
               </p>
             </div>
           </div>
@@ -264,7 +264,7 @@ export default function LiveCallSimulatorModal({
             <button
               onClick={onClose}
               aria-label="Close Live Call dialog"
-              className="p-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white transition-all cursor-pointer"
+              className="p-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-600 hover:text-slate-900 dark:text-white transition-all cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -274,10 +274,10 @@ export default function LiveCallSimulatorModal({
         {/* Modal Body: 2 Columns matching Video Slide 5 */}
         <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-hidden">
           {/* Left Column: Live Call Audio & Transcript Stream */}
-          <div className="lg:col-span-7 p-4 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-white/[0.08] bg-[#070b1e]">
+          <div className="lg:col-span-7 p-4 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-white/[0.08] bg-white dark:bg-[#070b1e]">
             {/* Live Call Pill Bar */}
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] mb-3 text-xs">
-              <span className="font-semibold text-white flex items-center gap-1.5">
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] mb-3 text-xs">
+              <span className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 Live call • {lead.companyName}
               </span>
@@ -305,7 +305,7 @@ export default function LiveCallSimulatorModal({
                     <div
                       className={`max-w-[82%] p-3 rounded-2xl text-xs leading-relaxed ${
                         isAgent
-                          ? 'bg-[#141b3c] border border-indigo-500/30 text-slate-100 rounded-tl-none shadow-md'
+                          ? 'bg-slate-50 dark:bg-[#141b3c] border border-slate-200 dark:border-indigo-500/30 text-slate-900 dark:text-slate-100 rounded-tl-none shadow-sm dark:shadow-md'
                           : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-tr-none shadow-md'
                       }`}
                     >
@@ -316,7 +316,7 @@ export default function LiveCallSimulatorModal({
                       <p>{msg.text}</p>
                     </div>
                     {!isAgent && (
-                      <div className="w-7 h-7 rounded-lg bg-slate-700 flex items-center justify-center text-white shrink-0 text-xs font-bold">
+                      <div className="w-7 h-7 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-white shrink-0 text-xs font-bold">
                         <User className="w-3.5 h-3.5" />
                       </div>
                     )}
@@ -347,7 +347,7 @@ export default function LiveCallSimulatorModal({
                   <button
                     type="button"
                     onClick={() => setErrorMessage(null)}
-                    className="text-[11px] text-rose-400 hover:text-white underline cursor-pointer shrink-0"
+                    className="text-[11px] text-rose-400 hover:text-slate-900 dark:text-white underline cursor-pointer shrink-0"
                   >
                     Dismiss
                   </button>
@@ -357,8 +357,8 @@ export default function LiveCallSimulatorModal({
             </div>
 
             {/* Interactive Speak / Reply Controls */}
-            <div className="pt-3 border-t border-white/[0.06] mt-2 space-y-2">
-              <div className="text-[11px] text-slate-400 flex items-center justify-between">
+            <div className="pt-3 border-t border-slate-200 dark:border-white/[0.06] mt-2 space-y-2">
+              <div className="text-[11px] text-slate-600 flex items-center justify-between">
                 <span>Simulate or Speak {lead.name.split(' ')[0]}&apos;s Response:</span>
                 <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
@@ -376,7 +376,7 @@ export default function LiveCallSimulatorModal({
                     )
                   }
                   disabled={isAiThinking || callStatus !== 'CONNECTED'}
-                  className="px-2.5 py-1 rounded-lg text-[11px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/[0.08] transition-all cursor-pointer disabled:opacity-40"
+                  className="px-2.5 py-1 rounded-lg text-[11px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/[0.08] transition-all cursor-pointer disabled:opacity-40"
                 >
                   &quot;Yes, we need a partner for this implementation...&quot;
                 </button>
@@ -388,7 +388,7 @@ export default function LiveCallSimulatorModal({
                     )
                   }
                   disabled={isAiThinking || callStatus !== 'CONNECTED'}
-                  className="px-2.5 py-1 rounded-lg text-[11px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/[0.08] transition-all cursor-pointer disabled:opacity-40"
+                  className="px-2.5 py-1 rounded-lg text-[11px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/[0.08] transition-all cursor-pointer disabled:opacity-40"
                 >
                   &quot;Next quarter, 150 users. Can we set up a call?&quot;
                 </button>
@@ -402,7 +402,7 @@ export default function LiveCallSimulatorModal({
                   onKeyDown={(e) => e.key === 'Enter' && handleSendProspectMessage(inputText)}
                   placeholder={`Type ${lead.name.split(' ')[0]}'s spoken words or click suggestions above...`}
                   disabled={isAiThinking || callStatus !== 'CONNECTED'}
-                  className="flex-1 px-3 py-2 rounded-xl bg-[#090d1f] border border-white/[0.1] text-xs text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 disabled:opacity-50"
+                  className="flex-1 px-3 py-2 rounded-xl bg-white dark:bg-[#090d1f] border border-slate-200 dark:border-white/[0.1] text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 disabled:opacity-50"
                 />
                 <button
                   onClick={() => handleSendProspectMessage(inputText)}
@@ -416,21 +416,21 @@ export default function LiveCallSimulatorModal({
           </div>
 
           {/* Right Column: Call Summary & Next Best Action (Slide 5) */}
-          <div className="lg:col-span-5 p-4 bg-[#0a0e28] flex flex-col justify-between space-y-4">
+          <div className="lg:col-span-5 p-4 bg-white dark:bg-[#0a0e28] flex flex-col justify-between space-y-4">
             <div className="space-y-4">
               {/* Call Summary Card */}
-              <div className="p-3.5 rounded-xl bg-[#060918] border border-white/[0.08]">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1 flex items-center gap-1.5">
+              <div className="p-3.5 rounded-xl bg-white dark:bg-[#060918] border border-slate-200 dark:border-white/[0.08]">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-indigo-400" /> Call Summary
                 </div>
-                <p className="text-xs text-slate-200 leading-relaxed bg-white/[0.02] p-2.5 rounded-lg border border-white/[0.04]">
+                <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed bg-white/[0.02] p-2.5 rounded-lg border border-slate-200 dark:border-white/[0.04]">
                   {callSummary}
                 </p>
               </div>
 
               {/* Next Best Action Card */}
-              <div className="p-3.5 rounded-xl bg-[#060918] border border-white/[0.08]">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1 flex items-center gap-1.5">
+              <div className="p-3.5 rounded-xl bg-white dark:bg-[#060918] border border-slate-200 dark:border-white/[0.08]">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5 text-emerald-400" /> Next Best Action
                 </div>
                 <p className="text-xs text-emerald-300 leading-relaxed bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20 font-medium">
@@ -440,7 +440,7 @@ export default function LiveCallSimulatorModal({
 
               {/* Outcomes Handled Automatically Badges */}
               <div>
-                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-2">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-2">
                   Outcomes Handled Automatically
                 </div>
                 <div className="grid grid-cols-2 gap-1.5 text-[11px]">
@@ -448,7 +448,7 @@ export default function LiveCallSimulatorModal({
                     className={`p-2 rounded-lg border text-center font-semibold transition-all ${
                       isMeetingBooked
                         ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm'
-                        : 'bg-white/[0.02] text-slate-400 border-white/[0.05]'
+                        : 'bg-white/[0.02] text-slate-600 border-slate-200 dark:border-white/[0.05]'
                     }`}
                   >
                     ✓ Interested
@@ -458,17 +458,17 @@ export default function LiveCallSimulatorModal({
                     className={`p-2 rounded-lg border text-center font-semibold transition-all ${
                       isMeetingBooked
                         ? 'bg-gradient-to-r from-emerald-600/30 to-teal-600/30 text-emerald-300 border-emerald-500/50 shadow-md animate-pulse'
-                        : 'bg-white/[0.02] text-slate-400 border-white/[0.05]'
+                        : 'bg-white/[0.02] text-slate-600 border-slate-200 dark:border-white/[0.05]'
                     }`}
                   >
                     📅 Meeting Booked
                   </span>
 
-                  <span className="p-2 rounded-lg bg-white/[0.02] text-slate-400 border border-white/[0.05] text-center">
+                  <span className="p-2 rounded-lg bg-white/[0.02] text-slate-600 border border-slate-200 dark:border-white/[0.05] text-center">
                     Voicemail Left
                   </span>
 
-                  <span className="p-2 rounded-lg bg-white/[0.02] text-slate-400 border border-white/[0.05] text-center">
+                  <span className="p-2 rounded-lg bg-white/[0.02] text-slate-600 border border-slate-200 dark:border-white/[0.05] text-center">
                     Retry Scheduled
                   </span>
                 </div>
@@ -476,8 +476,8 @@ export default function LiveCallSimulatorModal({
             </div>
 
             {/* Multilingual Support Strip */}
-            <div className="pt-3 border-t border-white/[0.08]">
-              <div className="text-[11px] font-bold text-slate-300 mb-1.5 flex items-center gap-1.5">
+            <div className="pt-3 border-t border-slate-200 dark:border-white/[0.08]">
+              <div className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
                 <Globe2 className="w-3.5 h-3.5 text-blue-400" /> Multilingual AI Voice Calling:
               </div>
               <div className="flex flex-wrap gap-1">
@@ -488,7 +488,7 @@ export default function LiveCallSimulatorModal({
                     className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition-all ${
                       selectedLanguage === lang
                         ? 'bg-blue-600 text-white border-blue-400 shadow-sm'
-                        : 'bg-white/[0.03] text-slate-400 border-white/[0.08] hover:text-white'
+                        : 'bg-white/[0.03] text-slate-600 border-slate-200 dark:border-white/[0.08] hover:text-slate-900 dark:text-white'
                     }`}
                   >
                     {lang}

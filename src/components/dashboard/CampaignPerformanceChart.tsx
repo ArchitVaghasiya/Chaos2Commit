@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 
 export default function CampaignPerformanceChart() {
   const [activeHoverPoint, setActiveHoverPoint] = useState<number | null>(null);
@@ -72,14 +73,14 @@ export default function CampaignPerformanceChart() {
   };
 
   return (
-    <div className="glass-card p-5 mb-6 border-white/[0.06] shadow-xl">
+    <div className="glass-card p-5 mb-6 border-slate-200 dark:border-white/[0.06] shadow-xl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-        <h3 className="text-sm font-bold text-white">Campaign Performance</h3>
+        <h3 className="text-sm font-bold text-slate-900 dark:text-white">Campaign Performance</h3>
 
         {/* Legend matching reference design */}
         <div className="flex flex-wrap items-center gap-3 text-xs">
           {lines.map((l) => (
-            <div key={l.name} className="flex items-center gap-1.5 text-slate-300">
+            <div key={l.name} className="flex items-center gap-1.5 text-slate-800 dark:text-slate-300">
               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: l.color }} />
               <span className="text-[11px] font-medium">{l.name}</span>
             </div>
@@ -108,7 +109,7 @@ export default function CampaignPerformanceChart() {
                 y1={grid.y}
                 x2="485"
                 y2={grid.y}
-                stroke="rgba(255, 255, 255, 0.05)"
+                className="stroke-slate-200 dark:stroke-white/5"
                 strokeDasharray="4 4"
               />
               <text
@@ -125,30 +126,41 @@ export default function CampaignPerformanceChart() {
           ))}
 
           {/* Render Multi-lines */}
-          {lines.map((line) => (
+          {lines.map((line, lineIdx) => (
             <g key={line.name}>
-              <path
+              <motion.path
                 d={generatePath(line.points)}
                 fill="none"
                 stroke={line.color}
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 style={{ filter: `drop-shadow(0 4px 6px ${line.color}33)` }}
+                initial={{ pathLength: 0, opacity: 0 }}
+                whileInView={{ pathLength: 1, opacity: 1 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 1.5, ease: "easeInOut", delay: lineIdx * 0.2 }}
               />
 
               {/* Data points */}
               {line.points.map((p, pIdx) => (
-                <circle
+                <motion.circle
                   key={pIdx}
                   cx={p.x}
                   cy={p.y}
                   r="3.5"
-                  fill="#070a14"
+                  className="fill-white dark:fill-[#070a14] cursor-pointer hover:r-[5px] transition-all duration-300"
                   stroke={line.color}
                   strokeWidth="2"
-                  className="transition-all hover:r-5 cursor-pointer"
                   onMouseEnter={() => setActiveHoverPoint(pIdx)}
                   onMouseLeave={() => setActiveHoverPoint(null)}
+                  initial={{ scale: 0, opacity: 0 }}
+                  whileInView={{ scale: 1, opacity: 1 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ 
+                    duration: 0.4, 
+                    ease: "backOut", 
+                    delay: 1.5 + (lineIdx * 0.2) + (pIdx * 0.05) // Appear right after line drawing finishes
+                  }}
                 />
               ))}
             </g>

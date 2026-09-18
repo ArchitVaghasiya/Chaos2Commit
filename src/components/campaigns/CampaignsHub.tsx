@@ -165,17 +165,17 @@ export default function CampaignsHub() {
             <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
               <Megaphone className="w-3.5 h-3.5" /> Campaigns, Teams &amp; Insights
             </span>
-            <h2 className="text-2xl font-extrabold text-white mt-0.5">
+            <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white mt-0.5">
               Full visibility for every team, in one dashboard.
             </h2>
-            <p className="text-xs text-slate-300">
+            <p className="text-xs text-slate-600 dark:text-slate-300">
               Autonomous outbound campaigns scheduled by prospect timezones, with lead routing and live tracking.
             </p>
           </div>
 
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all cursor-pointer self-start sm:self-auto"
+            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-slate-900 dark:text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all cursor-pointer self-start sm:self-auto"
           >
             <Plus className="w-4 h-4" /> Create New Campaign
           </button>
@@ -183,45 +183,45 @@ export default function CampaignsHub() {
 
         {/* 4 Metric Pills directly matching Slide 6 */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-          <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-            <div className="text-[11px] font-semibold text-slate-400 mb-1 flex items-center justify-between">
+          <div className="p-3.5 rounded-xl bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]">
+            <div className="text-[11px] font-semibold text-slate-600 mb-1 flex items-center justify-between">
               <span>Leads Discovered</span>
               <Users className="w-3.5 h-3.5 text-blue-400" />
             </div>
-            <div className="text-2xl font-extrabold text-white">12,568</div>
+            <div className="text-2xl font-extrabold text-slate-900 dark:text-white">12,568</div>
             <div className="text-[10px] font-bold text-emerald-400 mt-0.5 flex items-center gap-0.5">
               <ArrowUpRight className="w-3 h-3" /> +18% vs last month
             </div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-            <div className="text-[11px] font-semibold text-slate-400 mb-1 flex items-center justify-between">
+          <div className="p-3.5 rounded-xl bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]">
+            <div className="text-[11px] font-semibold text-slate-600 mb-1 flex items-center justify-between">
               <span>Qualified Leads</span>
               <UserCheck className="w-3.5 h-3.5 text-purple-400" />
             </div>
-            <div className="text-2xl font-extrabold text-white">4,231</div>
+            <div className="text-2xl font-extrabold text-slate-900 dark:text-white">4,231</div>
             <div className="text-[10px] font-bold text-emerald-400 mt-0.5 flex items-center gap-0.5">
               <ArrowUpRight className="w-3 h-3" /> +24% vs last month
             </div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-            <div className="text-[11px] font-semibold text-slate-400 mb-1 flex items-center justify-between">
+          <div className="p-3.5 rounded-xl bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]">
+            <div className="text-[11px] font-semibold text-slate-600 mb-1 flex items-center justify-between">
               <span>Calls Completed</span>
               <PhoneCall className="w-3.5 h-3.5 text-indigo-400" />
             </div>
-            <div className="text-2xl font-extrabold text-white">2,847</div>
+            <div className="text-2xl font-extrabold text-slate-900 dark:text-white">2,847</div>
             <div className="text-[10px] font-bold text-emerald-400 mt-0.5 flex items-center gap-0.5">
               <ArrowUpRight className="w-3 h-3" /> +31% vs last month
             </div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-            <div className="text-[11px] font-semibold text-slate-400 mb-1 flex items-center justify-between">
+          <div className="p-3.5 rounded-xl bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]">
+            <div className="text-[11px] font-semibold text-slate-600 mb-1 flex items-center justify-between">
               <span>Meetings Booked</span>
               <CalendarCheck className="w-3.5 h-3.5 text-emerald-400" />
             </div>
-            <div className="text-2xl font-extrabold text-white">612</div>
+            <div className="text-2xl font-extrabold text-slate-900 dark:text-white">612</div>
             <div className="text-[10px] font-bold text-emerald-400 mt-0.5 flex items-center gap-0.5">
               <ArrowUpRight className="w-3 h-3" /> +27% vs last month
             </div>
@@ -232,90 +232,90 @@ export default function CampaignsHub() {
       {/* Two Columns: Lead Volume Over Time Bar Chart + Team & Campaign Control (Directly matching Slide 6) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Lead Volume Over Time Bar Chart (7 cols) */}
-        <div className="lg:col-span-7 glass-card p-5 border-white/[0.06] shadow-xl flex flex-col justify-between">
+        <div className="lg:col-span-7 glass-card p-5 border-slate-200 dark:border-white/[0.06] shadow-xl flex flex-col justify-between">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-purple-400" /> Lead volume over time
             </h3>
-            <span className="text-xs text-slate-400">Daily outbound volume</span>
+            <span className="text-xs text-slate-600">Daily outbound volume</span>
           </div>
 
           {/* Bar chart rendering */}
-          <div className="h-48 flex items-end gap-2.5 pt-6 pb-2 px-2 border-b border-white/[0.06]">
+          <div className="h-48 flex items-end gap-2.5 pt-6 pb-2 px-2 border-b border-slate-200 dark:border-white/[0.06]">
             {volumeData.map((d, i) => {
               const heightPct = Math.round((d.count / maxVolume) * 100);
               return (
                 <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
-                  <div className="text-[9px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-5 font-bold">
+                  <div className="text-[9px] text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-5 font-bold">
                     {d.count}
                   </div>
                   <div
                     style={{ height: `${heightPct}%` }}
                     className="w-full rounded-t-md bg-gradient-to-t from-indigo-700 via-indigo-500 to-purple-400 hover:to-purple-300 transition-all cursor-pointer shadow-md shadow-indigo-600/20"
                   />
-                  <span className="text-[10px] text-slate-400 mt-1">{d.day}</span>
+                  <span className="text-[10px] text-slate-600 mt-1">{d.day}</span>
                 </div>
               );
             })}
           </div>
 
-          <div className="flex items-center justify-between text-[11px] text-slate-400 pt-3">
+          <div className="flex items-center justify-between text-[11px] text-slate-600 pt-3">
             <span>Average: 780 daily calls processed</span>
             <span className="text-emerald-400 font-semibold">99.4% Delivery Rate</span>
           </div>
         </div>
 
         {/* Right Column: Team & campaign control (5 cols) matching Slide 6 */}
-        <div className="lg:col-span-5 glass-card p-5 border-white/[0.06] shadow-xl flex flex-col justify-between">
+        <div className="lg:col-span-5 glass-card p-5 border-slate-200 dark:border-white/[0.06] shadow-xl flex flex-col justify-between">
           <div>
-            <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
               <Layers className="w-4 h-4 text-blue-400" /> Team &amp; campaign control
             </h3>
 
             <div className="space-y-3">
-              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] flex items-start gap-3">
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-slate-200 dark:border-white/[0.04] flex items-start gap-3">
                 <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 mt-0.5">
                   <CheckCircle2 className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-white">Assign leads to sales reps</div>
-                  <div className="text-[11px] text-slate-400">Owner-based routing by territory and deal size</div>
+                  <div className="text-xs font-bold text-slate-900 dark:text-white">Assign leads to sales reps</div>
+                  <div className="text-[11px] text-slate-600">Owner-based routing by territory and deal size</div>
                 </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] flex items-start gap-3">
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-slate-200 dark:border-white/[0.04] flex items-start gap-3">
                 <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 mt-0.5">
                   <CheckCircle2 className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-white">Approve or reject discovered leads</div>
-                  <div className="text-[11px] text-slate-400">Quality gate threshold (Intent Score &ge; 75)</div>
+                  <div className="text-xs font-bold text-slate-900 dark:text-white">Approve or reject discovered leads</div>
+                  <div className="text-[11px] text-slate-600">Quality gate threshold (Intent Score &ge; 75)</div>
                 </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] flex items-start gap-3">
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-slate-200 dark:border-white/[0.04] flex items-start gap-3">
                 <div className="p-1.5 rounded-lg bg-purple-500/10 text-purple-400 mt-0.5">
                   <CheckCircle2 className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-white">Create and monitor campaigns</div>
-                  <div className="text-[11px] text-slate-400">Live status tracking with sub-second event telemetry</div>
+                  <div className="text-xs font-bold text-slate-900 dark:text-white">Create and monitor campaigns</div>
+                  <div className="text-[11px] text-slate-600">Live status tracking with sub-second event telemetry</div>
                 </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] flex items-start gap-3">
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-slate-200 dark:border-white/[0.04] flex items-start gap-3">
                 <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 mt-0.5">
                   <CheckCircle2 className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-white">Role-based access control</div>
-                  <div className="text-[11px] text-slate-400">Admin &bull; Manager &bull; Representative tiers</div>
+                  <div className="text-xs font-bold text-slate-900 dark:text-white">Role-based access control</div>
+                  <div className="text-[11px] text-slate-600">Admin &bull; Manager &bull; Representative tiers</div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between text-[11px] text-slate-400">
+          <div className="pt-3 border-t border-slate-200 dark:border-white/[0.06] flex items-center justify-between text-[11px] text-slate-600">
             <span>Enterprise governance</span>
             <span className="text-indigo-400 font-semibold cursor-pointer">Manage Permissions &rarr;</span>
           </div>
@@ -323,17 +323,17 @@ export default function CampaignsHub() {
       </div>
 
       {/* Active Campaigns Management Table (PDF Page 2 & Page 3 Step 10) */}
-      <div className="glass-card p-6 border-white/[0.06] shadow-xl">
+      <div className="glass-card p-6 border-slate-200 dark:border-white/[0.06] shadow-xl">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-sm font-bold text-white">Active Campaigns &amp; Schedules</h3>
-            <p className="text-xs text-slate-400">Monitor live progress, pause/resume, and review booked meetings</p>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Active Campaigns &amp; Schedules</h3>
+            <p className="text-xs text-slate-600">Monitor live progress, pause/resume, and review booked meetings</p>
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="text-[11px] uppercase bg-white/[0.03] text-slate-400 border-b border-white/[0.06]">
+          <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
+            <thead className="text-[11px] uppercase bg-white/[0.03] text-slate-600 border-b border-slate-200 dark:border-white/[0.06]">
               <tr>
                 <th className="py-3 px-4">Campaign Name</th>
                 <th className="py-3 px-4">Status</th>
@@ -347,8 +347,8 @@ export default function CampaignsHub() {
               {campaigns.map((c) => (
                 <tr key={c.id} className="hover:bg-white/[0.02] transition-colors">
                   <td className="py-3.5 px-4">
-                    <div className="font-bold text-white">{c.name}</div>
-                    <div className="text-[10px] text-slate-400">Created: {c.createdAt}</div>
+                    <div className="font-bold text-slate-900 dark:text-white">{c.name}</div>
+                    <div className="text-[10px] text-slate-600">Created: {c.createdAt}</div>
                   </td>
                   <td className="py-3.5 px-4">
                     <span
@@ -362,12 +362,12 @@ export default function CampaignsHub() {
                     </span>
                   </td>
                   <td className="py-3.5 px-4">
-                    <div className="text-slate-200">{c.targetIndustry}</div>
-                    <div className="text-[10px] text-slate-400">{c.targetLocation} • {c.scheduleType}</div>
+                    <div className="text-slate-700 dark:text-slate-200">{c.targetIndustry}</div>
+                    <div className="text-[10px] text-slate-600">{c.targetLocation} • {c.scheduleType}</div>
                   </td>
                   <td className="py-3.5 px-4">
                     <div className="w-32">
-                      <div className="flex items-center justify-between text-[10px] text-slate-300 mb-1">
+                      <div className="flex items-center justify-between text-[10px] text-slate-600 dark:text-slate-300 mb-1">
                         <span>{c.callsMadeCount} / {c.totalLeadsCount}</span>
                         <span className="font-bold">{c.progressPercent}%</span>
                       </div>
@@ -382,15 +382,15 @@ export default function CampaignsHub() {
                   <td className="py-3.5 px-4">
                     <div className="flex items-center gap-3">
                       <div>
-                        <div className="text-[10px] text-slate-400">Conversations</div>
-                        <div className="font-bold text-white">{c.conversationsCount}</div>
+                        <div className="text-[10px] text-slate-600">Conversations</div>
+                        <div className="font-bold text-slate-900 dark:text-white">{c.conversationsCount}</div>
                       </div>
                       <div>
-                        <div className="text-[10px] text-slate-400">Interested</div>
+                        <div className="text-[10px] text-slate-600">Interested</div>
                         <div className="font-bold text-amber-400">{c.interestedCount}</div>
                       </div>
                       <div>
-                        <div className="text-[10px] text-slate-400">Meetings</div>
+                        <div className="text-[10px] text-slate-600">Meetings</div>
                         <div className="font-bold text-emerald-400">{c.meetingsBooked}</div>
                       </div>
                     </div>
@@ -425,34 +425,34 @@ export default function CampaignsHub() {
       {/* Create Campaign Modal */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg glass-card border-indigo-500/30 p-6 bg-[#0c1228] shadow-2xl">
-            <h3 className="text-base font-bold text-white mb-1 flex items-center gap-2">
+          <div className="w-full max-w-lg glass-card border-indigo-500/30 p-6 bg-white dark:bg-[#0c1228] shadow-2xl">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white mb-1 flex items-center gap-2">
               <Megaphone className="w-4 h-4 text-indigo-400" /> Create Autonomous AI Campaign
             </h3>
-            <p className="text-xs text-slate-400 mb-4">
+            <p className="text-xs text-slate-600 mb-4">
               Configure target audience, calling hours based on prospect timezone, and daily limit.
             </p>
 
             <form onSubmit={handleCreateCampaign} className="space-y-3.5 text-xs">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Campaign Title</label>
+                <label className="block text-slate-600 dark:text-slate-300 font-semibold mb-1">Campaign Title</label>
                 <input
                   type="text"
                   required
                   value={newCampaignName}
                   onChange={(e) => setNewCampaignName(e.target.value)}
                   placeholder="e.g., Q3 Cloud Security Outreach"
-                  className="w-full px-3 py-2 rounded-xl bg-[#080d1e] border border-white/[0.1] text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#080d1e] border border-slate-200 dark:border-white/[0.1] text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Target Industry</label>
+                  <label className="block text-slate-600 dark:text-slate-300 font-semibold mb-1">Target Industry</label>
                   <select
                     value={newIndustry}
                     onChange={(e) => setNewIndustry(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-[#080d1e] border border-white/[0.1] text-white focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#080d1e] border border-slate-200 dark:border-white/[0.1] text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                   >
                     <option value="IT Services">IT Services &amp; Cloud</option>
                     <option value="Software">Software &amp; SaaS</option>
@@ -463,11 +463,11 @@ export default function CampaignsHub() {
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Location &amp; Timezone</label>
+                  <label className="block text-slate-600 dark:text-slate-300 font-semibold mb-1">Location &amp; Timezone</label>
                   <select
                     value={newLocation}
                     onChange={(e) => setNewLocation(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-[#080d1e] border border-white/[0.1] text-white focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#080d1e] border border-slate-200 dark:border-white/[0.1] text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                   >
                     <option value="North America (EST/PST)">North America (EST / PST)</option>
                     <option value="Europe (CET/GMT)">Europe (CET / GMT)</option>
@@ -479,11 +479,11 @@ export default function CampaignsHub() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Cadence / Schedule</label>
+                  <label className="block text-slate-600 dark:text-slate-300 font-semibold mb-1">Cadence / Schedule</label>
                   <select
                     value={newScheduleType}
                     onChange={(e) => setNewScheduleType(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-[#080d1e] border border-white/[0.1] text-white focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#080d1e] border border-slate-200 dark:border-white/[0.1] text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                   >
                     <option value="Daily (9 AM - 5 PM Local)">Daily (9 AM - 5 PM Local)</option>
                     <option value="Weekly Batches">Weekly Batches</option>
@@ -492,23 +492,23 @@ export default function CampaignsHub() {
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Daily Call Limit</label>
+                  <label className="block text-slate-600 dark:text-slate-300 font-semibold mb-1">Daily Call Limit</label>
                   <input
                     type="number"
                     min={10}
                     max={1000}
                     value={newDailyLimit}
                     onChange={(e) => setNewDailyLimit(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl bg-[#080d1e] border border-white/[0.1] text-white focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#080d1e] border border-slate-200 dark:border-white/[0.1] text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/[0.08]">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-white/[0.08]">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-3.5 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 transition-all cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-600 dark:text-slate-300 transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
