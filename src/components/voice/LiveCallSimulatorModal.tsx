@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   X,
-  Phone,
   PhoneOff,
   Volume2,
   Calendar,
@@ -82,8 +81,6 @@ export default function LiveCallSimulatorModal({
   const [nextBestAction, setNextBestAction] = useState(
     'Qualify company rollout scale and propose solutions demo.'
   );
-  const [isTriggeringRealCall, setIsTriggeringRealCall] = useState(false);
-  const [realCallNotice, setRealCallNotice] = useState<string | null>(null);
 
   // State synchronization refs for event listeners and timers
   const callStatusRef = useRef<'RINGING' | 'CONNECTED' | 'ENDED'>('RINGING');
@@ -1051,33 +1048,6 @@ export default function LiveCallSimulatorModal({
     }
   };
 
-  const handleTriggerRealCall = async () => {
-    if (!lead) return;
-    setIsTriggeringRealCall(true);
-    setRealCallNotice('Connecting Twilio telecom network to +91 97373 62307...');
-    try {
-      const res = await fetch('/api/telephony/outbound-call', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          leadName: lead.name,
-          companyName: lead.companyName,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setRealCallNotice('📲 Phone call ringing right now on +91 97373 62307! Please answer your mobile phone.');
-      } else {
-        setRealCallNotice(`Twilio Notice: ${data.error || 'Check Twilio credentials'}`);
-      }
-    } catch (err: any) {
-      setRealCallNotice('Network error dialing Twilio');
-    } finally {
-      setIsTriggeringRealCall(false);
-      setTimeout(() => setRealCallNotice(null), 9000);
-    }
-  };
-
   if (!isOpen || !lead) return null;
 
   const progressPercent = Math.min(100, (duration / CALL_LIMIT_SECONDS) * 100);
@@ -1165,22 +1135,6 @@ export default function LiveCallSimulatorModal({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Live Real Telecom Calling Button via Twilio */}
-            <button
-              type="button"
-              onClick={handleTriggerRealCall}
-              disabled={isTriggeringRealCall}
-              title="Ring Yash's verified phone number (+91 97373 62307) live over telecom"
-              className="px-2.5 py-1.5 rounded-lg bg-emerald-600/25 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 shadow-sm"
-            >
-              {isTriggeringRealCall ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Phone className="w-3.5 h-3.5 text-emerald-400" />
-              )}
-              <span>{isTriggeringRealCall ? 'Dialing...' : 'Dial My Real Phone 📲'}</span>
-            </button>
-
             {callStatus === 'CONNECTED' && (
               <>
                 <button
@@ -1212,23 +1166,6 @@ export default function LiveCallSimulatorModal({
             </button>
           </div>
         </div>
-
-        {/* Real Telecom Calling Status Banner */}
-        {realCallNotice && (
-          <div className="px-4 py-2 bg-gradient-to-r from-emerald-950 via-teal-950 to-emerald-950 border-b border-emerald-500/30 flex items-center justify-between text-xs text-emerald-300 animate-in fade-in">
-            <div className="flex items-center gap-2">
-              <Phone className="w-3.5 h-3.5 text-emerald-400 animate-bounce" />
-              <span className="font-semibold">{realCallNotice}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setRealCallNotice(null)}
-              className="text-[10px] text-emerald-400 underline hover:text-white cursor-pointer"
-            >
-              Dismiss
-            </button>
-          </div>
-        )}
 
         {/* Call Limit Progress Bar */}
         <div className="w-full bg-white/[0.05] h-1.5 relative overflow-hidden">
