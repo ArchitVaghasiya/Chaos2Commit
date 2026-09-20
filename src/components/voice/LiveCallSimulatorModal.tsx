@@ -105,11 +105,16 @@ export default function LiveCallSimulatorModal({
   // Turn-taking atomic lock: Prevents duplicate messages from being submitted
   const isSubmittingSpeechRef = useRef<boolean>(false);
 
+  // 3-Minute Limit Guard: Strictly guarantees wrapup logic and audio trigger only once
+  const isLimitHandledRef = useRef<boolean>(false);
+  // Abort controller for in-flight /api/voice/call network requests
+  const callAbortControllerRef = useRef<AbortController | null>(null);
+
   // Cross-reference handles to prevent stale closures across async timeouts and recognition callbacks
   const startListeningRef = useRef<() => void>(() => {});
   const stopListeningAndSendRef = useRef<(overrideText?: string) => void>(() => {});
   const handleSendProspectMessageRef = useRef<(text: string) => Promise<void>>(async () => {});
-  const speakTextRef = useRef<(text: string, lang?: string) => void>(() => {});
+  const speakTextRef = useRef<(text: string, lang?: string, isWrapup?: boolean) => void>(() => {});
 
   // Immediate synchronous sync of refs in render
   callStatusRef.current = callStatus;
@@ -361,16 +366,39 @@ export default function LiveCallSimulatorModal({
     isSubmittingSpeechRef.current = false;
   }, []);
 
+  // Stop and cancel all ongoing speech and audio hardware/synthesis immediately
+  const stopAllAudio = useCallback(() => {
+    if (audioRef.current) {
+      try {
+        const audio = audioRef.current;
+        audioRef.current = null;
+        audio.onplay = null;
+        audio.onended = null;
+        audio.onerror = null;
+        audio.pause();
+        audio.currentTime = 0;
+        audio.src = '';
+      } catch (_) {}
+    }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (_) {}
+    }
+    setIsAiSpeaking(false);
+    isAiSpeakingRef.current = false;
+  }, []);
+
   // 2. Universal Speech Synthesis with Turn-Taking Transition
   const speakText = useCallback(
-    (text: string, lang: string = selectedLanguageRef.current) => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
+    (text: string, lang: string = selectedLanguageRef.current, isWrapup: boolean = false) => {
+      // If call is already ENDED and this is not the wrapup speech or a deliberate user replay, do not play
+      if (callStatusRef.current === 'ENDED' && !isWrapup) {
+        return;
       }
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
+
+      // Immediately silence any previous ongoing audio playback
+      stopAllAudio();
 
       // Mute microphone while Ava speaks to prevent self-echo
       if (recognitionRef.current) {
@@ -399,6 +427,7 @@ export default function LiveCallSimulatorModal({
         if (
           isOpenRef.current &&
           callStatusRef.current === 'CONNECTED' &&
+          !isLimitHandledRef.current &&
           !isMutedRef.current &&
           inputModeRef.current === 'mic'
         ) {
@@ -406,6 +435,7 @@ export default function LiveCallSimulatorModal({
             if (
               isOpenRef.current &&
               callStatusRef.current === 'CONNECTED' &&
+              !isLimitHandledRef.current &&
               !isAiSpeakingRef.current &&
               !isAiThinkingRef.current &&
               !isMutedRef.current &&
@@ -428,26 +458,36 @@ export default function LiveCallSimulatorModal({
           setIsAiSpeaking(true);
           isAiSpeakingRef.current = true;
         };
-        audio.onended = handleSpeechEnded;
+        audio.onended = () => {
+          if (callStatusRef.current === 'ENDED' && !isWrapup) return;
+          handleSpeechEnded();
+        };
         audio.onerror = (err) => {
+          // If audio src was cleared or call was ended without wrapup, do not trigger fallback
+          if (!audio.src || audio.src === window.location.href || (callStatusRef.current === 'ENDED' && !isWrapup)) {
+            return;
+          }
           console.warn('Neural audio error, fallback to browser speech:', err);
-          fallbackBrowserSpeak(text, lang, handleSpeechEnded);
+          fallbackBrowserSpeak(text, lang, handleSpeechEnded, isWrapup);
         };
 
         audio.load();
         const playPromise = audio.play();
         if (playPromise !== undefined) {
-          playPromise.catch((err) => {
+          playPromise.catch((err: any) => {
+            if (err?.name === 'AbortError' || !audio.src || (callStatusRef.current === 'ENDED' && !isWrapup)) {
+              return;
+            }
             console.warn('Autoplay blocked, fallback to browser speech:', err);
-            fallbackBrowserSpeak(text, lang, handleSpeechEnded);
+            fallbackBrowserSpeak(text, lang, handleSpeechEnded, isWrapup);
           });
         }
       } catch (err) {
         console.warn('Audio object error, fallback to browser speech:', err);
-        fallbackBrowserSpeak(text, lang, handleSpeechEnded);
+        fallbackBrowserSpeak(text, lang, handleSpeechEnded, isWrapup);
       }
     },
-    []
+    [stopAllAudio]
   );
 
   speakTextRef.current = speakText;
@@ -455,10 +495,19 @@ export default function LiveCallSimulatorModal({
   const fallbackBrowserSpeak = (
     text: string,
     lang: string,
-    onEndCallback?: () => void
+    onEndCallback?: () => void,
+    isWrapup: boolean = false
   ) => {
+    if (callStatusRef.current === 'ENDED' && !isWrapup) {
+      if (onEndCallback) onEndCallback();
+      return;
+    }
+
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
+      try {
+        window.speechSynthesis.cancel();
+      } catch (_) {}
+
       const utterance = new SpeechSynthesisUtterance(text);
       const targetLocale = getLocaleForVoice(lang);
       utterance.lang = targetLocale;
@@ -488,7 +537,10 @@ export default function LiveCallSimulatorModal({
         isSubmittingSpeechRef.current = false;
         if (onEndCallback) onEndCallback();
       };
-      utterance.onerror = () => {
+      utterance.onerror = (e: any) => {
+        if (e?.error === 'canceled' || e?.error === 'interrupted') {
+          return;
+        }
         setIsAiSpeaking(false);
         isAiSpeakingRef.current = false;
         isSubmittingSpeechRef.current = false;
@@ -502,6 +554,76 @@ export default function LiveCallSimulatorModal({
       if (onEndCallback) onEndCallback();
     }
   };
+
+  // 3-Minute Limit Wrapup: Cleanly terminates ongoing response and speaks only final wrapup message
+  const triggerCallLimitWrapup = useCallback(() => {
+    // Strictly execute only once per call session
+    if (isLimitHandledRef.current) return;
+    isLimitHandledRef.current = true;
+
+    // 1. Terminate timer immediately
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    // 2. Abort any in-flight /api/voice/call request
+    if (callAbortControllerRef.current) {
+      try {
+        callAbortControllerRef.current.abort();
+      } catch (_) {}
+      callAbortControllerRef.current = null;
+    }
+
+    // 3. Immediately hard-stop and silence any ongoing agent voice (ElevenLabs or SpeechSynthesis)
+    stopAllAudio();
+
+    // 4. Cancel active microphone listening, clear silence timers, and lock submission
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
+    if (recognitionRef.current) {
+      const rec = recognitionRef.current;
+      recognitionRef.current = null;
+      rec.onresult = null;
+      rec.onend = null;
+      rec.onerror = null;
+      try {
+        rec.abort();
+      } catch (_) {}
+    }
+    setIsMicListening(false);
+    latestTranscriptRef.current = '';
+    setSpeechTranscript('');
+    isSubmittingSpeechRef.current = true; // Permanently prevent user mic auto-opening
+    setIsAiThinking(false);
+    isAiThinkingRef.current = false;
+
+    // 5. Update call status and limit reached states
+    setCallStatus('ENDED');
+    callStatusRef.current = 'ENDED';
+    setIsLimitReached(true);
+
+    // 6. Append wrapup message EXACTLY ONCE to messages
+    const currentLang = selectedLanguageRef.current;
+    const wrapupText = getCallLimitWrapupSpeech(currentLang);
+    const wrapupMsg: Message = {
+      speaker: 'agent',
+      text: wrapupText,
+      timestamp: formatTime(CALL_LIMIT_SECONDS),
+    };
+
+    const updated = [...messagesRef.current, wrapupMsg];
+    messagesRef.current = updated;
+    setMessages(updated);
+
+    // 7. Small buffer before speaking wrapup to ensure previous audio buffer is flushed
+    setTimeout(() => {
+      if (!isOpenRef.current) return;
+      speakTextRef.current(wrapupText, currentLang, true);
+    }, 60);
+  }, [stopAllAudio]);
 
   // 3. Spoken Language Detection & Permanent Lock
   const handleSelectCallLanguage = useCallback((lang: SupportedLanguage, spokenText?: string) => {
@@ -590,7 +712,12 @@ export default function LiveCallSimulatorModal({
   // 4. Send Message to AI Agent (Auto-called by voice or keyboard)
   const handleSendProspectMessage = useCallback(async (textToSend: string) => {
     const trimmed = textToSend.trim();
-    if (!trimmed || callStatusRef.current !== 'CONNECTED' || isAiThinkingRef.current) {
+    if (
+      !trimmed ||
+      callStatusRef.current !== 'CONNECTED' ||
+      isAiThinkingRef.current ||
+      isLimitHandledRef.current
+    ) {
       isSubmittingSpeechRef.current = false;
       return;
     }
@@ -658,11 +785,16 @@ export default function LiveCallSimulatorModal({
     isAiThinkingRef.current = true;
     setErrorMessage(null);
 
+    // Track request via AbortController so it can be terminated immediately on 3-minute limit
+    const abortController = new AbortController();
+    callAbortControllerRef.current = abortController;
+
     try {
       const currentLead = leadRef.current;
       const res = await fetch('/api/voice/call', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: abortController.signal,
         body: JSON.stringify({
           leadId: currentLead?.id,
           messages: newHistory.map((m) => ({
@@ -674,7 +806,28 @@ export default function LiveCallSimulatorModal({
         }),
       });
 
+      // If call limit was reached or call ended while waiting for network, drop response immediately
+      if (
+        isLimitHandledRef.current ||
+        callStatusRef.current !== 'CONNECTED' ||
+        !isOpenRef.current
+      ) {
+        isSubmittingSpeechRef.current = false;
+        return;
+      }
+
       const data = await res.json();
+
+      // Guard check again after JSON parsing
+      if (
+        isLimitHandledRef.current ||
+        callStatusRef.current !== 'CONNECTED' ||
+        !isOpenRef.current
+      ) {
+        isSubmittingSpeechRef.current = false;
+        return;
+      }
+
       if (res.ok && data.success && data.reply) {
         const agentReply: Message = {
           speaker: 'agent',
@@ -700,6 +853,10 @@ export default function LiveCallSimulatorModal({
         isSubmittingSpeechRef.current = false;
       }
     } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        // Aborted intentionally when 3:00 limit was reached or user hung up
+        return;
+      }
       setErrorMessage(err?.message || 'Network error communicating with AI voice agent.');
       isSubmittingSpeechRef.current = false;
     } finally {
@@ -716,6 +873,14 @@ export default function LiveCallSimulatorModal({
       if (!isOpenRef.current || currentLeadIdRef.current !== lead.id) {
         isOpenRef.current = true;
         currentLeadIdRef.current = lead.id;
+        isLimitHandledRef.current = false;
+        if (callAbortControllerRef.current) {
+          try {
+            callAbortControllerRef.current.abort();
+          } catch (_) {}
+          callAbortControllerRef.current = null;
+        }
+        stopAllAudio();
         const initialLang = (defaultLanguage as SupportedLanguage) || 'English';
         setSelectedLanguage(initialLang);
         setIsLanguageSelected(false);
@@ -753,6 +918,13 @@ export default function LiveCallSimulatorModal({
     } else if (!isOpen) {
       isOpenRef.current = false;
       currentLeadIdRef.current = null;
+      isLimitHandledRef.current = false;
+      if (callAbortControllerRef.current) {
+        try {
+          callAbortControllerRef.current.abort();
+        } catch (_) {}
+        callAbortControllerRef.current = null;
+      }
       setMessages([]);
       messagesRef.current = [];
       setIsLanguageSelected(false);
@@ -763,15 +935,15 @@ export default function LiveCallSimulatorModal({
       setDuration(0);
       durationRef.current = 0;
       setErrorMessage(null);
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
       }
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+        silenceTimeoutRef.current = null;
       }
+      stopAllAudio();
       if (recognitionRef.current) {
         try {
           recognitionRef.current.abort();
@@ -783,42 +955,45 @@ export default function LiveCallSimulatorModal({
       setSpeechTranscript('');
       isSubmittingSpeechRef.current = false;
     }
-  }, [isOpen, lead?.id, defaultLanguage, speakText]);
+  }, [isOpen, lead?.id, defaultLanguage, speakText, stopAllAudio]);
 
   // Duration Timer & Call Limit Enforcement (3:00 Max)
   useEffect(() => {
     if (callStatus === 'CONNECTED') {
       timerRef.current = setInterval(() => {
-        setDuration((prev) => {
-          const next = prev + 1;
-          durationRef.current = next;
-          if (next >= CALL_LIMIT_SECONDS) {
-            // Call limit reached: Gracefully wrap up
-            if (timerRef.current) clearInterval(timerRef.current);
-            setCallStatus('ENDED');
-            callStatusRef.current = 'ENDED';
-            setIsLimitReached(true);
-            const wrapupText = getCallLimitWrapupSpeech(selectedLanguage);
-            const wrapupMsg: Message = {
-              speaker: 'agent',
-              text: wrapupText,
-              timestamp: formatTime(CALL_LIMIT_SECONDS),
-            };
-            const updated = [...messagesRef.current, wrapupMsg];
-            messagesRef.current = updated;
-            setMessages(updated);
-            speakTextRef.current(wrapupText, selectedLanguage);
+        if (callStatusRef.current !== 'CONNECTED' || isLimitHandledRef.current) {
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
           }
-          return next;
-        });
+          return;
+        }
+
+        const next = durationRef.current + 1;
+        durationRef.current = next;
+        setDuration(next);
+
+        if (next >= CALL_LIMIT_SECONDS) {
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
+          triggerCallLimitWrapup();
+        }
       }, 1000);
     } else {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     }
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     };
-  }, [callStatus, selectedLanguage, speakText]);
+  }, [callStatus, triggerCallLimitWrapup]);
 
   // Auto-scroll chat transcript
   useEffect(() => {
@@ -827,16 +1002,24 @@ export default function LiveCallSimulatorModal({
 
   // End Call & Mute Handlers
   const handleEndCall = () => {
+    isLimitHandledRef.current = true;
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    if (callAbortControllerRef.current) {
+      try {
+        callAbortControllerRef.current.abort();
+      } catch (_) {}
+      callAbortControllerRef.current = null;
+    }
     setCallStatus('ENDED');
     callStatusRef.current = 'ENDED';
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
+    stopAllAudio();
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
     }
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
-    if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
     if (recognitionRef.current) {
       try {
         recognitionRef.current.abort();
@@ -1049,7 +1232,7 @@ export default function LiveCallSimulatorModal({
                           {isAgent && (
                             <button
                               type="button"
-                              onClick={() => speakText(msg.text, selectedLanguage)}
+                              onClick={() => speakText(msg.text, selectedLanguage, true)}
                               title="Listen / Replay Voice (आवाज़ दोबारा सुनें)"
                               className="p-1 rounded hover:bg-white/10 text-indigo-300 hover:text-white transition-all cursor-pointer flex items-center gap-0.5"
                             >
