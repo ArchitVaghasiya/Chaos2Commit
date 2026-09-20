@@ -60,7 +60,7 @@ export default function Sidebar({
               className={`w-full flex items-center gap-4 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 text-left ${
                 isActive
                   ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 text-slate-900 dark:text-white shadow-lg shadow-indigo-600/30 font-semibold'
-                  : 'text-slate-800 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-900 dark:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.05]'
+                  : 'text-slate-800 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.05]'
               }`}
             >
               <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`} />

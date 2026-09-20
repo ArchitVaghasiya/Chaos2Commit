@@ -6,6 +6,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import OverviewKpis from '@/components/dashboard/OverviewKpis';
 import DiscoverySearch from '@/components/discovery/DiscoverySearch';
 import DiscoveredLeadCard, { LeadItem } from '@/components/discovery/DiscoveredLeadCard';
+import BlurText from '@/components/ui/BlurText';
 
 import CampaignPerformanceChart from '@/components/dashboard/CampaignPerformanceChart';
 import DonutCharts from '@/components/dashboard/DonutCharts';
@@ -137,6 +138,7 @@ const INITIAL_FALLBACK_LEADS: LeadItem[] = [
 ];
 
 export default function HomePage() {
+  const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [currentLanguage, setCurrentLanguage] = useState('English');
   const [selectedPlatform, setSelectedPlatform] = useState('All Sources');
@@ -146,6 +148,14 @@ export default function HomePage() {
   const [isScoreModalOpen, setIsScoreModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<any>(null);
+
+  // Splash screen timeout
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Initial data load
   const loadInitialData = useCallback(async () => {
@@ -218,6 +228,54 @@ export default function HomePage() {
     setLeads(prev => [...newLeads, ...prev]);
     setSelectedLead(newLeads[0]);
   };
+
+  if (showSplash) {
+    return (
+      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#090d20] text-white overflow-hidden">
+        {/* Background ambient lighting */}
+        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-[100px] pointer-events-none" />
+        
+        <div className="relative z-10 flex flex-col items-center animate-in fade-in zoom-in duration-1000">
+          <div className="w-32 h-32 rounded-3xl overflow-hidden shadow-2xl shadow-emerald-500/30 mb-8 relative">
+            <img src="/ai_sales_logo.jpg" alt="AI Sales Logo" className="w-full h-full object-cover scale-[2.5]" />
+          </div>
+          
+          <div className="mb-2">
+            <BlurText
+              text="AI Sales Agent Platform"
+              delay={100}
+              animateBy="words"
+              direction="bottom"
+              className="text-4xl font-extrabold tracking-tight text-white mb-2"
+            />
+          </div>
+          
+          <div className="mb-12">
+            <BlurText
+              text="Discover. Qualify. Engage. Convert."
+              delay={150}
+              animateBy="words"
+              direction="top"
+              className="text-slate-400 font-medium tracking-wide"
+            />
+          </div>
+
+          {/* Loading Indicator */}
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex gap-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <div className="w-2.5 h-2.5 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+              <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+            <span className="text-xs text-indigo-400/80 uppercase tracking-widest font-semibold animate-pulse">
+              Initializing AI Engine...
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

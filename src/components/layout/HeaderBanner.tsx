@@ -48,14 +48,12 @@ export default function HeaderBanner({
         
         {/* Left Side: Brand & Robot Icon */}
         <div className="flex items-center gap-4 shrink-0">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-500 p-0.5 shadow-lg shadow-indigo-500/30 flex items-center justify-center shrink-0">
-            <div className="w-full h-full bg-white dark:bg-[#090d20] rounded-[14px] flex items-center justify-center relative overflow-hidden">
-              <img src="/ai_sales_logo.jpg" alt="AI Sales Logo" className="w-full h-full object-cover" />
-              <span className="absolute -bottom-1 -right-1 flex h-4 w-4">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border-2 border-white dark:border-[#090d20]"></span>
-              </span>
-            </div>
+          <div className="w-16 h-16 rounded-2xl overflow-hidden shrink-0 relative shadow-lg shadow-emerald-500/30">
+            <img src="/ai_sales_logo.jpg" alt="AI Sales Logo" className="w-full h-full object-cover scale-[2.5]" />
+            <span className="absolute -bottom-1 -right-1 flex h-4 w-4">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border-2 border-white dark:border-[#090d20]"></span>
+            </span>
           </div>
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -136,7 +134,7 @@ export default function HeaderBanner({
                 onClick={onOpenNewCampaign}
                 className="flex-1 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold shadow-md flex items-center justify-center gap-1.5 transition-all"
               >
-                <Plus className="w-3 h-3" /> New Campaign
+                <Plus className="w-3 h-3 text-white" /> New Campaign
               </button>
             )}
 
