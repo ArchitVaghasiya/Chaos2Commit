@@ -28,10 +28,24 @@ function TwitterIcon({ className = 'w-4 h-4' }: { className?: string }) {
   );
 }
 
+export interface DiscoverySearchParams {
+  keyword: string;
+  platform: string;
+  industry: string;
+  location: string;
+  dateRange: string;
+}
+
 interface DiscoverySearchProps {
-  onSearch: (query: string, platform: string) => void;
+  onSearch: (params: DiscoverySearchParams) => void;
   selectedPlatform: string;
   setSelectedPlatform: (platform: string) => void;
+  industry?: string;
+  setIndustry?: (industry: string) => void;
+  location?: string;
+  setLocation?: (location: string) => void;
+  dateRange?: string;
+  setDateRange?: (dateRange: string) => void;
   loading?: boolean;
 }
 
@@ -39,26 +53,53 @@ export default function DiscoverySearch({
   onSearch,
   selectedPlatform,
   setSelectedPlatform,
+  industry: controlledIndustry,
+  setIndustry: controlledSetIndustry,
+  location: controlledLocation,
+  setLocation: controlledSetLocation,
+  dateRange: controlledDateRange,
+  setDateRange: controlledSetDateRange,
   loading = false,
 }: DiscoverySearchProps) {
-  const [keyword, setKeyword] = useState('Microsoft 365 implementation partner');
-  const [industry, setIndustry] = useState('All Industries');
-  const [location, setLocation] = useState('Global');
-  const [dateRange, setDateRange] = useState('Last 7 Days');
+  const [keyword, setKeyword] = useState('');
+  const [internalIndustry, setInternalIndustry] = useState('All Industries');
+  const [internalLocation, setInternalLocation] = useState('Global');
+  const [internalDateRange, setInternalDateRange] = useState('Last 7 Days');
+
+  const industry = controlledIndustry ?? internalIndustry;
+  const setIndustry = controlledSetIndustry ?? setInternalIndustry;
+  const location = controlledLocation ?? internalLocation;
+  const setLocation = controlledSetLocation ?? setInternalLocation;
+  const dateRange = controlledDateRange ?? internalDateRange;
+  const setDateRange = controlledSetDateRange ?? setInternalDateRange;
 
   const platforms = [
-    { id: 'LinkedIn', label: 'LinkedIn', count: '12,568', icon: LinkedinIcon, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-    { id: 'X (Twitter)', label: 'X (Twitter)', count: '8,421', icon: TwitterIcon, color: 'text-sky-400', bg: 'bg-sky-500/10' },
-    { id: 'Company Websites', label: 'Company Websites', count: '6,532', icon: Globe, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
-    { id: 'Directories', label: 'Directories', count: '4,321', icon: FolderArchive, color: 'text-purple-400', bg: 'bg-purple-500/10' },
-    { id: 'Freelance Platforms', label: 'Freelance Platforms', count: '2,845', icon: Handshake, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-    { id: 'CRM Integrations', label: 'CRM Integrations', count: '3,214', icon: Database, color: 'text-pink-400', bg: 'bg-pink-500/10' },
+    { id: 'LinkedIn', label: 'LinkedIn', count: '12,568', poolDesc: 'Monitored Posts', icon: LinkedinIcon, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+    { id: 'X (Twitter)', label: 'X (Twitter)', count: '8,421', poolDesc: 'Public Tweets', icon: TwitterIcon, color: 'text-sky-400', bg: 'bg-sky-500/10' },
+    { id: 'Company Websites', label: 'Company Websites', count: '6,532', poolDesc: 'Career & RFPs', icon: Globe, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
+    { id: 'Directories', label: 'Directories', count: '4,321', poolDesc: 'Vendor RFPs', icon: FolderArchive, color: 'text-purple-400', bg: 'bg-purple-500/10' },
+    { id: 'Freelance Platforms', label: 'Freelance Platforms', count: '2,845', poolDesc: 'Project Postings', icon: Handshake, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+    { id: 'CRM Integrations', label: 'CRM Integrations', count: '3,214', poolDesc: 'Synced Records', icon: Database, color: 'text-pink-400', bg: 'bg-pink-500/10' },
   ];
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSearch(keyword, selectedPlatform);
+    // Trigger AI discovery ONLY when Search button is clicked
+    onSearch({
+      keyword,
+      platform: selectedPlatform,
+      industry,
+      location,
+      dateRange,
+    });
   };
+
+  const sampleKeywords = [
+    'Microsoft 365 implementation',
+    'SharePoint Online partner',
+    'Healthcare EHR workflow',
+    'Cloud zero trust security',
+  ];
 
   return (
     <div className="glass-card p-5 mb-6 border-slate-200 dark:border-indigo-500/20 shadow-xl">
@@ -93,7 +134,7 @@ export default function DiscoverySearch({
             {loading ? (
               <span className="flex items-center gap-2">
                 <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                Scanning...
+                AI Identifying...
               </span>
             ) : (
               <>
@@ -104,14 +145,35 @@ export default function DiscoverySearch({
           </button>
         </div>
 
-        {/* Filter Dropdown Controls */}
+        {/* Suggested Query Tags */}
+        <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-[11px] text-slate-400">
+          <span className="text-slate-500">Quick queries:</span>
+          {sampleKeywords.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => setKeyword(tag)}
+              className="px-2 py-0.5 rounded-md bg-white/[0.03] hover:bg-white/[0.08] text-slate-300 border border-white/[0.06] transition-all cursor-pointer"
+            >
+              {tag}
+            </button>
+          ))}
+          {keyword && (
+            <button
+              type="button"
+              onClick={() => setKeyword('')}
+              className="ml-auto text-slate-400 hover:text-white underline cursor-pointer text-[10px]"
+            >
+              Clear Search
+            </button>
+          )}
+        </div>
+
+        {/* Filter Dropdown Controls - changing these does NOT trigger search */}
         <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
           <select
             value={selectedPlatform}
-            onChange={(e) => {
-              setSelectedPlatform(e.target.value);
-              onSearch(keyword, e.target.value);
-            }}
+            onChange={(e) => setSelectedPlatform(e.target.value)}
             aria-label="Platform Source Filter"
             className="px-3 py-1.5 rounded-lg bg-white dark:bg-[#090d1f] border border-slate-300 dark:border-white/[0.08] text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer shadow-sm dark:shadow-none"
           >
@@ -132,7 +194,7 @@ export default function DiscoverySearch({
           >
             <option value="All Industries">Industry: All</option>
             <option value="IT Services">IT Services</option>
-            <option value="Software">Software & SaaS</option>
+            <option value="Software">Software &amp; SaaS</option>
             <option value="Consulting">Consulting</option>
             <option value="Manufacturing">Manufacturing</option>
             <option value="Healthcare">Healthcare</option>

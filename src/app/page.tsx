@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import HeaderBanner from '@/components/layout/HeaderBanner';
 import Sidebar from '@/components/layout/Sidebar';
 import OverviewKpis from '@/components/dashboard/OverviewKpis';
-import DiscoverySearch from '@/components/discovery/DiscoverySearch';
+import DiscoverySearch, { DiscoverySearchParams } from '@/components/discovery/DiscoverySearch';
 import DiscoveredLeadCard, { LeadItem } from '@/components/discovery/DiscoveredLeadCard';
 import BlurText from '@/components/ui/BlurText';
 
@@ -142,12 +142,53 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [currentLanguage, setCurrentLanguage] = useState('English');
   const [selectedPlatform, setSelectedPlatform] = useState('All Sources');
+  const [selectedIndustry, setSelectedIndustry] = useState('All Industries');
+  const [selectedLocation, setSelectedLocation] = useState('Global');
+  const [selectedDateRange, setSelectedDateRange] = useState('Last 7 Days');
   const [leads, setLeads] = useState<LeadItem[]>(INITIAL_FALLBACK_LEADS);
-  const [selectedLead, setSelectedLead] = useState<LeadItem>(INITIAL_FALLBACK_LEADS[0]);
+  const [selectedLead, setSelectedLead] = useState<LeadItem | null>(INITIAL_FALLBACK_LEADS[0]);
   const [isCallModalOpen, setIsCallModalOpen] = useState(false);
   const [isScoreModalOpen, setIsScoreModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<any>(null);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [searchEmptyMessage, setSearchEmptyMessage] = useState<string | null>(null);
+
+  // Live in-memory filtered leads based on selectedPlatform & active filters (0 network requests)
+  const visibleLeads = useMemo(() => {
+    return leads.filter((l) => {
+      // Filter by platform
+      if (selectedPlatform && selectedPlatform !== 'All Sources') {
+        const pNorm = selectedPlatform.toLowerCase();
+        const leadPNorm = (l.sourcePlatform || '').toLowerCase();
+        if (pNorm.includes('twitter') || pNorm.includes('x')) {
+          if (!leadPNorm.includes('twitter') && !leadPNorm.includes('x')) return false;
+        } else if (!leadPNorm.includes(pNorm)) {
+          return false;
+        }
+      }
+
+      // Filter by industry
+      if (selectedIndustry && selectedIndustry !== 'All Industries') {
+        if (l.industry && !l.industry.toLowerCase().includes(selectedIndustry.toLowerCase())) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [leads, selectedPlatform, selectedIndustry]);
+
+  // Keep selectedLead in sync with the filtered view
+  useEffect(() => {
+    if (visibleLeads.length > 0) {
+      if (!selectedLead || !visibleLeads.some((l) => l.id === selectedLead.id)) {
+        setSelectedLead(visibleLeads[0]);
+      }
+    } else if (leads.length > 0) {
+      setSelectedLead(null);
+    }
+  }, [visibleLeads, selectedLead, leads.length]);
 
   // Splash screen timeout
   useEffect(() => {
@@ -192,23 +233,52 @@ export default function HomePage() {
     loadInitialData();
   }, [loadInitialData]);
 
-  // Lead Discovery search
-  const handleSearch = async (query: string, platform: string) => {
+  // Lead Discovery search - triggered ONLY on explicit Search button click
+  const handleSearch = async (params: DiscoverySearchParams) => {
+    const trimmed = (params.keyword || '').trim();
+
+    // If user searched nothing, show nothing! ("if i search nothing so it shouldn't show anything")
+    if (!trimmed) {
+      setLeads([]);
+      setSelectedLead(null);
+      setHasSearched(true);
+      setSearchEmptyMessage('Please enter a keyword, industry, or requirement to search for opportunities.');
+      return;
+    }
+
     setLoading(true);
+    setHasSearched(true);
+    setSearchEmptyMessage(null);
+
     try {
       const res = await fetch('/api/discover', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, platform }),
+        body: JSON.stringify({
+          query: trimmed,
+          platform: params.platform,
+          industry: params.industry,
+          location: params.location,
+        }),
       });
 
       const data = await res.json();
       if (data.success && data.leads && data.leads.length > 0) {
         setLeads(data.leads);
         setSelectedLead(data.leads[0]);
+        setSearchEmptyMessage(null);
+      } else {
+        setLeads([]);
+        setSelectedLead(null);
+        setSearchEmptyMessage(
+          `No public requirement posts found matching "${trimmed}" on ${params.platform}. Try a different keyword.`
+        );
       }
     } catch (err) {
       console.error('Discovery search error:', err);
+      setLeads([]);
+      setSelectedLead(null);
+      setSearchEmptyMessage('Search request failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -322,16 +392,41 @@ export default function HomePage() {
                       onSearch={handleSearch}
                       selectedPlatform={selectedPlatform}
                       setSelectedPlatform={setSelectedPlatform}
+                      industry={selectedIndustry}
+                      setIndustry={setSelectedIndustry}
+                      location={selectedLocation}
+                      setLocation={setSelectedLocation}
+                      dateRange={selectedDateRange}
+                      setDateRange={setSelectedDateRange}
                       loading={loading}
                     />
 
-                    {/* Sample Discovered Lead Card matching PNG */}
-                    {selectedLead && (
+                    {/* Sample Discovered Lead Card or Empty State */}
+                    {selectedLead ? (
                       <DiscoveredLeadCard
                         lead={selectedLead}
                         onOpenCallModal={openCallModalForLead}
                         onOpenScoreModal={openScoreModalForLead}
                       />
+                    ) : (
+                      <div className="glass-card p-6 mb-6 border-white/[0.06] text-center flex flex-col items-center justify-center">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-2">
+                          <Search className="w-5 h-5" />
+                        </div>
+                        <h3 className="text-sm font-bold text-white mb-1">
+                          {hasSearched
+                            ? 'No Discovered Opportunities'
+                            : visibleLeads.length === 0 && leads.length > 0
+                            ? 'No Leads Matching Active Filter'
+                            : 'Ready to Discover Leads'}
+                        </h3>
+                        <p className="text-xs text-slate-400 max-w-md">
+                          {searchEmptyMessage ||
+                            (visibleLeads.length === 0 && leads.length > 0
+                              ? `No loaded leads currently match ${selectedPlatform}${selectedIndustry !== 'All Industries' ? ` • ${selectedIndustry}` : ''}. Click "Search" to let AI crawl live feeds, or reset your filters.`
+                              : 'Enter search keywords above and click Search to let the AI identify and qualify high-intent opportunities.')}
+                        </p>
+                      </div>
                     )}
 
 
@@ -359,15 +454,40 @@ export default function HomePage() {
                   onSearch={handleSearch}
                   selectedPlatform={selectedPlatform}
                   setSelectedPlatform={setSelectedPlatform}
+                  industry={selectedIndustry}
+                  setIndustry={setSelectedIndustry}
+                  location={selectedLocation}
+                  setLocation={setSelectedLocation}
+                  dateRange={selectedDateRange}
+                  setDateRange={setSelectedDateRange}
                   loading={loading}
                 />
 
-                {selectedLead && (
+                {selectedLead ? (
                   <DiscoveredLeadCard
                     lead={selectedLead}
                     onOpenCallModal={openCallModalForLead}
                     onOpenScoreModal={openScoreModalForLead}
                   />
+                ) : (
+                  <div className="glass-card p-6 mb-6 border-white/[0.06] text-center flex flex-col items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-2">
+                      <Search className="w-5 h-5" />
+                    </div>
+                    <h3 className="text-sm font-bold text-white mb-1">
+                      {hasSearched
+                        ? 'No Discovered Opportunities'
+                        : visibleLeads.length === 0 && leads.length > 0
+                        ? 'No Leads Matching Active Filter'
+                        : 'Ready to Discover Leads'}
+                    </h3>
+                    <p className="text-xs text-slate-400 max-w-md">
+                      {searchEmptyMessage ||
+                        (visibleLeads.length === 0 && leads.length > 0
+                          ? `No loaded leads currently match ${selectedPlatform}${selectedIndustry !== 'All Industries' ? ` • ${selectedIndustry}` : ''}. Click "Search" to let AI crawl live feeds, or reset your filters.`
+                          : 'Enter search keywords above and click Search to let the AI identify and qualify high-intent opportunities.')}
+                    </p>
+                  </div>
                 )}
 
                 {/* Discovered Opportunities Grid */}
@@ -415,9 +535,28 @@ export default function HomePage() {
                                   : 'bg-blue-500/20 text-blue-600 dark:text-blue-300 border border-blue-500/30'
                               }`}
                             >
-                              {l.intentScore} Intent
-                            </span>
-                          </div>
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <div className="truncate">
+                                  <div className="text-xs font-bold text-white truncate flex items-center gap-1.5">
+                                    {l.name}
+                                    {l.emailVerified && (
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                                    )}
+                                  </div>
+                                  <div className="text-[11px] text-slate-400 truncate">
+                                    {l.jobTitle} • {l.companyName}
+                                  </div>
+                                </div>
+                                <span
+                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ${
+                                    l.intentScore >= 90
+                                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                      : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                                  }`}
+                                >
+                                  {l.intentScore} Intent
+                                </span>
+                              </div>
 
                           <p className="text-[11px] text-slate-800 dark:text-slate-300 line-clamp-2 bg-slate-100 dark:bg-white/[0.02] p-2 rounded-lg mb-2.5">
                             &quot;{l.originalPostSnippet}&quot;
@@ -440,7 +579,7 @@ export default function HomePage() {
                       );
                     })}
                   </div>
-                </div>
+                )}
               </div>
             )}
 

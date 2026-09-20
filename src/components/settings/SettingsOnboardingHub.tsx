@@ -40,16 +40,30 @@ export default function SettingsOnboardingHub() {
     feedback: 'Products & services are highly structured with clear B2B value propositions, suitable for autonomous AI sales qualification and discovery calling.',
   });
 
-  const handleValidateProducts = () => {
+  const handleValidateProducts = async () => {
     setValidating(true);
-    setTimeout(() => {
-      setValidationResult({
-        score: 98,
-        status: 'APPROVED',
-        feedback: 'Validated: Enterprise IT & SaaS offerings verified against compliance rules. Approved for autonomous multilingual outbound calls.',
+    try {
+      const res = await fetch('/api/company/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productsCatalog,
+          companyDescription: description,
+        }),
       });
+      const data = await res.json();
+      if (data.success) {
+        setValidationResult({
+          score: data.score,
+          status: data.status,
+          feedback: data.feedback,
+        });
+      }
+    } catch (err) {
+      console.error('Validation API error:', err);
+    } finally {
       setValidating(false);
-    }, 1200);
+    }
   };
 
   const [savedSuccess, setSavedSuccess] = useState(false);

@@ -116,12 +116,30 @@ export const SEED_LEADS_CATALOG: DiscoveredLeadRaw[] = [
   }
 ];
 
-export async function discoverLeads(query: string, platform = 'All Sources') {
-  const lowerQuery = query.toLowerCase().trim();
+export async function discoverLeads(
+  query: string,
+  platform = 'All Sources',
+  industry?: string,
+  location?: string
+) {
+  const lowerQuery = (query || '').toLowerCase().trim();
+
+  // If search query is empty, do NOT return any leads ("if i search nothing so it shouldn't show anything")
+  if (!lowerQuery) {
+    return [];
+  }
 
   // If a custom query is entered, try generating dynamic real-time leads with Gemini
-  if (lowerQuery && lowerQuery !== 'all' && lowerQuery !== 'sharepoint') {
-    const dynamicLeads = await generateDynamicLeadsWithGemini(query, platform);
+  if (lowerQuery !== 'all' && !lowerQuery.includes('sharepoint')) {
+    const fullQueryContext = [
+      lowerQuery,
+      industry && industry !== 'All Industries' ? `Industry: ${industry}` : '',
+      location && location !== 'Global' ? `Location: ${location}` : '',
+    ]
+      .filter(Boolean)
+      .join(', ');
+
+    const dynamicLeads = await generateDynamicLeadsWithGemini(fullQueryContext, platform);
     if (dynamicLeads && dynamicLeads.length > 0) {
       return dynamicLeads;
     }
@@ -130,7 +148,6 @@ export async function discoverLeads(query: string, platform = 'All Sources') {
   // Filter by query and platform from benchmark catalog
   let results = SEED_LEADS_CATALOG.filter((lead) => {
     const matchesQuery =
-      !lowerQuery ||
       lead.name.toLowerCase().includes(lowerQuery) ||
       lead.companyName.toLowerCase().includes(lowerQuery) ||
       lead.jobTitle.toLowerCase().includes(lowerQuery) ||
@@ -143,12 +160,9 @@ export async function discoverLeads(query: string, platform = 'All Sources') {
     return matchesQuery && matchesPlatform;
   });
 
+  // If no leads matched the search, return empty list (do NOT show random unrequested leads)
   if (results.length === 0) {
-    // If platform filter was chosen with no match, filter whole catalog by platform
-    const platformResults = SEED_LEADS_CATALOG.filter(
-      (l) => platform === 'All Sources' || l.sourcePlatform.toLowerCase() === platform.toLowerCase()
-    );
-    results = platformResults.length > 0 ? platformResults : SEED_LEADS_CATALOG;
+    return [];
   }
 
   // Attempt Gemini enrichment for benchmark leads
@@ -161,8 +175,18 @@ export async function discoverLeads(query: string, platform = 'All Sources') {
 
       return {
         ...lead,
-        intentScore: geminiAnalysis?.intentScore ?? (lead.name === 'John Smith' ? 94 : lead.name === 'Priya Nair' ? 87 : lead.name === 'Marc Weber' ? 78 : 65),
-        budgetSignal: geminiAnalysis?.budgetSignal ?? (lead.name === 'John Smith' ? 'High' : 'Approved'),
+        intentScore:
+          geminiAnalysis?.intentScore ??
+          (lead.name === 'John Smith'
+            ? 94
+            : lead.name === 'Priya Nair'
+            ? 87
+            : lead.name === 'Marc Weber'
+            ? 78
+            : 65),
+        budgetSignal:
+          geminiAnalysis?.budgetSignal ??
+          (lead.name === 'John Smith' ? 'High' : 'Approved'),
         urgencyLevel: geminiAnalysis?.urgencyLevel ?? 'High',
         decisionMaker: geminiAnalysis?.decisionMaker ?? true,
         activeRequirement: geminiAnalysis?.activeRequirement ?? true,
