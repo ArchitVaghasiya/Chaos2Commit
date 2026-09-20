@@ -106,6 +106,12 @@ export interface TranslationDictionary {
   timeLeftLabel: string;
   callLimitReached: string;
   approachingLimitWarning: string;
+  micClickToSpeak: string;
+  micListening: string;
+  micStopAndSend: string;
+  micNotSupported: string;
+  switchToKeyboard: string;
+  switchToMic: string;
 }
 
 export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
@@ -208,6 +214,12 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     timeLeftLabel: "Time Left",
     callLimitReached: "Call Limit Reached (3:00 Max)",
     approachingLimitWarning: "Introductory call ending in 20s",
+    micClickToSpeak: "Click to Speak (Microphone Active)",
+    micListening: "Listening... Speak naturally into your mic",
+    micStopAndSend: "Stop & Send Speech",
+    micNotSupported: "Microphone speech recognition not supported in this browser. Please type below.",
+    switchToKeyboard: "Switch to Typing Mode",
+    switchToMic: "Switch to Microphone Mode",
   },
 
   Español: {
@@ -309,6 +321,12 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     timeLeftLabel: "Tiempo Restante",
     callLimitReached: "Límite de Llamada Alcanzado (3:00 Máx)",
     approachingLimitWarning: "Llamada introductoria finaliza en 20s",
+    micClickToSpeak: "Haga clic para hablar (Micrófono activo)",
+    micListening: "Escuchando... Hable en su micrófono",
+    micStopAndSend: "Detener y Enviar",
+    micNotSupported: "Reconocimiento de voz no compatible en este navegador. Escriba abajo.",
+    switchToKeyboard: "Cambiar a modo teclado",
+    switchToMic: "Usar micrófono",
   },
 
   'हिन्दी': {
@@ -410,6 +428,12 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     timeLeftLabel: "शेष समय",
     callLimitReached: "कॉल समय सीमा समाप्त (अधिकतम 3:00)",
     approachingLimitWarning: "प्रारंभिक कॉल 20 सेकंड में समाप्त हो रही है",
+    micClickToSpeak: "बोलने के लिए क्लिक करें (माइक चालू)",
+    micListening: "सुन रहे हैं... अपने माइक्रोफ़ोन में बोलें",
+    micStopAndSend: "बोलना रोकें और भेजें",
+    micNotSupported: "इस ब्राउज़र में आवाज़ पहचान समर्थित नहीं है। कृपया नीचे टाइप करें।",
+    switchToKeyboard: "टाइपिंग मोड पर स्विच करें",
+    switchToMic: "माइक्रोफ़ोन मोड पर स्विच करें",
   },
 
   Français: {
@@ -511,6 +535,12 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     timeLeftLabel: "Temps Restant",
     callLimitReached: "Limite d'Appel Atteinte (3:00 Max)",
     approachingLimitWarning: "L'appel de présentation se termine dans 20s",
+    micClickToSpeak: "Cliquez pour parler (Microphone actif)",
+    micListening: "Écoute en cours... Parlez dans votre micro",
+    micStopAndSend: "Arrêter et envoyer",
+    micNotSupported: "Reconnaissance vocale non prise en charge. Tapez ci-dessous.",
+    switchToKeyboard: "Passer au clavier",
+    switchToMic: "Utiliser le micro",
   },
 
   Deutsch: {
@@ -612,6 +642,12 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     timeLeftLabel: "Verbleibende Zeit",
     callLimitReached: "Anruflimit Erreicht (3:00 Max)",
     approachingLimitWarning: "Einführender Anruf endet in 20s",
+    micClickToSpeak: "Klicken zum Sprechen (Mikrofon aktiv)",
+    micListening: "Zuhören... Sprechen Sie in Ihr Mikrofon",
+    micStopAndSend: "Stoppen & Senden",
+    micNotSupported: "Spracherkennung in diesem Browser nicht unterstützt. Bitte tippen.",
+    switchToKeyboard: "Zu Tastatureingabe wechseln",
+    switchToMic: "Mikrofon verwenden",
   },
 
   'العربية': {
@@ -713,6 +749,12 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     timeLeftLabel: "الوقت المتبقي",
     callLimitReached: "تم الوصول إلى الحد الأقصى للمكالمة (3:00)",
     approachingLimitWarning: "المكالمة التمهيدية ستنتهي خلال 20 ثانية",
+    micClickToSpeak: "انقر للتحدث (الميكروفون نشط)",
+    micListening: "جاري الاستماع... تحدث في الميكروفون",
+    micStopAndSend: "إيقاف وإرسال الصوت",
+    micNotSupported: "التعرف على الصوت غير مدعوم في هذا المتصفح. يرجى الكتابة أدناه.",
+    switchToKeyboard: "التبديل إلى لوحة المفاتيح",
+    switchToMic: "استخدام الميكروفون",
   },
 };
 

@@ -21,6 +21,9 @@ import {
   AlertTriangle,
   Check,
   ShieldAlert,
+  Mic,
+  MicOff,
+  Keyboard,
 } from 'lucide-react';
 import { LeadItem } from '../discovery/DiscoveredLeadCard';
 import {
@@ -79,6 +82,12 @@ export default function LiveCallSimulatorModal({
   // Real Call Language Lock: Once the prospect selects their preferred language, it is permanently locked for the rest of the call
   const [isLanguageSelected, setIsLanguageSelected] = useState(false);
   const [isLimitReached, setIsLimitReached] = useState(false);
+
+  // Real-Time Microphone Speech-to-Text State
+  const [inputMode, setInputMode] = useState<'mic' | 'keyboard'>('mic');
+  const [isMicListening, setIsMicListening] = useState(false);
+  const [speechTranscript, setSpeechTranscript] = useState('');
+  const recognitionRef = useRef<any>(null);
 
   const [callSummary, setCallSummary] = useState(
     'Evaluating requirement fit, timeline, and decision maker authority...'
@@ -179,6 +188,114 @@ export default function LiveCallSimulatorModal({
     }
   };
 
+  // Web Speech Recognition Engine (Multilingual, calibrated to selectedLanguage locale)
+  const startListening = () => {
+    if (typeof window === 'undefined') return;
+    const SpeechConstructor =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechConstructor) {
+      setInputMode('keyboard');
+      setErrorMessage(t.micNotSupported);
+      return;
+    }
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsAiSpeaking(false);
+
+    try {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch (_) {}
+      }
+
+      const recognition = new SpeechConstructor();
+      recognitionRef.current = recognition;
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = getLocaleForVoice(selectedLanguage);
+
+      recognition.onstart = () => {
+        setIsMicListening(true);
+        setSpeechTranscript('');
+      };
+
+      recognition.onresult = (event: any) => {
+        let interim = '';
+        let final = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const part = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            final += part;
+          } else {
+            interim += part;
+          }
+        }
+        const text = (final || interim).trim();
+        if (text) {
+          setSpeechTranscript(text);
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.warn('SpeechRecognition error:', event.error);
+        if (event.error !== 'no-speech') {
+          setIsMicListening(false);
+        }
+      };
+
+      recognition.onend = () => {
+        setIsMicListening(false);
+      };
+
+      recognition.start();
+    } catch (err: any) {
+      console.warn('Error starting speech recognition:', err);
+      setIsMicListening(false);
+    }
+  };
+
+  const cancelListening = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+      } catch (_) {}
+      recognitionRef.current = null;
+    }
+    setIsMicListening(false);
+    setSpeechTranscript('');
+  };
+
+  const stopListeningAndSend = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (_) {}
+      recognitionRef.current = null;
+    }
+    setIsMicListening(false);
+
+    const toSend = speechTranscript.trim();
+    if (toSend) {
+      handleSendProspectMessage(toSend);
+      setSpeechTranscript('');
+    }
+  };
+
+  // Pause microphone when AI starts speaking to prevent echo
+  useEffect(() => {
+    if (isAiSpeaking && isMicListening) {
+      cancelListening();
+    }
+  }, [isAiSpeaking, isMicListening]);
+
   // Initialize or reset call session
   useEffect(() => {
     if (isOpen && lead) {
@@ -232,6 +349,14 @@ export default function LiveCallSimulatorModal({
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         window.speechSynthesis.cancel();
       }
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch (_) {}
+        recognitionRef.current = null;
+      }
+      setIsMicListening(false);
+      setSpeechTranscript('');
     }
   }, [isOpen, lead?.id, defaultLanguage, speakText]);
 
@@ -434,6 +559,14 @@ export default function LiveCallSimulatorModal({
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+      } catch (_) {}
+      recognitionRef.current = null;
+    }
+    setIsMicListening(false);
+    setSpeechTranscript('');
     setIsAiSpeaking(false);
   };
 
@@ -771,28 +904,118 @@ export default function LiveCallSimulatorModal({
                 </div>
               )}
 
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSendProspectMessage(inputText)}
-                  placeholder={
-                    !isLanguageSelected
-                      ? 'Type preferred language (English, हिन्दी, Español...) or select above...'
-                      : t.typeSpokenWords
-                  }
-                  disabled={isAiThinking || callStatus !== 'CONNECTED'}
-                  className="flex-1 px-3 py-2 rounded-xl bg-[#090d1f] border border-white/[0.1] text-xs text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 disabled:opacity-50"
-                />
-                <button
-                  onClick={() => handleSendProspectMessage(inputText)}
-                  disabled={!inputText.trim() || isAiThinking || callStatus !== 'CONNECTED'}
-                  className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 transition-all cursor-pointer flex items-center justify-center"
-                >
-                  {isAiThinking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                </button>
-              </div>
+              {/* Voice-First Real Call Interface: Live Microphone (Default) or Keyboard Mode */}
+              {inputMode === 'mic' ? (
+                <div className="space-y-2">
+                  {!isMicListening ? (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={startListening}
+                        disabled={isAiThinking || isAiSpeaking || callStatus !== 'CONNECTED'}
+                        className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2.5 transition-all cursor-pointer disabled:opacity-50 group"
+                      >
+                        <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                          <Mic className="w-3.5 h-3.5 text-white" />
+                        </div>
+                        <span>{t.micClickToSpeak}</span>
+                        <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-white/20 border border-white/20">
+                          {selectedLanguage}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setInputMode('keyboard')}
+                        title={t.switchToKeyboard}
+                        className="p-3 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white border border-white/[0.08] transition-all cursor-pointer flex items-center justify-center"
+                      >
+                        <Keyboard className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/40 space-y-2 animate-in fade-in">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-rose-300 font-semibold text-xs">
+                          <span className="relative flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                          </span>
+                          <span>{t.micListening} ({selectedLanguage})</span>
+                        </div>
+                        {/* Live Audio Visualizer Waves */}
+                        <div className="flex items-center gap-1">
+                          <span className="w-1 h-2.5 bg-rose-400 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+                          <span className="w-1 h-4 bg-rose-400 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                          <span className="w-1 h-2 bg-rose-400 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                          <span className="w-1 h-3.5 bg-rose-400 rounded-full animate-pulse" style={{ animationDelay: '450ms' }} />
+                        </div>
+                      </div>
+
+                      {/* Live spoken preview */}
+                      <div className="bg-[#090d1f] p-2 rounded-lg border border-white/10 text-xs min-h-[36px] text-white flex items-center">
+                        {speechTranscript ? (
+                          <span className="text-white font-medium">{speechTranscript}</span>
+                        ) : (
+                          <span className="text-slate-400 italic">Listening to your voice... Speak now in {selectedLanguage}</span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={stopListeningAndSend}
+                          className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          <span>{t.micStopAndSend}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={cancelListening}
+                          className="py-1.5 px-3 rounded-lg bg-white/[0.08] hover:bg-white/[0.15] text-slate-300 hover:text-white text-xs transition-all cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={inputText}
+                      onChange={(e) => setInputText(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSendProspectMessage(inputText)}
+                      placeholder={
+                        !isLanguageSelected
+                          ? 'Type preferred language (English, हिन्दी, Español...) or select above...'
+                          : t.typeSpokenWords
+                      }
+                      disabled={isAiThinking || callStatus !== 'CONNECTED'}
+                      className="flex-1 px-3 py-2 rounded-xl bg-[#090d1f] border border-white/[0.1] text-xs text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 disabled:opacity-50"
+                    />
+                    <button
+                      onClick={() => handleSendProspectMessage(inputText)}
+                      disabled={!inputText.trim() || isAiThinking || callStatus !== 'CONNECTED'}
+                      className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 transition-all cursor-pointer flex items-center justify-center"
+                    >
+                      {isAiThinking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setInputMode('mic')}
+                      title={t.switchToMic}
+                      className="p-2 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 hover:text-white border border-indigo-500/30 transition-all cursor-pointer flex items-center justify-center"
+                    >
+                      <Mic className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
