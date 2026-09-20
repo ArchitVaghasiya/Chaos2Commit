@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import {
   LayoutDashboard,
   Search,
@@ -14,6 +15,7 @@ import {
   CreditCard,
   Settings,
   Sparkles,
+  User,
 } from 'lucide-react';
 import { getTranslation } from '@/lib/i18n/translations';
 
@@ -115,6 +117,23 @@ export default function Sidebar({
             <Sparkles className="w-3.5 h-3.5 shrink-0" /> Upgrade Plan
           </button>
         </div>
+      </div>
+
+      {/* Account / Sign In Link */}
+      <div className="pt-3 border-t border-black/[0.06] dark:border-white/[0.08] w-full">
+        <Link
+          href="/sign-in"
+          className="w-full flex items-center gap-3.5 px-2 py-2 rounded-xl text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-all overflow-hidden group/acc"
+          title="Sign In / Account"
+        >
+          <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0 text-indigo-600 dark:text-indigo-400 group-hover/acc:scale-105 transition-transform">
+            <User className="w-4 h-4" />
+          </div>
+          <div className="text-left overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-75 whitespace-nowrap">
+            <div className="text-xs font-bold text-slate-900 dark:text-white truncate">Sign In / Account</div>
+            <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Manage Profile</div>
+          </div>
+        </Link>
       </div>
     </aside>
   );

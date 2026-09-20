@@ -1,18 +1,20 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import { 
   Bot, 
   Search, 
   Headphones, 
   FileCheck2, 
   TrendingUp, 
-  Rocket, 
   Sparkles,
-  Globe2,
+  Languages,
   Upload,
   ChevronDown,
-  Plus
+  Plus,
+  Check,
+  LogIn
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { getTranslation } from '@/lib/i18n/translations';
@@ -31,6 +33,9 @@ export default function HeaderBanner({
   onOpenNewCampaign,
 }: HeaderBannerProps) {
   const t = getTranslation(currentLanguage);
+  const [isLangOpen, setIsLangOpen] = useState(false);
+  const langRef = useRef<HTMLDivElement>(null);
+
   const languages = [
     { code: 'en', label: 'English' },
     { code: 'es', label: 'Español' },
@@ -40,11 +45,23 @@ export default function HeaderBanner({
     { code: 'ar', label: 'العربية' },
   ];
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (langRef.current && !langRef.current.contains(event.target as Node)) {
+        setIsLangOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
-    <header className="w-full glass-card p-4 sm:p-5 mb-6 border-indigo-500/20 bg-gradient-to-r from-slate-50/95 via-white/90 to-blue-50/95 dark:from-[#0c1228]/95 dark:via-[#0e1738]/90 dark:to-[#101432]/95 shadow-xl dark:shadow-2xl relative overflow-hidden transition-colors">
-      {/* Background ambient lighting */}
-      <div className="absolute top-0 right-1/4 w-96 h-32 bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-10 left-10 w-72 h-32 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+    <header className="w-full glass-card p-4 sm:p-5 mb-6 border-indigo-500/20 bg-gradient-to-r from-slate-50/95 via-white/90 to-blue-50/95 dark:from-[#0c1228]/95 dark:via-[#0e1738]/90 dark:to-[#101432]/95 shadow-xl dark:shadow-2xl relative transition-colors z-20">
+      {/* Background ambient lighting confined to the header bounds */}
+      <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+        <div className="absolute top-0 right-1/4 w-96 h-32 bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-10 left-10 w-72 h-32 bg-purple-500/10 rounded-full blur-3xl" />
+      </div>
 
       <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-6 relative z-10">
         
@@ -146,27 +163,52 @@ export default function HeaderBanner({
             )}
 
             <div className="flex items-center gap-2">
-              <div className="relative flex items-center shrink-0">
-                <Globe2 className="w-3.5 h-3.5 text-slate-700 dark:text-slate-400 absolute left-2 pointer-events-none" />
-                <select
-                  value={currentLanguage}
-                  onChange={(e) => onLanguageChange?.(e.target.value)}
-                  aria-label="Select language"
-                  className="w-8 h-7 opacity-0 absolute inset-0 cursor-pointer"
+              <div className="relative shrink-0" ref={langRef}>
+                <button
+                  onClick={() => setIsLangOpen(!isLangOpen)}
+                  className="h-[26px] px-2 rounded-lg bg-black/[0.05] dark:bg-[#080d20] border border-black/10 dark:border-white/[0.1] flex items-center gap-1.5 transition-colors hover:bg-black/[0.1] dark:hover:bg-white/[0.05] cursor-pointer"
                   title="Change Language"
                 >
-                  {languages.map((lang) => (
-                    <option key={lang.code} value={lang.label}>
-                      {lang.label}
-                    </option>
-                  ))}
-                </select>
-                <div className="w-8 h-[26px] rounded-lg bg-black/[0.05] dark:bg-[#080d20] border border-black/10 dark:border-white/[0.1] flex items-center justify-center pointer-events-none transition-colors">
-                   <Globe2 className="w-3.5 h-3.5 text-slate-800 dark:text-slate-300" />
-                </div>
+                   <Languages className="w-3.5 h-3.5 text-slate-800 dark:text-slate-300" />
+                   <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                     {languages.find(l => l.label === currentLanguage)?.code.toUpperCase() || 'EN'}
+                   </span>
+                   <ChevronDown className="w-3 h-3 text-slate-500" />
+                </button>
+                
+                {isLangOpen && (
+                  <div className="absolute top-full right-0 mt-1 w-32 bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-white/[0.1] shadow-xl py-1 z-50 overflow-hidden">
+                    {languages.map((lang) => (
+                      <button
+                        key={lang.code}
+                        onClick={() => {
+                          onLanguageChange?.(lang.label);
+                          setIsLangOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center justify-between cursor-pointer ${
+                          currentLanguage === lang.label 
+                            ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-semibold' 
+                            : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[0.05]'
+                        }`}
+                      >
+                        {lang.label}
+                        {currentLanguage === lang.label && <Check className="w-3.5 h-3.5" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               
               <ThemeToggle />
+
+              <Link
+                href="/sign-in"
+                className="h-[26px] px-2.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-[11px] font-semibold flex items-center gap-1.5 transition-all shadow-sm"
+                title="Sign In / Account"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Sign In</span>
+              </Link>
             </div>
           </div>
           
