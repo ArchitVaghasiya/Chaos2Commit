@@ -25,6 +25,8 @@ interface SidebarProps {
   voiceMinutesUsed?: number;
   voiceMinutesLimit?: number;
   currentLanguage?: string;
+  currentUser?: { name?: string; email?: string } | null;
+  onOpenProfile?: () => void;
 }
 
 export default function Sidebar({
@@ -33,6 +35,8 @@ export default function Sidebar({
   voiceMinutesUsed = 12450,
   voiceMinutesLimit = 20000,
   currentLanguage = 'English',
+  currentUser,
+  onOpenProfile,
 }: SidebarProps) {
   const percentage = Math.round((voiceMinutesUsed / voiceMinutesLimit) * 100);
   const t = getTranslation(currentLanguage);
@@ -119,21 +123,41 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* Account / Sign In Link */}
+      {/* Account / Profile Button */}
       <div className="pt-3 border-t border-black/[0.06] dark:border-white/[0.08] w-full">
-        <Link
-          href="/sign-in"
-          className="w-full flex items-center gap-3.5 px-2 py-2 rounded-xl text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-all overflow-hidden group/acc"
-          title="Sign In / Account"
-        >
-          <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0 text-indigo-600 dark:text-indigo-400 group-hover/acc:scale-105 transition-transform">
-            <User className="w-4 h-4" />
-          </div>
-          <div className="text-left overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-75 whitespace-nowrap">
-            <div className="text-xs font-bold text-slate-900 dark:text-white truncate">Sign In / Account</div>
-            <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Manage Profile</div>
-          </div>
-        </Link>
+        {onOpenProfile ? (
+          <button
+            onClick={onOpenProfile}
+            className="w-full flex items-center gap-3.5 px-2 py-2 rounded-xl text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-all overflow-hidden group/acc text-left cursor-pointer"
+            title="Update Profile Details"
+          >
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0 text-indigo-600 dark:text-indigo-400 group-hover/acc:scale-105 transition-transform">
+              <User className="w-4 h-4" />
+            </div>
+            <div className="text-left overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-75 whitespace-nowrap">
+              <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                {currentUser?.name || 'Account Details'}
+              </div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                Update Profile
+              </div>
+            </div>
+          </button>
+        ) : (
+          <Link
+            href="/sign-in"
+            className="w-full flex items-center gap-3.5 px-2 py-2 rounded-xl text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-all overflow-hidden group/acc"
+            title="Sign In / Account"
+          >
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0 text-indigo-600 dark:text-indigo-400 group-hover/acc:scale-105 transition-transform">
+              <User className="w-4 h-4" />
+            </div>
+            <div className="text-left overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-75 whitespace-nowrap">
+              <div className="text-xs font-bold text-slate-900 dark:text-white truncate">Sign In / Account</div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Manage Profile</div>
+            </div>
+          </Link>
+        )}
       </div>
     </aside>
   );

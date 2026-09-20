@@ -14,7 +14,8 @@ import {
   ChevronDown,
   Plus,
   Check,
-  LogIn
+  LogIn,
+  User
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { getTranslation } from '@/lib/i18n/translations';
@@ -26,6 +27,7 @@ interface HeaderBannerProps {
   onOpenNewCampaign?: () => void;
   currentUser?: { name: string; email?: string } | null;
   onSignOut?: () => void;
+  onOpenProfile?: () => void;
 }
 
 export default function HeaderBanner({
@@ -35,6 +37,7 @@ export default function HeaderBanner({
   onOpenNewCampaign,
   currentUser,
   onSignOut,
+  onOpenProfile,
 }: HeaderBannerProps) {
   const t = getTranslation(currentLanguage);
   const [isLangOpen, setIsLangOpen] = useState(false);
@@ -146,13 +149,18 @@ export default function HeaderBanner({
              </div>
              {currentUser ? (
                <div className="relative z-10 flex items-center gap-1.5 shrink-0">
-                 <span className="text-[11px] font-bold text-white/90 truncate max-w-[80px]">
-                   {currentUser.name}
-                 </span>
+                 <button
+                   onClick={onOpenProfile}
+                   className="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 active:scale-95 text-white text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer truncate max-w-[120px]"
+                   title="Click to update profile details"
+                 >
+                   <User className="w-3 h-3 shrink-0" />
+                   <span className="truncate">{currentUser.name}</span>
+                 </button>
                  {onSignOut && (
                    <button
                      onClick={onSignOut}
-                     className="px-2 py-1 rounded-lg bg-white/20 hover:bg-white/30 active:scale-95 text-white text-[10px] font-semibold transition-all cursor-pointer shrink-0"
+                     className="px-2 py-1 rounded-lg bg-white/10 hover:bg-red-500/30 active:scale-95 text-white/90 hover:text-white text-[10px] font-semibold transition-all cursor-pointer shrink-0"
                      title="Sign Out"
                    >
                      Sign Out

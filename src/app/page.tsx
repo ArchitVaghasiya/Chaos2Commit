@@ -17,6 +17,7 @@ import MobileDashboard from '@/components/dashboard/MobileDashboard';
 import CapabilitiesFooter from '@/components/layout/CapabilitiesFooter';
 import IntentScoreModal from '@/components/discovery/IntentScoreModal';
 import LiveCallSimulatorModal from '@/components/voice/LiveCallSimulatorModal';
+import UpdateProfileModal from '@/components/profile/UpdateProfileModal';
 
 // Dedicated Hubs for all 11 Core Modules
 import CampaignsHub from '@/components/campaigns/CampaignsHub';
@@ -142,6 +143,12 @@ export default function HomePage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<{ name: string; email: string; companyName?: string } | null>(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+  const handleProfileUpdated = (updatedUser: any) => {
+    setCurrentUser(updatedUser);
+    localStorage.setItem('chaos2commit_user', JSON.stringify(updatedUser));
+  };
 
   useEffect(() => {
     const saved = localStorage.getItem('chaos2commit_user');
@@ -407,6 +414,7 @@ export default function HomePage() {
           onOpenNewCampaign={() => setActiveTab('campaigns')}
           currentUser={currentUser}
           onSignOut={handleSignOut}
+          onOpenProfile={() => setIsProfileModalOpen(true)}
         />
 
         {/* Main Two-Column Layout (Sidebar + Content Workspace) */}
@@ -418,6 +426,8 @@ export default function HomePage() {
             voiceMinutesUsed={12450}
             voiceMinutesLimit={20000}
             currentLanguage={currentLanguage}
+            currentUser={currentUser}
+            onOpenProfile={() => setIsProfileModalOpen(true)}
           />
 
           {/* Center/Right Dynamic Body */}
@@ -743,6 +753,14 @@ export default function HomePage() {
             .then((d) => d.stats && setStats(d.stats))
             .catch(() => {});
         }}
+      />
+
+      {/* Update Profile Details Modal */}
+      <UpdateProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        currentUser={currentUser}
+        onProfileUpdated={handleProfileUpdated}
       />
     </>
   );
