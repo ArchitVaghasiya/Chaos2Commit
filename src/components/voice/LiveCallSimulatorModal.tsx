@@ -79,15 +79,57 @@ export default function LiveCallSimulatorModal({
 
   const t = getTranslation(selectedLanguage);
   const quickReplies = getQuickReplies(selectedLanguage);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // In-browser speech synthesis (Text-to-Speech) with multilingual voice matching
+  // Universal high-fidelity speech synthesis supporting Hindi, Spanish, French, German, Arabic, English
   const speakText = (text: string, lang = selectedLanguage) => {
+    // 1. Cancel previous audio and speech synthesis
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+
+    setIsAiSpeaking(true);
+
+    // 2. Play high-fidelity neural voice from /api/voice/tts
+    try {
+      const audioUrl = `/api/voice/tts?lang=${encodeURIComponent(lang)}&text=${encodeURIComponent(text)}`;
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.onplay = () => setIsAiSpeaking(true);
+      audio.onended = () => {
+        setIsAiSpeaking(false);
+        audioRef.current = null;
+      };
+      audio.onerror = (err) => {
+        console.warn('Neural audio playback failed, trying browser SpeechSynthesis:', err);
+        fallbackBrowserSpeak(text, lang);
+      };
+
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.warn('Audio play blocked by browser policy, attempting SpeechSynthesis:', err);
+          fallbackBrowserSpeak(text, lang);
+        });
+      }
+    } catch (err) {
+      console.warn('Error creating Audio object, falling back to SpeechSynthesis:', err);
+      fallbackBrowserSpeak(text, lang);
+    }
+  };
+
+  const fallbackBrowserSpeak = (text: string, lang: string) => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       const targetLocale = getLocaleForVoice(lang);
       utterance.lang = targetLocale;
-      utterance.rate = 1.05;
+      utterance.rate = 1.0;
       utterance.pitch = 1.0;
 
       // Attempt to pick a browser voice that matches target locale or language
@@ -108,6 +150,8 @@ export default function LiveCallSimulatorModal({
       utterance.onend = () => setIsAiSpeaking(false);
       utterance.onerror = () => setIsAiSpeaking(false);
       window.speechSynthesis.speak(utterance);
+    } else {
+      setIsAiSpeaking(false);
     }
   };
 
@@ -159,6 +203,10 @@ export default function LiveCallSimulatorModal({
       setCallStatus('RINGING');
       setErrorMessage(null);
       if (timerRef.current) clearInterval(timerRef.current);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         window.speechSynthesis.cancel();
       }
@@ -266,6 +314,10 @@ export default function LiveCallSimulatorModal({
 
   const handleEndCall = () => {
     setCallStatus('ENDED');
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
