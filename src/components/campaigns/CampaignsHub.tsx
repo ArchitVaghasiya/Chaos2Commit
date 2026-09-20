@@ -21,6 +21,7 @@ import {
   Sparkles,
   Layers
 } from 'lucide-react';
+import { getHubsTranslation } from '@/lib/i18n/hubsTranslations';
 
 interface CampaignItem {
   id: string;
@@ -37,6 +38,10 @@ interface CampaignItem {
   scheduleType: string;
   timezone: string;
   createdAt: string;
+}
+
+interface CampaignsHubProps {
+  currentLanguage?: string;
 }
 
 const INITIAL_CAMPAIGNS: CampaignItem[] = [
@@ -90,7 +95,8 @@ const INITIAL_CAMPAIGNS: CampaignItem[] = [
   }
 ];
 
-export default function CampaignsHub() {
+export default function CampaignsHub({ currentLanguage = 'English' }: CampaignsHubProps) {
+  const t = getHubsTranslation(currentLanguage).campaigns;
   const [campaigns, setCampaigns] = useState<CampaignItem[]>(INITIAL_CAMPAIGNS);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   
@@ -163,13 +169,13 @@ export default function CampaignsHub() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
             <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
-              <Megaphone className="w-3.5 h-3.5" /> Campaigns, Teams &amp; Insights
+              <Megaphone className="w-3.5 h-3.5" /> {t.badge}
             </span>
             <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white mt-0.5">
-              Full visibility for every team, in one dashboard.
+              {t.title}
             </h2>
             <p className="text-xs text-slate-600 dark:text-slate-300">
-              Autonomous outbound campaigns scheduled by prospect timezones, with lead routing and live tracking.
+              {t.subtitle}
             </p>
           </div>
 
@@ -177,7 +183,7 @@ export default function CampaignsHub() {
             onClick={() => setIsCreateModalOpen(true)}
             className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-slate-900 dark:text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all cursor-pointer self-start sm:self-auto"
           >
-            <Plus className="w-4 h-4" /> Create New Campaign
+            <Plus className="w-4 h-4" /> {t.newCampaign}
           </button>
         </div>
 
@@ -185,7 +191,7 @@ export default function CampaignsHub() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
           <div className="p-3.5 rounded-xl bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]">
             <div className="text-[11px] font-semibold text-slate-600 mb-1 flex items-center justify-between">
-              <span>Leads Discovered</span>
+              <span>{t.totalLeadsTargeted}</span>
               <Users className="w-3.5 h-3.5 text-blue-400" />
             </div>
             <div className="text-2xl font-extrabold text-slate-900 dark:text-white">12,568</div>
@@ -196,7 +202,7 @@ export default function CampaignsHub() {
 
           <div className="p-3.5 rounded-xl bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]">
             <div className="text-[11px] font-semibold text-slate-600 mb-1 flex items-center justify-between">
-              <span>Qualified Leads</span>
+              <span>{t.activeCampaigns}</span>
               <UserCheck className="w-3.5 h-3.5 text-purple-400" />
             </div>
             <div className="text-2xl font-extrabold text-slate-900 dark:text-white">4,231</div>
@@ -207,7 +213,7 @@ export default function CampaignsHub() {
 
           <div className="p-3.5 rounded-xl bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]">
             <div className="text-[11px] font-semibold text-slate-600 mb-1 flex items-center justify-between">
-              <span>Calls Completed</span>
+              <span>{t.callsConnected}</span>
               <PhoneCall className="w-3.5 h-3.5 text-indigo-400" />
             </div>
             <div className="text-2xl font-extrabold text-slate-900 dark:text-white">2,847</div>
@@ -218,7 +224,7 @@ export default function CampaignsHub() {
 
           <div className="p-3.5 rounded-xl bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]">
             <div className="text-[11px] font-semibold text-slate-600 mb-1 flex items-center justify-between">
-              <span>Meetings Booked</span>
+              <span>{t.meetingsBooked}</span>
               <CalendarCheck className="w-3.5 h-3.5 text-emerald-400" />
             </div>
             <div className="text-2xl font-extrabold text-slate-900 dark:text-white">612</div>
@@ -241,19 +247,24 @@ export default function CampaignsHub() {
           </div>
 
           {/* Bar chart rendering */}
-          <div className="h-48 flex items-end gap-2.5 pt-6 pb-2 px-2 border-b border-slate-200 dark:border-white/[0.06]">
+          <div className="h-48 flex items-end gap-2 sm:gap-3 pt-8 pb-2 px-2 border-b border-slate-200 dark:border-white/[0.06]">
             {volumeData.map((d, i) => {
-              const heightPct = Math.round((d.count / maxVolume) * 100);
+              const heightPx = Math.max(18, Math.round((d.count / maxVolume) * 135));
               return (
-                <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
-                  <div className="text-[9px] text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-5 font-bold">
-                    {d.count}
+                <div key={i} className="flex-1 h-full flex flex-col justify-end items-center gap-1.5 group relative">
+                  {/* Tooltip on hover */}
+                  <div className="text-[10px] font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-800 px-2 py-0.5 rounded shadow border border-slate-200 dark:border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-5 pointer-events-none z-10 whitespace-nowrap">
+                    {d.count} calls
                   </div>
+                  {/* Bar */}
                   <div
-                    style={{ height: `${heightPct}%` }}
-                    className="w-full rounded-t-md bg-gradient-to-t from-indigo-700 via-indigo-500 to-purple-400 hover:to-purple-300 transition-all cursor-pointer shadow-md shadow-indigo-600/20"
+                    style={{ height: `${heightPx}px` }}
+                    className="w-full max-w-[28px] rounded-t-md bg-gradient-to-t from-indigo-600 via-indigo-500 to-purple-500 hover:from-indigo-500 hover:to-purple-400 transition-all cursor-pointer shadow-md shadow-indigo-500/20"
                   />
-                  <span className="text-[10px] text-slate-600 mt-1">{d.day}</span>
+                  {/* Day label */}
+                  <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400">
+                    {d.day}
+                  </span>
                 </div>
               );
             })}

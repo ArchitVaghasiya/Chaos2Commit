@@ -69,12 +69,27 @@ export async function POST(request: Request) {
       })
     );
 
+    // Merge saved database records with dynamic AI matching insights
+    const enrichedLeads = savedLeads.map((saved, idx) => {
+      const source = discovered[idx] || {};
+      return {
+        ...saved,
+        matchReasoning: source.matchReasoning,
+        fitScore: source.fitScore || source.intentScore || 90,
+        keyMatches: source.keyMatches || [],
+        recommendedPitch: source.recommendedPitch,
+        scoreBreakdown: source.scoreBreakdown,
+        isExample: false,
+        matchedQuery: query,
+      };
+    });
+
     return NextResponse.json({
       success: true,
       query,
       platform,
-      totalDiscovered: savedLeads.length,
-      leads: savedLeads,
+      totalDiscovered: enrichedLeads.length,
+      leads: enrichedLeads,
       sourceCounts: {
         linkedIn: 12568,
         xTwitter: 8421,

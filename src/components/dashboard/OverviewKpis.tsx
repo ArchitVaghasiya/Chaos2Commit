@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { ArrowUpRight, Users, UserCheck, PhoneCall, CalendarCheck } from 'lucide-react';
+import { getTranslation } from '@/lib/i18n/translations';
 
 interface OverviewKpisProps {
   stats?: {
@@ -16,12 +17,15 @@ interface OverviewKpisProps {
       meetings: string;
     };
   };
+  currentLanguage?: string;
 }
 
-export default function OverviewKpis({ stats }: OverviewKpisProps) {
+export default function OverviewKpis({ stats, currentLanguage = 'English' }: OverviewKpisProps) {
+  const t = getTranslation(currentLanguage);
+
   const cards = [
     {
-      title: 'Leads Discovered',
+      title: t.kpiLeadsDiscovered,
       value: (stats?.leadsDiscovered || 24568).toLocaleString(),
       growth: stats?.growth.discovered || '+28.5%',
       icon: Users,
@@ -29,7 +33,7 @@ export default function OverviewKpis({ stats }: OverviewKpisProps) {
       bg: 'bg-blue-500/10',
     },
     {
-      title: 'Leads Enriched',
+      title: t.kpiLeadsEnriched,
       value: (stats?.leadsEnriched || 18542).toLocaleString(),
       growth: stats?.growth.enriched || '+24.3%',
       icon: UserCheck,
@@ -37,7 +41,7 @@ export default function OverviewKpis({ stats }: OverviewKpisProps) {
       bg: 'bg-purple-500/10',
     },
     {
-      title: 'AI Calls Made',
+      title: t.kpiCallsMade,
       value: (stats?.aiCallsMade || 6843).toLocaleString(),
       growth: stats?.growth.calls || '+36.7%',
       icon: PhoneCall,
@@ -45,7 +49,7 @@ export default function OverviewKpis({ stats }: OverviewKpisProps) {
       bg: 'bg-indigo-500/10',
     },
     {
-      title: 'Meetings Booked',
+      title: t.kpiMeetingsBooked,
       value: (stats?.meetingsBooked || 312).toLocaleString(),
       growth: stats?.growth.meetings || '+31.2%',
       icon: CalendarCheck,
@@ -57,7 +61,7 @@ export default function OverviewKpis({ stats }: OverviewKpisProps) {
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-base font-bold text-slate-900 dark:text-white">Dashboard Overview</h2>
+        <h2 className="text-base font-bold text-slate-900 dark:text-white">{t.kpiOverviewTitle}</h2>
         <select
           aria-label="Filter overview by timeframe"
           className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#0e1428] border border-slate-200 dark:border-white/[0.08] text-xs text-slate-800 dark:text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer"

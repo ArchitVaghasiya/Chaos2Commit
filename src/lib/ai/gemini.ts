@@ -65,32 +65,42 @@ export async function generateDynamicLeadsWithGemini(query: string, platform = '
   }
 
   const prompt = `
-You are the AI Lead Discovery Engine of an enterprise B2B sales platform.
+You are the AI Lead Discovery Engine of an enterprise B2B sales automation platform.
 A sales team is searching for public requirement posts matching: "${query}" on platform: "${platform}".
 
-Generate 3 realistic, high-intent B2B prospect requirement posts published publicly by executives or tech leaders actively seeking vendors/partners.
-Make the requirement posts sound authentic, conversational, and specific (like real posts on LinkedIn, X/Twitter, or RFP boards).
+Generate 3 realistic, high-intent B2B prospect requirement posts published publicly by real enterprise buyers (executives, CTOs, VP Engineering, Directors of Procurement) actively seeking solution partners/vendors.
+Important: Prospect company names MUST be external enterprises (e.g. Apex Health Systems, Vanguard Logistics, Lumina Financial, Horizon Retail) and NEVER "TechNova Solutions" (which is the selling company).
 
 Return ONLY a valid JSON array of objects with this exact structure:
 [
   {
     "name": "Full Name",
-    "jobTitle": "e.g. CTO / VP of Technology / Director of IT",
-    "companyName": "Company Name",
-    "companyWebsite": "www.company.com",
-    "industry": "Industry e.g. Healthcare / Finance / Logistics / Software",
+    "jobTitle": "e.g. CTO / VP of Technology / Director of IT / Head of Procurement",
+    "companyName": "External Enterprise Name",
+    "companyWebsite": "www.companydomain.com",
+    "industry": "Industry e.g. Healthcare / Finance / Logistics / Software / Retail",
     "companySize": "e.g. 51 – 200 employees / 500+ employees",
-    "email": "work email",
+    "email": "work email matching their name and domain",
     "phone": "+1 (555) 000-0000",
-    "linkedinProfile": "https://linkedin.com/in/username",
+    "linkedinProfile": "https://linkedin.com/in/prospect-slug",
     "sourcePlatform": "${platform === 'All Sources' ? 'LinkedIn' : platform}",
-    "originalPostUrl": "https://linkedin.com/posts/unique-id",
+    "originalPostUrl": "https://linkedin.com/posts/active-requirement-post",
     "originalPostSnippet": "Realistic 2-4 sentence public post describing their active need, timeline, and request for partner DMs/recommendations.",
-    "intentScore": 85 to 96,
+    "intentScore": 88 to 96,
     "budgetSignal": "Approved" or "High",
     "urgencyLevel": "High" or "Medium",
     "decisionMaker": true,
-    "activeRequirement": true
+    "activeRequirement": true,
+    "matchReasoning": "1-2 sentences explaining specifically why this post matched the query '${query}', citing the buyer need and authority.",
+    "fitScore": 92 to 98,
+    "keyMatches": ["Primary Need", "Secondary Requirement", "Timeline/Tech"],
+    "recommendedPitch": "Actionable 1-sentence sales pitch angle tailored for the AI voice agent on the initial call.",
+    "scoreBreakdown": {
+      "authority": 24 to 25,
+      "budget": 23 to 25,
+      "urgency": 22 to 25,
+      "fit": 23 to 25
+    }
   }
 ]
 Return strictly the JSON array, no preamble or markdown code block.

@@ -1,26 +1,34 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import { 
-  Bot, 
   Search, 
   Headphones, 
   FileCheck2, 
   TrendingUp, 
-  Rocket, 
   Sparkles,
-  Globe2,
+  Languages,
   Upload,
   ChevronDown,
-  Plus
+  Plus,
+  Check,
+  LogIn,
+  User,
+  LogOut,
+  Rocket
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { getTranslation } from '@/lib/i18n/translations';
 
 interface HeaderBannerProps {
   currentLanguage?: string;
   onLanguageChange?: (lang: string) => void;
   onOpenCsvImport?: () => void;
   onOpenNewCampaign?: () => void;
+  currentUser?: { name: string; email?: string } | null;
+  onSignOut?: () => void;
+  onOpenProfile?: () => void;
 }
 
 export default function HeaderBanner({
@@ -28,7 +36,14 @@ export default function HeaderBanner({
   onLanguageChange,
   onOpenCsvImport,
   onOpenNewCampaign,
+  currentUser,
+  onSignOut,
+  onOpenProfile,
 }: HeaderBannerProps) {
+  const t = getTranslation(currentLanguage);
+  const [isLangOpen, setIsLangOpen] = useState(false);
+  const langRef = useRef<HTMLDivElement>(null);
+
   const languages = [
     { code: 'en', label: 'English' },
     { code: 'es', label: 'Español' },
@@ -38,142 +53,212 @@ export default function HeaderBanner({
     { code: 'ar', label: 'العربية' },
   ];
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (langRef.current && !langRef.current.contains(event.target as Node)) {
+        setIsLangOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
-    <header className="w-full glass-card p-4 sm:p-5 mb-6 border-indigo-500/20 bg-gradient-to-r from-slate-50/95 via-white/90 to-blue-50/95 dark:from-[#0c1228]/95 dark:via-[#0e1738]/90 dark:to-[#101432]/95 shadow-xl dark:shadow-2xl relative overflow-hidden transition-colors">
-      {/* Background ambient lighting */}
-      <div className="absolute top-0 right-1/4 w-96 h-32 bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-10 left-10 w-72 h-32 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+    <header className="w-full glass-card p-4 sm:p-5 mb-6 border-slate-200/80 dark:border-indigo-500/20 bg-gradient-to-r from-slate-50/95 via-white/90 to-blue-50/95 dark:from-[#0c1228]/95 dark:via-[#0e1738]/90 dark:to-[#101432]/95 shadow-xl dark:shadow-2xl relative transition-colors z-20">
+      {/* Background ambient lighting confined to header bounds */}
+      <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+        <div className="absolute top-0 right-1/4 w-96 h-32 bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-10 left-10 w-72 h-32 bg-purple-500/5 dark:bg-purple-500/10 rounded-full blur-3xl" />
+      </div>
 
-      <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-6 relative z-10">
-        
-        {/* Left Side: Brand & Robot Icon */}
-        <div className="flex items-center gap-4 shrink-0">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-500 p-0.5 shadow-lg shadow-indigo-500/30 flex items-center justify-center shrink-0">
-            <div className="w-full h-full bg-white dark:bg-[#090d20] rounded-[14px] flex items-center justify-center relative overflow-hidden">
-              <img src="/ai_sales_logo.jpg" alt="AI Sales Logo" className="w-full h-full object-cover" />
-              <span className="absolute -bottom-1 -right-1 flex h-4 w-4">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border-2 border-white dark:border-[#090d20]"></span>
-              </span>
-            </div>
-          </div>
-          <div>
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <h1 className="text-2xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-800 dark:from-white dark:via-slate-100 dark:to-indigo-200">
-                AI Sales Agent Platform
-              </h1>
-              <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-600 border border-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-300 dark:border-indigo-500/30 uppercase tracking-wider">
-                Autonomous v2.4
-              </span>
-            </div>
-            <p className="text-sm text-slate-700 dark:text-slate-300 font-medium leading-tight">
-              Discover. Qualify. Engage. Convert — All with AI.
-            </p>
-          </div>
-        </div>
-
-        {/* Center: 4 Value Pillars */}
-        <div className="flex items-stretch gap-3 overflow-x-auto hide-scrollbar flex-1 xl:max-w-max pb-2 xl:pb-0">
-          <div className="w-[170px] shrink-0 flex flex-col justify-center p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] hover:border-blue-500/30 transition-all">
-            <div className="flex items-center gap-2 mb-1.5">
-              <div className="w-6 h-6 rounded bg-blue-500/10 flex items-center justify-center shrink-0">
-                <Search className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              </div>
-              <span className="text-[13px] font-bold text-slate-800 dark:text-slate-200 leading-tight">AI Lead Discovery</span>
-            </div>
-            <p className="text-[11px] text-slate-700 dark:text-slate-400 leading-tight">Find high-intent leads across public channels.</p>
-          </div>
-
-          <div className="w-[170px] shrink-0 flex flex-col justify-center p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] hover:border-purple-500/30 transition-all">
-            <div className="flex items-center gap-2 mb-1.5">
-              <div className="w-6 h-6 rounded bg-purple-500/10 flex items-center justify-center shrink-0">
-                <Headphones className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-              </div>
-              <span className="text-[13px] font-bold text-slate-800 dark:text-slate-200 leading-tight">AI Voice Agents</span>
-            </div>
-            <p className="text-[11px] text-slate-700 dark:text-slate-400 leading-tight">Multilingual calls that qualify & book meetings.</p>
-          </div>
-
-          <div className="w-[170px] shrink-0 flex flex-col justify-center p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] hover:border-cyan-500/30 transition-all">
-            <div className="flex items-center gap-2 mb-1.5">
-              <div className="w-6 h-6 rounded bg-cyan-500/10 flex items-center justify-center shrink-0">
-                <FileCheck2 className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-              </div>
-              <span className="text-[13px] font-bold text-slate-800 dark:text-slate-200 leading-tight">Smart Enrichment</span>
-            </div>
-            <p className="text-[11px] text-slate-700 dark:text-slate-400 leading-tight">Verified contacts & company intelligence.</p>
-          </div>
-
-          <div className="w-[170px] shrink-0 flex flex-col justify-center p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] hover:border-emerald-500/30 transition-all">
-            <div className="flex items-center gap-2 mb-1.5">
-              <div className="w-6 h-6 rounded bg-emerald-500/10 flex items-center justify-center shrink-0">
-                <TrendingUp className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <span className="text-[13px] font-bold text-slate-800 dark:text-slate-200 leading-tight">Actionable Insights</span>
-            </div>
-            <p className="text-[11px] text-slate-700 dark:text-slate-400 leading-tight">Real-time pipeline ROI & conversation metrics.</p>
-          </div>
-        </div>
-
-        {/* Right Side: CTA & Actions Stacked */}
-        <div className="flex flex-col gap-3 shrink-0 xl:w-[280px]">
+      <div className="relative z-10 flex flex-col gap-4">
+        {/* TOP ROW: Brand Identity & Comprehensive Action Controls */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           
-          {/* CTA Banner */}
-          <div className="w-full p-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 shadow-lg text-slate-900 dark:text-white relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-2 opacity-20 pointer-events-none">
-               <Sparkles className="w-10 h-10" />
-             </div>
-             <div className="relative z-10">
-                <div className="text-[13px] font-bold tracking-tight mb-0.5">More Conversations. More Meetings.</div>
-                <div className="text-[11px] text-indigo-100 leading-tight">Let AI do the prospecting while you close deals.</div>
-             </div>
+          {/* Left: Brand & Title */}
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl overflow-hidden shrink-0 relative shadow-md shadow-emerald-500/20 border border-slate-200/80 dark:border-white/10">
+              <img src="/ai_sales_logo.jpg" alt="AI Sales Logo" className="w-full h-full object-cover scale-[2.5]" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-800 dark:from-white dark:via-slate-100 dark:to-indigo-200">
+                  {t.platformTitle}
+                </h1>
+                <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-300 dark:border-indigo-500/30 uppercase tracking-wider">
+                  <Sparkles className="w-3 h-3 text-indigo-500 dark:text-indigo-400" /> {t.autonomousBadge}
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium mt-0.5">
+                {t.tagline}
+              </p>
+            </div>
           </div>
 
-          {/* Quick Actions Bar */}
-          <div className="flex items-center justify-between gap-2 w-full">
+          {/* Right: Actions, Language, Theme & Account */}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+            {/* Value Proposition Badge on wide displays */}
+            <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600/10 via-indigo-600/10 to-purple-600/10 border border-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-xs font-semibold mr-1">
+              <Rocket className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <span>{t.moreConversations}</span>
+            </div>
+
+            {/* Action Buttons */}
             {onOpenNewCampaign && (
               <button
                 onClick={onOpenNewCampaign}
-                className="flex-1 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold shadow-md flex items-center justify-center gap-1.5 transition-all"
+                className="py-2 px-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/20 flex items-center justify-center gap-1.5 transition-all whitespace-nowrap cursor-pointer active:scale-95"
               >
-                <Plus className="w-3 h-3" /> New Campaign
+                <Plus className="w-3.5 h-3.5 text-white shrink-0" />
+                <span>{t.newCampaign}</span>
               </button>
             )}
 
             {onOpenCsvImport && (
               <button
                 onClick={onOpenCsvImport}
-                className="flex-1 py-1.5 rounded-lg bg-black/[0.05] dark:bg-white/[0.05] hover:bg-black/[0.1] dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 border border-black/[0.1] dark:border-white/[0.08] text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all"
+                className="py-2 px-3 rounded-xl bg-slate-100 dark:bg-white/[0.05] hover:bg-slate-200 dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/[0.08] text-xs font-medium flex items-center justify-center gap-1.5 transition-all whitespace-nowrap cursor-pointer active:scale-95"
               >
-                <Upload className="w-3 h-3 text-slate-700 dark:text-slate-400" /> Import CSV
+                <Upload className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400 shrink-0" />
+                <span>{t.importCsv}</span>
               </button>
             )}
 
-            <div className="flex items-center gap-2">
-              <div className="relative flex items-center shrink-0">
-                <Globe2 className="w-3.5 h-3.5 text-slate-700 dark:text-slate-400 absolute left-2 pointer-events-none" />
-                <select
-                  value={currentLanguage}
-                  onChange={(e) => onLanguageChange?.(e.target.value)}
-                  aria-label="Select language"
-                  className="w-8 h-7 opacity-0 absolute inset-0 cursor-pointer"
-                  title="Change Language"
-                >
-                  {languages.map((lang) => (
-                    <option key={lang.code} value={lang.label}>
-                      {lang.label}
-                    </option>
-                  ))}
-                </select>
-                <div className="w-8 h-[26px] rounded-lg bg-black/[0.05] dark:bg-[#080d20] border border-black/10 dark:border-white/[0.1] flex items-center justify-center pointer-events-none transition-colors">
-                   <Globe2 className="w-3.5 h-3.5 text-slate-800 dark:text-slate-300" />
-                </div>
-              </div>
+            {/* Language Dropdown */}
+            <div className="relative shrink-0" ref={langRef}>
+              <button
+                onClick={() => setIsLangOpen(!isLangOpen)}
+                className="h-8 px-2.5 rounded-xl bg-slate-100 dark:bg-[#080d20] border border-slate-200 dark:border-white/[0.1] flex items-center gap-1.5 transition-colors hover:bg-slate-200 dark:hover:bg-white/[0.05] cursor-pointer"
+                title="Change Language"
+              >
+                <Languages className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {languages.find(l => l.label === currentLanguage)?.code.toUpperCase() || 'EN'}
+                </span>
+                <ChevronDown className="w-3 h-3 text-slate-500" />
+              </button>
               
-              <ThemeToggle />
+              {isLangOpen && (
+                <div className="absolute top-full right-0 mt-1.5 w-32 bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-white/[0.1] shadow-2xl py-1 z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+                  {languages.map((lang) => (
+                    <button
+                      key={lang.code}
+                      onClick={() => {
+                        onLanguageChange?.(lang.label);
+                        setIsLangOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center justify-between cursor-pointer ${
+                        currentLanguage === lang.label 
+                          ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-semibold' 
+                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[0.05]'
+                      }`}
+                    >
+                      {lang.label}
+                      {currentLanguage === lang.label && <Check className="w-3.5 h-3.5" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            {/* Theme Toggle Button */}
+            <ThemeToggle />
+
+            {/* Account / Authentication Controls */}
+            {currentUser ? (
+              <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-white/[0.1]">
+                <button
+                  onClick={onOpenProfile}
+                  className="h-8 px-3 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/15 dark:hover:bg-indigo-500/25 active:scale-95 text-indigo-700 dark:text-indigo-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border border-indigo-200 dark:border-indigo-500/30"
+                  title="Click to update profile details"
+                >
+                  <User className="w-3.5 h-3.5 shrink-0 text-indigo-600 dark:text-indigo-400" />
+                  <span className="truncate max-w-[120px]">{currentUser.name}</span>
+                </button>
+                {onSignOut && (
+                  <button
+                    onClick={onSignOut}
+                    className="h-8 px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-rose-500/15 active:scale-95 text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 text-xs font-medium transition-all cursor-pointer border border-slate-200 dark:border-white/[0.08]"
+                    title="Sign Out"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            ) : (
+              <Link
+                href="/sign-in"
+                className="h-8 px-3 py-1 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer ml-1 active:scale-95"
+                title="Sign In / Account"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Sign In</span>
+              </Link>
+            )}
+          </div>
+        </div>
+
+        {/* BOTTOM ROW: The 4 Value Pillars (Spacious, Full-Width Responsive 4-Column Grid) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3.5 border-t border-slate-200/80 dark:border-white/[0.06]">
+          {/* Pillar 1: AI Lead Discovery */}
+          <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50/80 dark:bg-white/[0.025] border border-slate-200/80 dark:border-white/[0.06] hover:border-blue-500/40 hover:bg-blue-50/40 dark:hover:bg-blue-500/[0.04] transition-all">
+            <div className="w-8 h-8 rounded-lg bg-blue-500/10 dark:bg-blue-500/15 border border-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
+              <Search className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-xs font-bold text-slate-900 dark:text-slate-200 block leading-tight">
+                {t.discoveryPillar}
+              </span>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug mt-0.5">
+                {t.discoveryDesc}
+              </p>
             </div>
           </div>
-          
+
+          {/* Pillar 2: AI Voice Agents */}
+          <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50/80 dark:bg-white/[0.025] border border-slate-200/80 dark:border-white/[0.06] hover:border-purple-500/40 hover:bg-purple-50/40 dark:hover:bg-purple-500/[0.04] transition-all">
+            <div className="w-8 h-8 rounded-lg bg-purple-500/10 dark:bg-purple-500/15 border border-purple-500/20 flex items-center justify-center shrink-0 mt-0.5">
+              <Headphones className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-xs font-bold text-slate-900 dark:text-slate-200 block leading-tight">
+                {t.voicePillar}
+              </span>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug mt-0.5">
+                {t.voiceDesc}
+              </p>
+            </div>
+          </div>
+
+          {/* Pillar 3: Smart Enrichment */}
+          <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50/80 dark:bg-white/[0.025] border border-slate-200/80 dark:border-white/[0.06] hover:border-cyan-500/40 hover:bg-cyan-50/40 dark:hover:bg-cyan-500/[0.04] transition-all">
+            <div className="w-8 h-8 rounded-lg bg-cyan-500/10 dark:bg-cyan-500/15 border border-cyan-500/20 flex items-center justify-center shrink-0 mt-0.5">
+              <FileCheck2 className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-xs font-bold text-slate-900 dark:text-slate-200 block leading-tight">
+                {t.enrichmentPillar}
+              </span>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug mt-0.5">
+                {t.enrichmentDesc}
+              </p>
+            </div>
+          </div>
+
+          {/* Pillar 4: Actionable Insights */}
+          <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50/80 dark:bg-white/[0.025] border border-slate-200/80 dark:border-white/[0.06] hover:border-emerald-500/40 hover:bg-emerald-50/40 dark:hover:bg-emerald-500/[0.04] transition-all">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
+              <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-xs font-bold text-slate-900 dark:text-slate-200 block leading-tight">
+                {t.insightsPillar}
+              </span>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug mt-0.5">
+                {t.insightsDesc}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </header>
