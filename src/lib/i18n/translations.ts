@@ -84,7 +84,7 @@ export interface TranslationDictionary {
   fitCol: string;
   recommendedPitchTitle: string;
 
-  // Voice Modal
+  // Voice Modal & Real Call Flow
   voiceSimulatorTitle: string;
   outboundCallTo: string;
   connectedStatus: string;
@@ -100,6 +100,12 @@ export interface TranslationDictionary {
   voicemailBadge: string;
   retryBadge: string;
   multilingualTitle: string;
+  chooseLanguagePrompt: string;
+  languageLockedBadge: string;
+  callLimitLabel: string;
+  timeLeftLabel: string;
+  callLimitReached: string;
+  approachingLimitWarning: string;
 }
 
 export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
@@ -196,6 +202,12 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     voicemailBadge: 'Voicemail Left',
     retryBadge: 'Retry Scheduled',
     multilingualTitle: 'Multilingual AI Voice Calling',
+    chooseLanguagePrompt: "Hello! Before we begin our conversation, which language are you most comfortable with for today's call?",
+    languageLockedBadge: "Language Locked for Call Duration",
+    callLimitLabel: "Call Limit: 3:00 Max",
+    timeLeftLabel: "Time Left",
+    callLimitReached: "Call Limit Reached (3:00 Max)",
+    approachingLimitWarning: "Introductory call ending in 20s",
   },
 
   Español: {
@@ -291,6 +303,12 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     voicemailBadge: 'Mensaje de Voz Dejado',
     retryBadge: 'Reintento Programado',
     multilingualTitle: 'Llamadas de Voz IA Multilingües',
+    chooseLanguagePrompt: "¡Hola! Antes de comenzar nuestra conversación, ¿con qué idioma se siente más cómodo para nuestra llamada de hoy?",
+    languageLockedBadge: "Idioma Bloqueado para la Duración de la Llamada",
+    callLimitLabel: "Límite de Llamada: 3:00 Máx",
+    timeLeftLabel: "Tiempo Restante",
+    callLimitReached: "Límite de Llamada Alcanzado (3:00 Máx)",
+    approachingLimitWarning: "Llamada introductoria finaliza en 20s",
   },
 
   'हिन्दी': {
@@ -386,6 +404,12 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     voicemailBadge: 'वॉयसमेल छोड़ा',
     retryBadge: 'पुनः प्रयास निर्धारित',
     multilingualTitle: 'बहुभाषी AI वॉयस कॉलिंग',
+    chooseLanguagePrompt: "नमस्ते! बातचीत शुरू करने से पहले, आज की कॉल के लिए आप किस भाषा में सबसे अधिक सहज महसूस करते हैं?",
+    languageLockedBadge: "कॉल अवधि के लिए भाषा लॉक कर दी गई है",
+    callLimitLabel: "कॉल सीमा: अधिकतम 3:00",
+    timeLeftLabel: "शेष समय",
+    callLimitReached: "कॉल समय सीमा समाप्त (अधिकतम 3:00)",
+    approachingLimitWarning: "प्रारंभिक कॉल 20 सेकंड में समाप्त हो रही है",
   },
 
   Français: {
@@ -481,6 +505,12 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     voicemailBadge: 'Message Vocal Laissé',
     retryBadge: 'Rappel Planifié',
     multilingualTitle: 'Appels Vocaux IA Multilingues',
+    chooseLanguagePrompt: "Bonjour ! Avant de commencer notre échange, dans quelle langue êtes-vous le plus à l'aise pour notre appel ?",
+    languageLockedBadge: "Langue Verrouillée pour la Durée de l'Appel",
+    callLimitLabel: "Limite d'Appel : 3:00 Max",
+    timeLeftLabel: "Temps Restant",
+    callLimitReached: "Limite d'Appel Atteinte (3:00 Max)",
+    approachingLimitWarning: "L'appel de présentation se termine dans 20s",
   },
 
   Deutsch: {
@@ -576,6 +606,12 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     voicemailBadge: 'Mailbox Hinterlassen',
     retryBadge: 'Wiedervorlage Geplant',
     multilingualTitle: 'Mehrsprachige KI-Sprachanrufe',
+    chooseLanguagePrompt: "Hallo! Bevor wir beginnen: In welcher Sprache fühlen Sie sich für unser heutiges Gespräch am wohlsten?",
+    languageLockedBadge: "Sprache für die Anrufdauer Gesperrt",
+    callLimitLabel: "Anruflimit: 3:00 Max",
+    timeLeftLabel: "Verbleibende Zeit",
+    callLimitReached: "Anruflimit Erreicht (3:00 Max)",
+    approachingLimitWarning: "Einführender Anruf endet in 20s",
   },
 
   'العربية': {
@@ -671,6 +707,12 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     voicemailBadge: 'تم ترك بريد صوتي',
     retryBadge: 'إعادة المحاولة مجدولة',
     multilingualTitle: 'مكالمات صوتية ذكية متعددة اللغات',
+    chooseLanguagePrompt: "مرحباً! قبل أن نبدأ، ما هي اللغة التي تفضل التحدث بها في مكالمتنا اليوم؟",
+    languageLockedBadge: "تم قفل اللغة طوال مدة المكالمة",
+    callLimitLabel: "حد المكالمة: 3:00 كحد أقصى",
+    timeLeftLabel: "الوقت المتبقي",
+    callLimitReached: "تم الوصول إلى الحد الأقصى للمكالمة (3:00)",
+    approachingLimitWarning: "المكالمة التمهيدية ستنتهي خلال 20 ثانية",
   },
 };
 
@@ -714,6 +756,47 @@ export function getAiGreeting(language: string, firstName: string, company: stri
     case 'English':
     default:
       return `Hello ${firstName}, I'm Ava from TechNova Solutions. I'm calling about ${requirementTopic}.`;
+  }
+}
+
+export function getLanguageConfirmationSpeech(
+  language: string,
+  firstName: string,
+  company: string,
+  requirementTopic: string
+): string {
+  switch (language) {
+    case 'हिन्दी':
+      return `धन्यवाद! हम इस कॉल को हिंदी में जारी रखेंगे। नमस्ते ${firstName}, मैं TechNova Solutions से Ava बोल रही हूँ। मैं ${requirementTopic} के संबंध में संपर्क कर रही हूँ। क्या आप इसके लिए सही समाधान तलाश रहे हैं?`;
+    case 'Español':
+      return `¡Muchas gracias! Continuaremos esta llamada en español. Hola ${firstName}, soy Ava de TechNova Solutions. Le llamo en referencia a ${requirementTopic}. ¿Están evaluando activamente socios para esta implementación?`;
+    case 'Français':
+      return `Merci beaucoup ! Nous poursuivrons cet appel en français. Bonjour ${firstName}, je suis Ava de TechNova Solutions. Je vous appelle au sujet de ${requirementTopic}. Recherchez-vous actuellement un partenaire pour ce projet ?`;
+    case 'Deutsch':
+      return `Vielen Dank! Wir setzen dieses Gespräch auf Deutsch fort. Hallo ${firstName}, ich bin Ava von TechNova Solutions. Ich rufe bezüglich ${requirementTopic} an. Suchen Sie derzeit aktiv nach einem Implementierungspartner?`;
+    case 'العربية':
+      return `شكراً جزيلاً! سنواصل هذه المكالمة باللغة العربية. مرحباً ${firstName}، أنا آفا من TechNova Solutions. أتصل بخصوص ${requirementTopic}. هل تبحثون عن شريك معتمد لهذا المشروع؟`;
+    case 'English':
+    default:
+      return `Thank you! Continuing in English. Hello ${firstName}, I'm Ava from TechNova Solutions. I'm calling about ${requirementTopic}. Are you actively exploring implementation partners for this rollout?`;
+  }
+}
+
+export function getCallLimitWrapupSpeech(language: string): string {
+  switch (language) {
+    case 'हिन्दी':
+      return `मैं देख रही हूँ कि हम आज की 3 मिनट की प्रारंभिक कॉल की समय सीमा पर पहुँच गए हैं। मैंने बैठक का विवरण आपके ईमेल पर भेज दिया है। गुरुवार दोपहर 3 बजे मिलते हैं, धन्यवाद!`;
+    case 'Español':
+      return `Veo que hemos alcanzado el límite de 3 minutos para esta llamada introductoria. He enviado la invitación de reunión a su correo. ¡Hablamos el jueves a las 3 PM, muchas gracias!`;
+    case 'Français':
+      return `Je vois que nous avons atteint la limite de 3 minutes pour cet appel préliminaire. J'ai envoyé l'invitation à votre adresse e-mail. À jeudi 15h, merci !`;
+    case 'Deutsch':
+      return `Ich sehe, dass wir das 3-Minuten-Limit für unser heutiges Erstgespräch erreicht haben. Ich habe die Termineinladung an Ihre E-Mail gesendet. Bis Donnerstag um 15:00 Uhr, vielen Dank!`;
+    case 'العربية':
+      return `أرى أننا وصلنا إلى الحد الأقصى البالغ 3 دقائق لمكالمتنا التمهيدية اليوم. لقد أرسلت تفاصيل الموعد إلى بريدك الإلكتروني. نلتقي يوم الخميس، شكراً جزيلاً!`;
+    case 'English':
+    default:
+      return `I see we've reached our 3-minute time limit for today's introductory call. I've sent the meeting invitation and architecture summary to your email. We look forward to speaking on Thursday at 3 PM!`;
   }
 }
 
