@@ -97,6 +97,28 @@ export default function LiveCallSimulatorModal({
   const currentLeadIdRef = useRef<string | null>(null);
   const isOpenRef = useRef<boolean>(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const latestTranscriptRef = useRef<string>('');
+  const durationRef = useRef<number>(0);
+  const messagesRef = useRef<Message[]>([]);
+  const leadRef = useRef(lead);
+
+  // Cross-reference handles to prevent stale closures across async timeouts and recognition callbacks
+  const startListeningRef = useRef<() => void>(() => {});
+  const stopListeningAndSendRef = useRef<(overrideText?: string) => void>(() => {});
+  const handleSendProspectMessageRef = useRef<(text: string) => Promise<void>>(async () => {});
+  const speakTextRef = useRef<(text: string, lang?: string) => void>(() => {});
+
+  // Immediate synchronous sync of refs in render
+  callStatusRef.current = callStatus;
+  isAiSpeakingRef.current = isAiSpeaking;
+  isAiThinkingRef.current = isAiThinking;
+  isMutedRef.current = isMuted;
+  inputModeRef.current = inputMode;
+  isLanguageSelectedRef.current = isLanguageSelected;
+  selectedLanguageRef.current = selectedLanguage;
+  durationRef.current = duration;
+  messagesRef.current = messages;
+  leadRef.current = lead;
 
   useEffect(() => {
     callStatusRef.current = callStatus;
@@ -126,6 +148,18 @@ export default function LiveCallSimulatorModal({
     selectedLanguageRef.current = selectedLanguage;
   }, [selectedLanguage]);
 
+  useEffect(() => {
+    durationRef.current = duration;
+  }, [duration]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    leadRef.current = lead;
+  }, [lead]);
+
   const t = getTranslation(selectedLanguage);
   const quickReplies = getQuickReplies(selectedLanguage);
   const remainingSeconds = Math.max(0, CALL_LIMIT_SECONDS - duration);
@@ -143,6 +177,7 @@ export default function LiveCallSimulatorModal({
     if (callStatusRef.current !== 'CONNECTED') return;
     if (isAiSpeakingRef.current || isAiThinkingRef.current) return;
     if (isMutedRef.current) return;
+    if (inputModeRef.current !== 'mic') return;
 
     const SpeechConstructor =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -164,48 +199,62 @@ export default function LiveCallSimulatorModal({
       recognitionRef.current = recognition;
       recognition.continuous = true;
       recognition.interimResults = true;
-      // Use current locked language locale or default
-      recognition.lang = getLocaleForVoice(selectedLanguageRef.current);
+
+      // Locale: If language already selected/locked, use that locale (e.g. hi-IN for Hindi).
+      // If language not locked yet, use default en-US/en-IN to capture prospect's spoken preference.
+      const currentLockedLang = selectedLanguageRef.current;
+      recognition.lang = isLanguageSelectedRef.current
+        ? getLocaleForVoice(currentLockedLang)
+        : 'en-US';
 
       recognition.onstart = () => {
         setIsMicListening(true);
       };
 
       recognition.onresult = (event: any) => {
-        let interim = '';
-        let final = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          const part = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            final += part;
-          } else {
-            interim += part;
-          }
+        // Collect full transcript across all continuous parts to prevent dropped words
+        let fullTranscript = '';
+        for (let i = 0; i < event.results.length; ++i) {
+          fullTranscript += event.results[i][0].transcript + ' ';
         }
-        const currentText = (final || interim).trim();
+        const currentText = fullTranscript.trim();
         if (currentText) {
+          latestTranscriptRef.current = currentText;
           setSpeechTranscript(currentText);
 
-          // Clear previous silence timeout on every word
+          // Reset silence timer on each spoken word
           if (silenceTimeoutRef.current) {
             clearTimeout(silenceTimeoutRef.current);
           }
 
-          // Real phone call silence detection: 1.35 seconds pause automatically submits spoken words
+          // Real phone call silence detection: 1.1s pause automatically submits spoken words
           silenceTimeoutRef.current = setTimeout(() => {
-            stopListeningAndSend(currentText);
-          }, 1350);
+            stopListeningAndSendRef.current(currentText);
+          }, 1100);
         }
       };
 
       recognition.onerror = (event: any) => {
-        if (event.error !== 'no-speech') {
+        if (event.error === 'not-allowed') {
+          setErrorMessage('Microphone access denied. Please allow microphone permissions in your browser.');
+          setIsMicListening(false);
+        } else if (event.error === 'audio-capture') {
+          setErrorMessage('No microphone detected. Please connect a microphone or use keyboard.');
+          setIsMicListening(false);
+        } else if (event.error !== 'no-speech') {
           console.warn('Speech recognition notice:', event.error);
         }
       };
 
       recognition.onend = () => {
         setIsMicListening(false);
+        // If user was speaking and browser fired speech-end, submit immediately
+        const pendingText = latestTranscriptRef.current.trim();
+        if (pendingText) {
+          stopListeningAndSendRef.current(pendingText);
+          return;
+        }
+
         // Keep phone line open continuously if not speaking/thinking
         if (
           isOpenRef.current &&
@@ -221,11 +270,12 @@ export default function LiveCallSimulatorModal({
               callStatusRef.current === 'CONNECTED' &&
               !isAiSpeakingRef.current &&
               !isAiThinkingRef.current &&
-              !isMutedRef.current
+              !isMutedRef.current &&
+              inputModeRef.current === 'mic'
             ) {
-              startListening();
+              startListeningRef.current();
             }
-          }, 350);
+          }, 300);
         }
       };
 
@@ -236,7 +286,9 @@ export default function LiveCallSimulatorModal({
     }
   }, []);
 
-  const stopListeningAndSend = (overrideText?: string) => {
+  startListeningRef.current = startListening;
+
+  const stopListeningAndSend = useCallback((overrideText?: string) => {
     if (silenceTimeoutRef.current) {
       clearTimeout(silenceTimeoutRef.current);
       silenceTimeoutRef.current = null;
@@ -250,14 +302,18 @@ export default function LiveCallSimulatorModal({
     }
     setIsMicListening(false);
 
-    const toSend = (overrideText || speechTranscript).trim();
-    if (toSend) {
-      setSpeechTranscript('');
-      handleSendProspectMessage(toSend);
-    }
-  };
+    const toSend = (overrideText || latestTranscriptRef.current || speechTranscript).trim();
+    latestTranscriptRef.current = '';
+    setSpeechTranscript('');
 
-  const cancelListening = () => {
+    if (toSend) {
+      handleSendProspectMessageRef.current(toSend);
+    }
+  }, [speechTranscript]);
+
+  stopListeningAndSendRef.current = stopListeningAndSend;
+
+  const cancelListening = useCallback(() => {
     if (silenceTimeoutRef.current) {
       clearTimeout(silenceTimeoutRef.current);
       silenceTimeoutRef.current = null;
@@ -269,8 +325,9 @@ export default function LiveCallSimulatorModal({
       recognitionRef.current = null;
     }
     setIsMicListening(false);
+    latestTranscriptRef.current = '';
     setSpeechTranscript('');
-  };
+  }, []);
 
   // 2. Universal Speech Synthesis with Turn-Taking Transition
   const speakText = useCallback(
@@ -292,18 +349,30 @@ export default function LiveCallSimulatorModal({
       }
       setIsMicListening(false);
       setIsAiSpeaking(true);
+      isAiSpeakingRef.current = true;
 
       const handleSpeechEnded = () => {
         setIsAiSpeaking(false);
+        isAiSpeakingRef.current = false;
         audioRef.current = null;
         // Turn-Taking: Microphone automatically re-opens for prospect when Ava finishes speaking!
         if (
+          isOpenRef.current &&
           callStatusRef.current === 'CONNECTED' &&
           !isMutedRef.current &&
           inputModeRef.current === 'mic'
         ) {
           setTimeout(() => {
-            startListening();
+            if (
+              isOpenRef.current &&
+              callStatusRef.current === 'CONNECTED' &&
+              !isAiSpeakingRef.current &&
+              !isAiThinkingRef.current &&
+              !isMutedRef.current &&
+              inputModeRef.current === 'mic'
+            ) {
+              startListeningRef.current();
+            }
           }, 400);
         }
       };
@@ -315,7 +384,10 @@ export default function LiveCallSimulatorModal({
         audio.src = audioUrl;
         audioRef.current = audio;
 
-        audio.onplay = () => setIsAiSpeaking(true);
+        audio.onplay = () => {
+          setIsAiSpeaking(true);
+          isAiSpeakingRef.current = true;
+        };
         audio.onended = handleSpeechEnded;
         audio.onerror = (err) => {
           console.warn('Neural audio error, fallback to browser speech:', err);
@@ -335,8 +407,10 @@ export default function LiveCallSimulatorModal({
         fallbackBrowserSpeak(text, lang, handleSpeechEnded);
       }
     },
-    [startListening]
+    []
   );
+
+  speakTextRef.current = speakText;
 
   const fallbackBrowserSpeak = (
     text: string,
@@ -364,55 +438,65 @@ export default function LiveCallSimulatorModal({
         }
       }
 
-      utterance.onstart = () => setIsAiSpeaking(true);
+      utterance.onstart = () => {
+        setIsAiSpeaking(true);
+        isAiSpeakingRef.current = true;
+      };
       utterance.onend = () => {
         setIsAiSpeaking(false);
+        isAiSpeakingRef.current = false;
         if (onEndCallback) onEndCallback();
       };
       utterance.onerror = () => {
         setIsAiSpeaking(false);
+        isAiSpeakingRef.current = false;
         if (onEndCallback) onEndCallback();
       };
       window.speechSynthesis.speak(utterance);
     } else {
       setIsAiSpeaking(false);
+      isAiSpeakingRef.current = false;
       if (onEndCallback) onEndCallback();
     }
   };
 
   // 3. Spoken Language Detection & Permanent Lock
-  const handleSelectCallLanguage = (lang: SupportedLanguage, spokenText?: string) => {
-    if (isLanguageSelected || callStatus !== 'CONNECTED') return;
+  const handleSelectCallLanguage = useCallback((lang: SupportedLanguage, spokenText?: string) => {
+    if (isLanguageSelectedRef.current || callStatusRef.current !== 'CONNECTED') return;
 
-    setSelectedLanguage(lang);
+    // Immediately lock language synchronously in refs and state
+    isLanguageSelectedRef.current = true;
+    selectedLanguageRef.current = lang;
     setIsLanguageSelected(true);
+    setSelectedLanguage(lang);
 
-    if (!lead) return;
+    const currentLead = leadRef.current;
+    if (!currentLead) return;
 
-    const firstName = lead.name ? lead.name.split(' ')[0] : 'there';
+    const firstName = currentLead.name ? currentLead.name.split(' ')[0] : 'there';
 
     // Fully localized topic phrase so no English string gets spliced in
     let requirementTopic = 'your public requirement';
-    if (lead.companyName) {
+    if (currentLead.companyName) {
       switch (lang) {
         case 'हिन्दी':
-          requirementTopic = `${lead.companyName} में आपकी सक्रिय व्यावसायिक आवश्यकता`;
+          requirementTopic = `${currentLead.companyName} में आपकी सक्रिय व्यावसायिक आवश्यकता`;
           break;
         case 'Español':
-          requirementTopic = `su requerimiento activo en ${lead.companyName}`;
+          requirementTopic = `su requerimiento activo en ${currentLead.companyName}`;
           break;
         case 'Français':
-          requirementTopic = `votre besoin chez ${lead.companyName}`;
+          requirementTopic = `votre besoin chez ${currentLead.companyName}`;
           break;
         case 'Deutsch':
-          requirementTopic = `Ihre geschäftliche Anforderung bei ${lead.companyName}`;
+          requirementTopic = `Ihre geschäftliche Anforderung bei ${currentLead.companyName}`;
           break;
         case 'العربية':
-          requirementTopic = `متطلباتكم في ${lead.companyName}`;
+          requirementTopic = `متطلباتكم في ${currentLead.companyName}`;
           break;
         case 'English':
         default:
-          requirementTopic = `your active requirement at ${lead.companyName}`;
+          requirementTopic = `your active requirement at ${currentLead.companyName}`;
           break;
       }
     }
@@ -431,77 +515,108 @@ export default function LiveCallSimulatorModal({
         : lang === 'العربية'
         ? 'أفضل التحدث باللغة العربية.'
         : "I'd prefer to speak in English."),
-      timestamp: formatTime(duration),
+      timestamp: formatTime(durationRef.current),
     };
 
     // 2. Ava confirms in selected language and transitions to sales pitch
     const confirmationSpeech = getLanguageConfirmationSpeech(
       lang,
       firstName,
-      lead.companyName,
+      currentLead.companyName,
       requirementTopic
     );
 
     const agentConfirmMessage: Message = {
       speaker: 'agent',
       text: confirmationSpeech,
-      timestamp: formatTime(duration + 1),
+      timestamp: formatTime(durationRef.current + 1),
     };
 
-    setMessages((prev) => [...prev, userChoiceMessage, agentConfirmMessage]);
-    speakText(confirmationSpeech, lang);
-  };
+    const updatedMessages = [...messagesRef.current, userChoiceMessage, agentConfirmMessage];
+    messagesRef.current = updatedMessages;
+    setMessages(updatedMessages);
+
+    speakTextRef.current(confirmationSpeech, lang);
+  }, []);
 
   // 4. Send Message to AI Agent (Auto-called by voice or keyboard)
-  const handleSendProspectMessage = async (textToSend: string) => {
-    if (!textToSend.trim() || callStatus !== 'CONNECTED' || isAiThinking) return;
+  const handleSendProspectMessage = useCallback(async (textToSend: string) => {
+    const trimmed = textToSend.trim();
+    if (!trimmed || callStatusRef.current !== 'CONNECTED' || isAiThinkingRef.current) return;
 
     // STEP 1: If language has not been selected yet, detect from prospect's speech!
-    if (!isLanguageSelected) {
-      const lower = textToSend.toLowerCase();
+    if (!isLanguageSelectedRef.current) {
+      const lower = trimmed.toLowerCase();
       let matchedLang: SupportedLanguage = 'English';
-      if (lower.includes('hindi') || lower.includes('हिंदी') || lower.includes('हिन्दी')) {
+
+      if (
+        /[\u0900-\u097F]/.test(trimmed) ||
+        /\b(hindi|हिन्दी|हिंदी|hind|hnd|india|namaste|theek|haan)\b/i.test(lower) ||
+        lower.includes('hindi') ||
+        lower.includes('हिंदी') ||
+        lower.includes('हिन्दी')
+      ) {
         matchedLang = 'हिन्दी';
-      } else if (lower.includes('spanish') || lower.includes('español')) {
+      } else if (
+        /\b(spanish|español|espanol|hablo|hola|si)\b/i.test(lower) ||
+        lower.includes('spanish') ||
+        lower.includes('español')
+      ) {
         matchedLang = 'Español';
-      } else if (lower.includes('french') || lower.includes('français')) {
+      } else if (
+        /\b(french|français|francais|bonjour|oui)\b/i.test(lower) ||
+        lower.includes('french') ||
+        lower.includes('français')
+      ) {
         matchedLang = 'Français';
-      } else if (lower.includes('german') || lower.includes('deutsch')) {
+      } else if (
+        /\b(german|deutsch|hallo|ja)\b/i.test(lower) ||
+        lower.includes('german') ||
+        lower.includes('deutsch')
+      ) {
         matchedLang = 'Deutsch';
-      } else if (lower.includes('arabic') || lower.includes('عربي')) {
+      } else if (
+        /[\u0600-\u06FF]/.test(trimmed) ||
+        /\b(arabic|arabi|marhaba|naam)\b/i.test(lower) ||
+        lower.includes('arabic') ||
+        lower.includes('عربي')
+      ) {
         matchedLang = 'العربية';
-      } else if (lower.includes('english')) {
+      } else if (lower.includes('english') || lower.includes('angrezi')) {
         matchedLang = 'English';
       }
 
-      handleSelectCallLanguage(matchedLang, textToSend);
+      handleSelectCallLanguage(matchedLang, trimmed);
       return;
     }
 
     const userMsg: Message = {
       speaker: 'prospect',
-      text: textToSend,
-      timestamp: formatTime(duration),
+      text: trimmed,
+      timestamp: formatTime(durationRef.current),
     };
 
-    const newHistory = [...messages, userMsg];
+    const newHistory = [...messagesRef.current, userMsg];
+    messagesRef.current = newHistory;
     setMessages(newHistory);
     setInputText('');
     setIsAiThinking(true);
+    isAiThinkingRef.current = true;
     setErrorMessage(null);
 
     try {
+      const currentLead = leadRef.current;
       const res = await fetch('/api/voice/call', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          leadId: lead?.id,
+          leadId: currentLead?.id,
           messages: newHistory.map((m) => ({
             role: m.speaker === 'agent' ? 'assistant' : 'user',
             content: m.text,
           })),
-          prospectSpeech: textToSend,
-          language: selectedLanguage, // Locked language strictly enforced
+          prospectSpeech: trimmed,
+          language: selectedLanguageRef.current, // Locked language strictly enforced
         }),
       });
 
@@ -510,16 +625,18 @@ export default function LiveCallSimulatorModal({
         const agentReply: Message = {
           speaker: 'agent',
           text: data.reply,
-          timestamp: formatTime(duration + 2),
+          timestamp: formatTime(durationRef.current + 2),
         };
-        setMessages((prev) => [...prev, agentReply]);
-        speakText(agentReply.text, selectedLanguage);
+        const updatedWithAgent = [...messagesRef.current, agentReply];
+        messagesRef.current = updatedWithAgent;
+        setMessages(updatedWithAgent);
+        speakTextRef.current(agentReply.text, selectedLanguageRef.current);
 
         if (data.meetingBooked) {
           setIsMeetingBooked(true);
           setCallSummary(
             data.summary ||
-              `Qualified: requirement verified. Budget approved, ${lead?.jobTitle || 'Decision maker'} confirmed.`
+              `Qualified: requirement verified. Budget approved, ${currentLead?.jobTitle || 'Decision maker'} confirmed.`
           );
           setNextBestAction(data.nextBestAction || 'Send case study, confirm Thursday 3 PM demo.');
           onMeetingBookedSuccess?.();
@@ -531,8 +648,11 @@ export default function LiveCallSimulatorModal({
       setErrorMessage(err?.message || 'Network error communicating with AI voice agent.');
     } finally {
       setIsAiThinking(false);
+      isAiThinkingRef.current = false;
     }
-  };
+  }, [handleSelectCallLanguage, onMeetingBookedSuccess]);
+
+  handleSendProspectMessageRef.current = handleSendProspectMessage;
 
   // 5. Initial Call Lifecycle: Rings 1.8s then Ava asks for language by VOICE ONLY
   useEffect(() => {
@@ -556,6 +676,7 @@ export default function LiveCallSimulatorModal({
         // Ring for 1.8 seconds then connect
         const ringTimer = setTimeout(() => {
           setCallStatus('CONNECTED');
+          callStatusRef.current = 'CONNECTED';
 
           // REAL CALL: Ava asks by VOICE ONLY. No buttons shown to user.
           const chooseLangPrompt =
@@ -566,8 +687,9 @@ export default function LiveCallSimulatorModal({
             text: chooseLangPrompt,
             timestamp: '00:02',
           };
+          messagesRef.current = [initialAiQuestion];
           setMessages([initialAiQuestion]);
-          speakText(chooseLangPrompt, 'English');
+          speakTextRef.current(chooseLangPrompt, 'English');
         }, 1800);
 
         return () => clearTimeout(ringTimer);
@@ -576,10 +698,14 @@ export default function LiveCallSimulatorModal({
       isOpenRef.current = false;
       currentLeadIdRef.current = null;
       setMessages([]);
+      messagesRef.current = [];
       setIsLanguageSelected(false);
+      isLanguageSelectedRef.current = false;
       setIsLimitReached(false);
       setCallStatus('RINGING');
+      callStatusRef.current = 'RINGING';
       setDuration(0);
+      durationRef.current = 0;
       setErrorMessage(null);
       if (timerRef.current) clearInterval(timerRef.current);
       if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
@@ -597,6 +723,7 @@ export default function LiveCallSimulatorModal({
         recognitionRef.current = null;
       }
       setIsMicListening(false);
+      latestTranscriptRef.current = '';
       setSpeechTranscript('');
     }
   }, [isOpen, lead?.id, defaultLanguage, speakText]);
@@ -607,10 +734,12 @@ export default function LiveCallSimulatorModal({
       timerRef.current = setInterval(() => {
         setDuration((prev) => {
           const next = prev + 1;
+          durationRef.current = next;
           if (next >= CALL_LIMIT_SECONDS) {
             // Call limit reached: Gracefully wrap up
             if (timerRef.current) clearInterval(timerRef.current);
             setCallStatus('ENDED');
+            callStatusRef.current = 'ENDED';
             setIsLimitReached(true);
             const wrapupText = getCallLimitWrapupSpeech(selectedLanguage);
             const wrapupMsg: Message = {
@@ -618,8 +747,10 @@ export default function LiveCallSimulatorModal({
               text: wrapupText,
               timestamp: formatTime(CALL_LIMIT_SECONDS),
             };
-            setMessages((existing) => [...existing, wrapupMsg]);
-            speakText(wrapupText, selectedLanguage);
+            const updated = [...messagesRef.current, wrapupMsg];
+            messagesRef.current = updated;
+            setMessages(updated);
+            speakTextRef.current(wrapupText, selectedLanguage);
           }
           return next;
         });
@@ -640,6 +771,7 @@ export default function LiveCallSimulatorModal({
   // End Call & Mute Handlers
   const handleEndCall = () => {
     setCallStatus('ENDED');
+    callStatusRef.current = 'ENDED';
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
@@ -655,18 +787,22 @@ export default function LiveCallSimulatorModal({
       recognitionRef.current = null;
     }
     setIsMicListening(false);
+    latestTranscriptRef.current = '';
     setSpeechTranscript('');
     setIsAiSpeaking(false);
+    isAiSpeakingRef.current = false;
   };
 
   const toggleMute = () => {
     if (!isMuted) {
       setIsMuted(true);
+      isMutedRef.current = true;
       cancelListening();
     } else {
       setIsMuted(false);
-      if (!isAiSpeaking && !isAiThinking && callStatus === 'CONNECTED') {
-        startListening();
+      isMutedRef.current = false;
+      if (!isAiSpeakingRef.current && !isAiThinkingRef.current && callStatusRef.current === 'CONNECTED') {
+        startListeningRef.current();
       }
     }
   };
@@ -973,17 +1109,36 @@ export default function LiveCallSimulatorModal({
                   </div>
 
                   {/* Real-Time Live Speech Preview */}
-                  <div className="bg-[#060a17] p-2.5 rounded-xl border border-white/10 text-xs min-h-[38px] text-white flex items-center justify-between">
-                    <span className={speechTranscript ? 'text-white font-medium' : 'text-slate-400 italic'}>
+                  <div className="bg-[#060a17] p-2.5 rounded-xl border border-white/10 text-xs min-h-[44px] text-white flex items-center justify-between gap-3">
+                    <span className={speechTranscript ? 'text-emerald-300 font-semibold text-xs tracking-wide' : 'text-slate-400 italic text-xs'}>
                       {speechTranscript
                         ? `"${speechTranscript}"`
                         : !isLanguageSelected
                         ? 'Listening to you... Speak your language to lock it automatically'
-                        : `Listening to your voice... Speak now (Pausing will auto-send)`}
+                        : `Listening to your voice... Speak now (Pausing auto-sends)`}
                     </span>
-                    <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                      Auto-Send Active
-                    </span>
+                    {speechTranscript ? (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                          Auto-sending...
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => stopListeningAndSend(speechTranscript)}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-[11px] flex items-center gap-1 shadow-sm transition-all cursor-pointer"
+                          title="Send immediately without waiting for silence"
+                        >
+                          <span>Send</span>
+                          <Send className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1 shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        Auto-Send Active
+                      </span>
+                    )}
                   </div>
                 </div>
               ) : null}
