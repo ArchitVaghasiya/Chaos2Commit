@@ -129,36 +129,44 @@ export default function HeaderBanner({
         </div>
 
         {/* Right Side: CTA & Actions Stacked */}
-        <div className="flex flex-col gap-3 shrink-0 xl:w-[380px]">
+        <div className="flex flex-col gap-3 shrink-0 xl:w-[280px]">
           
-          {/* CTA Banner */}
-          <div className="w-full p-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 shadow-lg text-slate-900 dark:text-white relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-2 opacity-20 pointer-events-none">
+          {/* CTA Banner with Integrated Sign In */}
+          <div className="w-full p-2.5 px-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 shadow-lg text-white relative overflow-hidden flex items-center justify-between gap-2.5">
+             <div className="absolute top-0 right-0 p-2 opacity-15 pointer-events-none">
                <Sparkles className="w-10 h-10" />
              </div>
-             <div className="relative z-10">
-                <div className="text-[13px] font-bold tracking-tight mb-0.5">{t.moreConversations}</div>
-                <div className="text-[11px] text-indigo-100 leading-tight">{t.closeDeals}</div>
+             <div className="relative z-10 min-w-0 flex-1">
+                <div className="text-[12px] font-bold tracking-tight leading-tight">{t.moreConversations}</div>
+                <div className="text-[10px] text-indigo-100 leading-tight mt-0.5">{t.closeDeals}</div>
              </div>
+             <Link
+               href="/sign-in"
+               className="relative z-10 px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 active:scale-95 text-white border border-white/30 text-[11px] font-semibold flex items-center gap-1.5 transition-all shadow-sm shrink-0 whitespace-nowrap cursor-pointer"
+               title="Sign In / Account"
+             >
+               <LogIn className="w-3.5 h-3.5" />
+               <span>Sign In</span>
+             </Link>
           </div>
 
           {/* Quick Actions Bar */}
-          <div className="flex items-center justify-between gap-2 w-full flex-wrap sm:flex-nowrap">
+          <div className="flex items-center justify-between gap-1.5 w-full">
             {onOpenNewCampaign && (
               <button
                 onClick={onOpenNewCampaign}
-                className="h-7 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold shadow-md flex items-center justify-center gap-1.5 transition-all whitespace-nowrap shrink-0"
+                className="flex-1 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold shadow-md flex items-center justify-center gap-1.5 transition-all whitespace-nowrap"
               >
-                <Plus className="w-3 h-3 text-white" /> {t.newCampaign}
+                <Plus className="w-3 h-3 text-white shrink-0" /> {t.newCampaign}
               </button>
             )}
 
             {onOpenCsvImport && (
               <button
                 onClick={onOpenCsvImport}
-                className="h-7 px-2.5 rounded-lg bg-black/[0.05] dark:bg-white/[0.05] hover:bg-black/[0.1] dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 border border-black/[0.1] dark:border-white/[0.08] text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all whitespace-nowrap shrink-0"
+                className="flex-1 py-1.5 rounded-lg bg-black/[0.05] dark:bg-white/[0.05] hover:bg-black/[0.1] dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 border border-black/[0.1] dark:border-white/[0.08] text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all whitespace-nowrap"
               >
-                <Upload className="w-3 h-3 text-slate-700 dark:text-slate-400" /> {t.importCsv}
+                <Upload className="w-3 h-3 text-slate-700 dark:text-slate-400 shrink-0" /> {t.importCsv}
               </button>
             )}
 
@@ -166,7 +174,7 @@ export default function HeaderBanner({
               <div className="relative shrink-0" ref={langRef}>
                 <button
                   onClick={() => setIsLangOpen(!isLangOpen)}
-                  className="h-7 px-2 rounded-lg bg-black/[0.05] dark:bg-[#080d20] border border-black/10 dark:border-white/[0.1] flex items-center gap-1.5 transition-colors hover:bg-black/[0.1] dark:hover:bg-white/[0.05] cursor-pointer"
+                  className="h-[26px] px-2 rounded-lg bg-black/[0.05] dark:bg-[#080d20] border border-black/10 dark:border-white/[0.1] flex items-center gap-1.5 transition-colors hover:bg-black/[0.1] dark:hover:bg-white/[0.05] cursor-pointer"
                   title="Change Language"
                 >
                    <Languages className="w-3.5 h-3.5 text-slate-800 dark:text-slate-300" />
@@ -200,15 +208,6 @@ export default function HeaderBanner({
               </div>
               
               <ThemeToggle />
-
-              <Link
-                href="/sign-in"
-                className="h-7 px-3 rounded-lg bg-indigo-50 dark:bg-indigo-500/15 hover:bg-indigo-100 dark:hover:bg-indigo-500/25 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 text-[11px] font-semibold flex items-center gap-1.5 transition-all shadow-sm shrink-0 whitespace-nowrap"
-                title="Sign In / Account"
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                <span className="whitespace-nowrap">Sign In</span>
-              </Link>
             </div>
           </div>
           
