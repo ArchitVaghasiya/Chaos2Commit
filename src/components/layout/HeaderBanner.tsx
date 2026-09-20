@@ -15,6 +15,7 @@ import {
   Plus
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { getTranslation } from '@/lib/i18n/translations';
 
 interface HeaderBannerProps {
   currentLanguage?: string;
@@ -29,6 +30,7 @@ export default function HeaderBanner({
   onOpenCsvImport,
   onOpenNewCampaign,
 }: HeaderBannerProps) {
+  const t = getTranslation(currentLanguage);
   const languages = [
     { code: 'en', label: 'English' },
     { code: 'es', label: 'Español' },
@@ -54,14 +56,14 @@ export default function HeaderBanner({
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <h1 className="text-2xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-800 dark:from-white dark:via-slate-100 dark:to-indigo-200">
-                AI Sales Agent Platform
+                {t.platformTitle}
               </h1>
               <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-600 border border-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-300 dark:border-indigo-500/30 uppercase tracking-wider">
-                Autonomous v2.4
+                {t.autonomousBadge}
               </span>
             </div>
             <p className="text-sm text-slate-700 dark:text-slate-300 font-medium leading-tight">
-              Discover. Qualify. Engage. Convert — All with AI.
+              {t.tagline}
             </p>
           </div>
         </div>
@@ -73,9 +75,9 @@ export default function HeaderBanner({
               <div className="w-6 h-6 rounded bg-blue-500/10 flex items-center justify-center shrink-0">
                 <Search className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
               </div>
-              <span className="text-[13px] font-bold text-slate-800 dark:text-slate-200 leading-tight">AI Lead Discovery</span>
+              <span className="text-[13px] font-bold text-slate-800 dark:text-slate-200 leading-tight">{t.discoveryPillar}</span>
             </div>
-            <p className="text-[11px] text-slate-700 dark:text-slate-400 leading-tight">Find high-intent leads across public channels.</p>
+            <p className="text-[11px] text-slate-700 dark:text-slate-400 leading-tight">{t.discoveryDesc}</p>
           </div>
 
           <div className="w-[170px] shrink-0 flex flex-col justify-center p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] hover:border-purple-500/30 transition-all">
@@ -83,9 +85,9 @@ export default function HeaderBanner({
               <div className="w-6 h-6 rounded bg-purple-500/10 flex items-center justify-center shrink-0">
                 <Headphones className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
               </div>
-              <span className="text-[13px] font-bold text-slate-800 dark:text-slate-200 leading-tight">AI Voice Agents</span>
+              <span className="text-[13px] font-bold text-slate-800 dark:text-slate-200 leading-tight">{t.voicePillar}</span>
             </div>
-            <p className="text-[11px] text-slate-700 dark:text-slate-400 leading-tight">Multilingual calls that qualify & book meetings.</p>
+            <p className="text-[11px] text-slate-700 dark:text-slate-400 leading-tight">{t.voiceDesc}</p>
           </div>
 
           <div className="w-[170px] shrink-0 flex flex-col justify-center p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] hover:border-cyan-500/30 transition-all">
@@ -93,9 +95,9 @@ export default function HeaderBanner({
               <div className="w-6 h-6 rounded bg-cyan-500/10 flex items-center justify-center shrink-0">
                 <FileCheck2 className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
               </div>
-              <span className="text-[13px] font-bold text-slate-800 dark:text-slate-200 leading-tight">Smart Enrichment</span>
+              <span className="text-[13px] font-bold text-slate-800 dark:text-slate-200 leading-tight">{t.enrichmentPillar}</span>
             </div>
-            <p className="text-[11px] text-slate-700 dark:text-slate-400 leading-tight">Verified contacts & company intelligence.</p>
+            <p className="text-[11px] text-slate-700 dark:text-slate-400 leading-tight">{t.enrichmentDesc}</p>
           </div>
 
           <div className="w-[170px] shrink-0 flex flex-col justify-center p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] hover:border-emerald-500/30 transition-all">
@@ -103,9 +105,9 @@ export default function HeaderBanner({
               <div className="w-6 h-6 rounded bg-emerald-500/10 flex items-center justify-center shrink-0">
                 <TrendingUp className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <span className="text-[13px] font-bold text-slate-800 dark:text-slate-200 leading-tight">Actionable Insights</span>
+              <span className="text-[13px] font-bold text-slate-800 dark:text-slate-200 leading-tight">{t.insightsPillar}</span>
             </div>
-            <p className="text-[11px] text-slate-700 dark:text-slate-400 leading-tight">Real-time pipeline ROI & conversation metrics.</p>
+            <p className="text-[11px] text-slate-700 dark:text-slate-400 leading-tight">{t.insightsDesc}</p>
           </div>
         </div>
 
@@ -118,8 +120,8 @@ export default function HeaderBanner({
                <Sparkles className="w-10 h-10" />
              </div>
              <div className="relative z-10">
-                <div className="text-[13px] font-bold tracking-tight mb-0.5">More Conversations. More Meetings.</div>
-                <div className="text-[11px] text-indigo-100 leading-tight">Let AI do the prospecting while you close deals.</div>
+                <div className="text-[13px] font-bold tracking-tight mb-0.5">{t.moreConversations}</div>
+                <div className="text-[11px] text-indigo-100 leading-tight">{t.closeDeals}</div>
              </div>
           </div>
 
@@ -130,7 +132,7 @@ export default function HeaderBanner({
                 onClick={onOpenNewCampaign}
                 className="flex-1 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold shadow-md flex items-center justify-center gap-1.5 transition-all"
               >
-                <Plus className="w-3 h-3 text-white" /> New Campaign
+                <Plus className="w-3 h-3 text-white" /> {t.newCampaign}
               </button>
             )}
 
@@ -139,7 +141,7 @@ export default function HeaderBanner({
                 onClick={onOpenCsvImport}
                 className="flex-1 py-1.5 rounded-lg bg-black/[0.05] dark:bg-white/[0.05] hover:bg-black/[0.1] dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 border border-black/[0.1] dark:border-white/[0.08] text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all"
               >
-                <Upload className="w-3 h-3 text-slate-700 dark:text-slate-400" /> Import CSV
+                <Upload className="w-3 h-3 text-slate-700 dark:text-slate-400" /> {t.importCsv}
               </button>
             )}
 

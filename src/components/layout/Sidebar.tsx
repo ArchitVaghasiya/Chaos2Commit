@@ -15,12 +15,14 @@ import {
   Settings,
   Sparkles,
 } from 'lucide-react';
+import { getTranslation } from '@/lib/i18n/translations';
 
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   voiceMinutesUsed?: number;
   voiceMinutesLimit?: number;
+  currentLanguage?: string;
 }
 
 export default function Sidebar({
@@ -28,22 +30,24 @@ export default function Sidebar({
   setActiveTab,
   voiceMinutesUsed = 12450,
   voiceMinutesLimit = 20000,
+  currentLanguage = 'English',
 }: SidebarProps) {
   const percentage = Math.round((voiceMinutesUsed / voiceMinutesLimit) * 100);
+  const t = getTranslation(currentLanguage);
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'lead-discovery', label: 'Lead Discovery', icon: Search },
-    { id: 'leads', label: 'Leads', icon: Users },
-    { id: 'campaigns', label: 'Campaigns', icon: Megaphone },
-    { id: 'ai-voice-agent', label: 'AI Voice Agent', icon: Headphones },
-    { id: 'conversations', label: 'Conversations', icon: MessageSquare },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { id: 'market-intelligence', label: 'Market Intelligence', icon: Globe2 },
-    { id: 'integrations', label: 'Integrations', icon: SlidersHorizontal },
-    { id: 'billing', label: 'Billing & Plans', icon: CreditCard },
-    { id: 'settings', label: 'Settings', icon: Settings },
-    { id: 'admin', label: 'Admin & Audit', icon: Sparkles },
+    { id: 'dashboard', label: t.navDashboard, icon: LayoutDashboard },
+    { id: 'lead-discovery', label: t.navLeadDiscovery, icon: Search },
+    { id: 'leads', label: t.navLeads, icon: Users },
+    { id: 'campaigns', label: t.navCampaigns, icon: Megaphone },
+    { id: 'ai-voice-agent', label: t.navVoiceAgent, icon: Headphones },
+    { id: 'conversations', label: t.navConversations, icon: MessageSquare },
+    { id: 'analytics', label: t.navAnalytics, icon: BarChart3 },
+    { id: 'market-intelligence', label: t.navMarketIntelligence, icon: Globe2 },
+    { id: 'integrations', label: t.navIntegrations, icon: SlidersHorizontal },
+    { id: 'billing', label: t.navBilling, icon: CreditCard },
+    { id: 'settings', label: t.navSettings, icon: Settings },
+    { id: 'admin', label: t.navAdmin, icon: Sparkles },
   ];
 
   return (
@@ -82,10 +86,10 @@ export default function Sidebar({
         <div className="p-3.5 rounded-xl bg-gradient-to-b from-black/[0.02] to-transparent dark:from-white/[0.04] dark:to-white/[0.01] border border-black/5 dark:border-white/[0.08] relative overflow-hidden">
           <div className="flex items-center justify-between text-xs mb-2">
             <span className="font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 whitespace-nowrap">
-              <Headphones className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" /> AI Voice Minutes
+              <Headphones className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" /> {t.voiceQuota}
             </span>
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold whitespace-nowrap">
-              {percentage}% Used
+              {percentage}% {t.voiceMinutesUsed}
             </span>
           </div>
 

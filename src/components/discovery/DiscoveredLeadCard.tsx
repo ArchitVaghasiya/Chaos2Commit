@@ -17,6 +17,7 @@ import {
   Headphones,
   ShieldCheck,
 } from 'lucide-react';
+import { getTranslation } from '@/lib/i18n/translations';
 
 function LinkedinIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
@@ -55,21 +56,25 @@ interface DiscoveredLeadCardProps {
   lead: LeadItem;
   onOpenCallModal: (lead: LeadItem) => void;
   onOpenScoreModal: (lead: LeadItem) => void;
+  currentLanguage?: string;
 }
 
 export default function DiscoveredLeadCard({
   lead,
   onOpenCallModal,
   onOpenScoreModal,
+  currentLanguage = 'English',
 }: DiscoveredLeadCardProps) {
+  const t = getTranslation(currentLanguage);
+
   return (
     <div className="glass-card p-5 mb-6 border-indigo-500/20 shadow-xl relative overflow-hidden">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-200 dark:border-white/[0.06]">
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5" /> High Intent Opportunity
+            <Sparkles className="w-3.5 h-3.5" /> {t.highIntentOpp}
           </span>
-          <span className="text-xs text-slate-700 dark:text-slate-400">• Discovered autonomously</span>
+          <span className="text-xs text-slate-700 dark:text-slate-400">• {t.discoveredOn}</span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -77,7 +82,7 @@ export default function DiscoveredLeadCard({
             onClick={() => onOpenScoreModal(lead)}
             className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-1.5 transition-all cursor-pointer"
           >
-            <span>Intent Score:</span>
+            <span>{t.intentScoreLabel}:</span>
             <span className="px-1.5 py-0.2 rounded bg-indigo-500 text-white font-bold">
               {lead.intentScore}
             </span>
@@ -87,7 +92,7 @@ export default function DiscoveredLeadCard({
             onClick={() => onOpenCallModal(lead)}
             className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-slate-900 dark:text-white shadow-md shadow-emerald-600/20 flex items-center gap-1.5 transition-all cursor-pointer"
           >
-            <Headphones className="w-3.5 h-3.5" /> Launch AI Call
+            <Headphones className="w-3.5 h-3.5" /> {t.launchAiCall}
           </button>
         </div>
       </div>
@@ -146,7 +151,7 @@ export default function DiscoveredLeadCard({
             </div>
 
             <span className="text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-              Active Requirement
+              {t.activeRequirementBadge}
             </span>
           </div>
         </div>
@@ -155,30 +160,30 @@ export default function DiscoveredLeadCard({
         <div className="lg:col-span-6 p-4 rounded-xl bg-slate-50 dark:bg-[#090d20] border border-slate-200 dark:border-white/[0.06]">
           <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200 dark:border-white/[0.06]">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-300 flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Lead Enriched Details
+              <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> {t.leadEnrichedDetails}
             </h3>
             <span className="text-[10px] text-slate-700 dark:text-slate-400">
-              Discovered: {lead.discoveryDate || '08 May 2025'}
+              {t.discoveredOn}: {lead.discoveryDate || '08 May 2025'}
             </span>
           </div>
 
           <div className="space-y-2.5 text-xs">
             <div className="flex items-center justify-between py-1 border-b border-slate-200 dark:border-white/[0.03]">
               <span className="text-slate-700 dark:text-slate-400 flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5 text-slate-600" /> Name
+                <Users className="w-3.5 h-3.5 text-slate-600" /> {t.contactName}
               </span>
               <span className="font-semibold text-slate-900 dark:text-white">{lead.name}</span>
             </div>
 
             <div className="flex items-center justify-between py-1 border-b border-slate-200 dark:border-white/[0.03]">
               <span className="text-slate-700 dark:text-slate-400 flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5 text-slate-600" /> Email
+                <Mail className="w-3.5 h-3.5 text-slate-600" /> {t.contactEmail}
               </span>
               <div className="flex items-center gap-1.5">
                 <span className="font-medium text-slate-700 dark:text-slate-200">{lead.email}</span>
                 {lead.emailVerified && (
                   <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-0.5">
-                    <CheckCircle2 className="w-2.5 h-2.5" /> Verified
+                    <CheckCircle2 className="w-2.5 h-2.5" /> {t.verifiedBadge}
                   </span>
                 )}
               </div>
@@ -186,13 +191,13 @@ export default function DiscoveredLeadCard({
 
             <div className="flex items-center justify-between py-1 border-b border-slate-200 dark:border-white/[0.03]">
               <span className="text-slate-700 dark:text-slate-400 flex items-center gap-1.5">
-                <Phone className="w-3.5 h-3.5 text-slate-600" /> Phone
+                <Phone className="w-3.5 h-3.5 text-slate-600" /> {t.contactPhone}
               </span>
               <div className="flex items-center gap-1.5">
                 <span className="font-medium text-slate-700 dark:text-slate-200">{lead.phone}</span>
                 {lead.phoneVerified && (
                   <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-0.5">
-                    <CheckCircle2 className="w-2.5 h-2.5" /> Verified
+                    <CheckCircle2 className="w-2.5 h-2.5" /> {t.verifiedBadge}
                   </span>
                 )}
               </div>
@@ -200,14 +205,14 @@ export default function DiscoveredLeadCard({
 
             <div className="flex items-center justify-between py-1 border-b border-slate-200 dark:border-white/[0.03]">
               <span className="text-slate-700 dark:text-slate-400 flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5 text-slate-600" /> Company
+                <Building2 className="w-3.5 h-3.5 text-slate-600" /> {t.companyLabel}
               </span>
               <span className="font-medium text-slate-700 dark:text-slate-200">{lead.companyName}</span>
             </div>
 
             <div className="flex items-center justify-between py-1 border-b border-slate-200 dark:border-white/[0.03]">
               <span className="text-slate-700 dark:text-slate-400 flex items-center gap-1.5">
-                <Globe className="w-3.5 h-3.5 text-slate-600" /> Website
+                <Globe className="w-3.5 h-3.5 text-slate-600" /> {t.websiteLabel}
               </span>
               <a
                 href={lead.companyWebsite ? `https://${lead.companyWebsite.replace(/^https?:\/\//, '')}` : '#'}
@@ -221,13 +226,13 @@ export default function DiscoveredLeadCard({
 
             <div className="flex items-center justify-between py-1 border-b border-slate-200 dark:border-white/[0.03]">
               <span className="text-slate-700 dark:text-slate-400 flex items-center gap-1.5">
-                <Briefcase className="w-3.5 h-3.5 text-slate-600" /> Job Title
+                <Briefcase className="w-3.5 h-3.5 text-slate-600" /> {t.jobTitleLabel}
               </span>
               <span className="font-medium text-slate-700 dark:text-slate-200">{lead.jobTitle}</span>
             </div>
 
             <div className="flex items-center justify-between py-1 border-b border-slate-200 dark:border-white/[0.03]">
-              <span className="text-slate-700 dark:text-slate-400">Industry & Size</span>
+              <span className="text-slate-700 dark:text-slate-400">{t.industrySizeLabel}</span>
               <span className="text-slate-800 dark:text-slate-300 font-medium">
                 {lead.industry} • {lead.companySize}
               </span>
@@ -235,7 +240,7 @@ export default function DiscoveredLeadCard({
 
             {/* Mandatory Transparency Link to Original Post */}
             <div className="flex items-center justify-between pt-1 text-[11px]">
-              <span className="text-slate-700 dark:text-slate-400">Original Post URL:</span>
+              <span className="text-slate-700 dark:text-slate-400">{t.originalPostUrlLabel}:</span>
               <a
                 href={lead.originalPostUrl || '#'}
                 target="_blank"

@@ -8,9 +8,9 @@ import {
   FolderArchive,
   Handshake,
   Database,
-  Filter,
   ArrowRight,
 } from 'lucide-react';
+import { getTranslation } from '@/lib/i18n/translations';
 
 function LinkedinIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
@@ -47,6 +47,7 @@ interface DiscoverySearchProps {
   dateRange?: string;
   setDateRange?: (dateRange: string) => void;
   loading?: boolean;
+  currentLanguage?: string;
 }
 
 export default function DiscoverySearch({
@@ -60,7 +61,9 @@ export default function DiscoverySearch({
   dateRange: controlledDateRange,
   setDateRange: controlledSetDateRange,
   loading = false,
+  currentLanguage = 'English',
 }: DiscoverySearchProps) {
+  const t = getTranslation(currentLanguage);
   const [keyword, setKeyword] = useState('');
   const [internalIndustry, setInternalIndustry] = useState('All Industries');
   const [internalLocation, setInternalLocation] = useState('Global');
@@ -105,7 +108,7 @@ export default function DiscoverySearch({
     <div className="glass-card p-5 mb-6 border-slate-200 dark:border-indigo-500/20 shadow-xl">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <Search className="w-4 h-4 text-blue-600 dark:text-blue-400" /> Lead Discovery
+          <Search className="w-4 h-4 text-blue-600 dark:text-blue-400" /> {t.navLeadDiscovery}
         </h2>
         <span className="text-xs text-slate-700 dark:text-slate-400">
           Autonomous crawler monitoring <span className="text-emerald-600 dark:text-emerald-400 font-semibold">37,800+</span> active public sources
@@ -121,7 +124,7 @@ export default function DiscoverySearch({
               type="text"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              placeholder="Search by Keyword, Industry, Location, Company..."
+              placeholder={t.searchPlaceholder}
               className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white dark:bg-[#090d1f] border border-slate-300 dark:border-white/[0.1] text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-sm dark:shadow-none"
             />
           </div>
@@ -134,11 +137,11 @@ export default function DiscoverySearch({
             {loading ? (
               <span className="flex items-center gap-2">
                 <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                AI Identifying...
+                {t.discoveringBtn}
               </span>
             ) : (
               <>
-                <span>Search</span>
+                <span>{t.searchBtn}</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}

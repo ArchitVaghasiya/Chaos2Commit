@@ -138,9 +138,9 @@ const INITIAL_FALLBACK_LEADS: LeadItem[] = [
 ];
 
 export default function HomePage() {
+  const [currentLanguage, setCurrentLanguage] = useState('English');
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [currentLanguage, setCurrentLanguage] = useState('English');
   const [selectedPlatform, setSelectedPlatform] = useState('All Sources');
   const [selectedIndustry, setSelectedIndustry] = useState('All Industries');
   const [selectedLocation, setSelectedLocation] = useState('Global');
@@ -357,10 +357,9 @@ export default function HomePage() {
       {/* Desktop View */}
       <div className="hidden lg:flex min-h-screen text-slate-900 dark:text-slate-100 p-3 sm:p-5 lg:p-6 max-w-[1720px] mx-auto flex-col justify-between">
         <div>
-          {/* Top Banner Header with Multilingual Language Selector (PDF Page 4 Note 1) */}
-        <HeaderBanner
+          <HeaderBanner
           currentLanguage={currentLanguage}
-          onLanguageChange={(lang) => setCurrentLanguage(lang)}
+          onLanguageChange={setCurrentLanguage}
           onOpenCsvImport={() => setActiveTab('leads')}
           onOpenNewCampaign={() => setActiveTab('campaigns')}
         />
@@ -373,6 +372,7 @@ export default function HomePage() {
             setActiveTab={setActiveTab}
             voiceMinutesUsed={12450}
             voiceMinutesLimit={20000}
+            currentLanguage={currentLanguage}
           />
 
           {/* Center/Right Dynamic Body */}
@@ -381,7 +381,7 @@ export default function HomePage() {
             {activeTab === 'dashboard' && (
               <div className="space-y-6">
                 {/* Top Level Overview KPIs */}
-                <OverviewKpis stats={stats} />
+                <OverviewKpis stats={stats} currentLanguage={currentLanguage} />
 
                 {/* Main Workspace 12-column grid */}
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
@@ -389,6 +389,7 @@ export default function HomePage() {
                   <div className="xl:col-span-8 space-y-6">
                     {/* Discovery Search & Platform Pills */}
                     <DiscoverySearch
+                      currentLanguage={currentLanguage}
                       onSearch={handleSearch}
                       selectedPlatform={selectedPlatform}
                       setSelectedPlatform={setSelectedPlatform}
@@ -404,6 +405,7 @@ export default function HomePage() {
                     {/* Sample Discovered Lead Card or Empty State */}
                     {selectedLead ? (
                       <DiscoveredLeadCard
+                        currentLanguage={currentLanguage}
                         lead={selectedLead}
                         onOpenCallModal={openCallModalForLead}
                         onOpenScoreModal={openScoreModalForLead}
@@ -451,6 +453,7 @@ export default function HomePage() {
             {activeTab === 'lead-discovery' && (
               <div className="space-y-6">
                 <DiscoverySearch
+                  currentLanguage={currentLanguage}
                   onSearch={handleSearch}
                   selectedPlatform={selectedPlatform}
                   setSelectedPlatform={setSelectedPlatform}
@@ -465,6 +468,7 @@ export default function HomePage() {
 
                 {selectedLead ? (
                   <DiscoveredLeadCard
+                    currentLanguage={currentLanguage}
                     lead={selectedLead}
                     onOpenCallModal={openCallModalForLead}
                     onOpenScoreModal={openScoreModalForLead}
@@ -639,7 +643,7 @@ export default function HomePage() {
             {/* 7. Analytics Hub */}
             {activeTab === 'analytics' && (
               <div className="space-y-6">
-                <OverviewKpis stats={stats} />
+                <OverviewKpis stats={stats} currentLanguage={currentLanguage} />
                 <CampaignPerformanceChart />
                 <DonutCharts />
               </div>
@@ -677,6 +681,7 @@ export default function HomePage() {
       />
 
       <LiveCallSimulatorModal
+        defaultLanguage={currentLanguage}
         lead={selectedLead}
         isOpen={isCallModalOpen}
         onClose={() => setIsCallModalOpen(false)}

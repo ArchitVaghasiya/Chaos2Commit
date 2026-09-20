@@ -20,6 +20,11 @@ import {
   Loader2,
 } from 'lucide-react';
 import { LeadItem } from '../discovery/DiscoveredLeadCard';
+import { getTranslation, getAiGreeting, getQuickReplies, getLocaleForVoice } from '@/lib/i18n/translations';
+
+const getLangCode = (lang: string) => {
+  return getLocaleForVoice(lang);
+};
 
 interface Message {
   speaker: 'agent' | 'prospect';
@@ -32,6 +37,7 @@ interface LiveCallSimulatorModalProps {
   isOpen: boolean;
   onClose: () => void;
   onMeetingBookedSuccess?: () => void;
+  defaultLanguage?: string;
 }
 
 export default function LiveCallSimulatorModal({
@@ -39,6 +45,7 @@ export default function LiveCallSimulatorModal({
   isOpen,
   onClose,
   onMeetingBookedSuccess,
+  defaultLanguage = 'English',
 }: LiveCallSimulatorModalProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [callStatus, setCallStatus] = useState<'RINGING' | 'CONNECTED' | 'ENDED'>('RINGING');
@@ -48,7 +55,7 @@ export default function LiveCallSimulatorModal({
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isMeetingBooked, setIsMeetingBooked] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState('English');
+  const [selectedLanguage, setSelectedLanguage] = useState(defaultLanguage);
   const [callSummary, setCallSummary] = useState(
     'Evaluating requirement fit, timeline, and decision maker authority...'
   );
@@ -60,6 +67,34 @@ export default function LiveCallSimulatorModal({
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const currentLeadIdRef = useRef<string | null>(null);
   const isOpenRef = useRef<boolean>(false);
+  const selectedLanguageRef = useRef(selectedLanguage);
+
+  useEffect(() => {
+    setSelectedLanguage(defaultLanguage);
+  }, [defaultLanguage]);
+
+  useEffect(() => {
+    selectedLanguageRef.current = selectedLanguage;
+  }, [selectedLanguage]);
+
+  const t = getTranslation(selectedLanguage);
+  const quickReplies = getQuickReplies(selectedLanguage);
+
+  const fetchTranslation = async (text: string, targetLang: string) => {
+    if (targetLang === 'English') return text;
+    try {
+      const res = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, targetLanguage: targetLang }),
+      });
+      if (!res.ok) return text;
+      const data = await res.json();
+      return data.translatedText || text;
+    } catch {
+      return text;
+    }
+  };
 
   // Initialize or reset call only when modal is newly opened or lead ID changes
   useEffect(() => {
@@ -75,20 +110,27 @@ export default function LiveCallSimulatorModal({
         setNextBestAction('Qualify company rollout scale and propose solutions demo.');
 
         // Ring for 1.8 seconds then connect
-        const ringTimer = setTimeout(() => {
+        const ringTimer = setTimeout(async () => {
           setCallStatus('CONNECTED');
           const firstName = lead.name ? lead.name.split(' ')[0] : 'there';
           const requirementTopic = lead.companyName
             ? `your active requirement at ${lead.companyName}`
             : 'your public requirement';
 
+          const translatedGreeting = getAiGreeting(
+            selectedLanguageRef.current,
+            firstName,
+            lead.companyName || 'your company',
+            requirementTopic
+          );
+
           const initialAiGreeting: Message = {
             speaker: 'agent',
-            text: `Hello ${firstName}, I'm Ava from TechNova Solutions. I'm calling about ${requirementTopic}.`,
+            text: translatedGreeting,
             timestamp: '00:03',
           };
           setMessages([initialAiGreeting]);
-          speakText(initialAiGreeting.text);
+          speakText(translatedGreeting, selectedLanguageRef.current);
         }, 1800);
 
         return () => clearTimeout(ringTimer);
@@ -126,10 +168,11 @@ export default function LiveCallSimulatorModal({
   }, [messages, isAiSpeaking, isAiThinking]);
 
   // Free in-browser speech synthesis (Text-to-Speech)
-  const speakText = (text: string) => {
+  const speakText = (text: string, lang: string = 'English') => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = getLangCode(lang);
       utterance.rate = 1.05;
       utterance.pitch = 1.0;
       utterance.onstart = () => setIsAiSpeaking(true);
@@ -148,9 +191,11 @@ export default function LiveCallSimulatorModal({
   const handleSendProspectMessage = async (textToSend: string) => {
     if (!textToSend.trim() || callStatus !== 'CONNECTED' || isAiThinking) return;
 
+    const translatedProspect = await fetchTranslation(textToSend, selectedLanguageRef.current);
+
     const userMsg: Message = {
       speaker: 'prospect',
-      text: textToSend,
+      text: translatedProspect,
       timestamp: formatTime(duration),
     };
 
@@ -178,13 +223,14 @@ export default function LiveCallSimulatorModal({
 
       const data = await res.json();
       if (res.ok && data.success && data.reply) {
+        const translatedReply = await fetchTranslation(data.reply, selectedLanguageRef.current);
         const agentReply: Message = {
           speaker: 'agent',
-          text: data.reply,
+          text: translatedReply,
           timestamp: formatTime(duration + 2),
         };
         setMessages((prev) => [...prev, agentReply]);
-        speakText(agentReply.text);
+        speakText(translatedReply, selectedLanguageRef.current);
 
         if (data.meetingBooked) {
           setIsMeetingBooked(true);
@@ -227,17 +273,17 @@ export default function LiveCallSimulatorModal({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                  Multilingual AI Voice Agent
+                  {t.voiceSimulatorTitle}
                 </h2>
                 {callStatus === 'CONNECTED' && (
                   <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                    CONNECTED • {formatTime(duration)}
+                    {t.connectedStatus} • {formatTime(duration)}
                   </span>
                 )}
                 {callStatus === 'RINGING' && (
                   <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse">
-                    RINGING PROSPECT...
+                    {t.ringingStatus}
                   </span>
                 )}
                 {callStatus === 'ENDED' && (
@@ -247,7 +293,7 @@ export default function LiveCallSimulatorModal({
                 )}
               </div>
               <p className="text-[11px] text-slate-600 dark:text-slate-300">
-                Outbound call to <span className="font-semibold text-slate-900 dark:text-white">{lead.name}</span> ({lead.jobTitle} at {lead.companyName}) • {lead.phone}
+                {t.outboundCallTo} <span className="font-semibold text-slate-900 dark:text-white">{lead.name}</span> ({lead.jobTitle} at {lead.companyName}) • {lead.phone}
               </p>
             </div>
           </div>
@@ -258,7 +304,7 @@ export default function LiveCallSimulatorModal({
                 onClick={handleEndCall}
                 className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-rose-600/30 cursor-pointer"
               >
-                <PhoneOff className="w-3.5 h-3.5" /> End Call
+                <PhoneOff className="w-3.5 h-3.5" /> {t.endCallBtn}
               </button>
             )}
             <button
@@ -282,7 +328,7 @@ export default function LiveCallSimulatorModal({
                 Live call • {lead.companyName}
               </span>
               <span className="text-emerald-400 text-[11px] font-bold uppercase tracking-wider bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                Connected
+                {t.connectedStatus}
               </span>
             </div>
 
@@ -310,7 +356,7 @@ export default function LiveCallSimulatorModal({
                       }`}
                     >
                       <div className="flex items-center justify-between gap-3 text-[10px] opacity-75 mb-1 font-semibold">
-                        <span>{isAgent ? 'AI Sales Agent (Ava)' : lead.name}</span>
+                        <span>{isAgent ? t.aiSalesAgentLabel : lead.name}</span>
                         <span>{msg.timestamp}</span>
                       </div>
                       <p>{msg.text}</p>
@@ -370,27 +416,19 @@ export default function LiveCallSimulatorModal({
               <div className="flex flex-wrap gap-1.5">
                 <button
                   type="button"
-                  onClick={() =>
-                    handleSendProspectMessage(
-                      'Yes – we need a qualified partner for this implementation and automation.'
-                    )
-                  }
+                  onClick={() => handleSendProspectMessage(quickReplies.reply1)}
                   disabled={isAiThinking || callStatus !== 'CONNECTED'}
                   className="px-2.5 py-1 rounded-lg text-[11px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/[0.08] transition-all cursor-pointer disabled:opacity-40"
                 >
-                  &quot;Yes, we need a partner for this implementation...&quot;
+                  &quot;{quickReplies.reply1}&quot;
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
-                    handleSendProspectMessage(
-                      'Next quarter, around 150 users. Can we set up a call with your team?'
-                    )
-                  }
+                  onClick={() => handleSendProspectMessage(quickReplies.reply2)}
                   disabled={isAiThinking || callStatus !== 'CONNECTED'}
                   className="px-2.5 py-1 rounded-lg text-[11px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/[0.08] transition-all cursor-pointer disabled:opacity-40"
                 >
-                  &quot;Next quarter, 150 users. Can we set up a call?&quot;
+                  &quot;{quickReplies.reply2}&quot;
                 </button>
               </div>
 
@@ -400,7 +438,7 @@ export default function LiveCallSimulatorModal({
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSendProspectMessage(inputText)}
-                  placeholder={`Type ${lead.name.split(' ')[0]}'s spoken words or click suggestions above...`}
+                  placeholder={t.typeSpokenWords}
                   disabled={isAiThinking || callStatus !== 'CONNECTED'}
                   className="flex-1 px-3 py-2 rounded-xl bg-white dark:bg-[#090d1f] border border-slate-200 dark:border-white/[0.1] text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 disabled:opacity-50"
                 />
@@ -421,7 +459,7 @@ export default function LiveCallSimulatorModal({
               {/* Call Summary Card */}
               <div className="p-3.5 rounded-xl bg-white dark:bg-[#060918] border border-slate-200 dark:border-white/[0.08]">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-400" /> Call Summary
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-400" /> {t.callSummaryTitle}
                 </div>
                 <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed bg-white/[0.02] p-2.5 rounded-lg border border-slate-200 dark:border-white/[0.04]">
                   {callSummary}
@@ -431,7 +469,7 @@ export default function LiveCallSimulatorModal({
               {/* Next Best Action Card */}
               <div className="p-3.5 rounded-xl bg-white dark:bg-[#060918] border border-slate-200 dark:border-white/[0.08]">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-emerald-400" /> Next Best Action
+                  <Calendar className="w-3.5 h-3.5 text-emerald-400" /> {t.nextBestActionTitle}
                 </div>
                 <p className="text-xs text-emerald-300 leading-relaxed bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20 font-medium">
                   {nextBestAction}
@@ -441,7 +479,7 @@ export default function LiveCallSimulatorModal({
               {/* Outcomes Handled Automatically Badges */}
               <div>
                 <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-2">
-                  Outcomes Handled Automatically
+                  {t.outcomesHandledTitle}
                 </div>
                 <div className="grid grid-cols-2 gap-1.5 text-[11px]">
                   <span
@@ -451,7 +489,7 @@ export default function LiveCallSimulatorModal({
                         : 'bg-white/[0.02] text-slate-600 border-slate-200 dark:border-white/[0.05]'
                     }`}
                   >
-                    ✓ Interested
+                    {t.interestedBadge}
                   </span>
 
                   <span
@@ -461,15 +499,15 @@ export default function LiveCallSimulatorModal({
                         : 'bg-white/[0.02] text-slate-600 border-slate-200 dark:border-white/[0.05]'
                     }`}
                   >
-                    📅 Meeting Booked
+                    {t.meetingBookedBadge}
                   </span>
 
                   <span className="p-2 rounded-lg bg-white/[0.02] text-slate-600 border border-slate-200 dark:border-white/[0.05] text-center">
-                    Voicemail Left
+                    {t.voicemailBadge}
                   </span>
 
                   <span className="p-2 rounded-lg bg-white/[0.02] text-slate-600 border border-slate-200 dark:border-white/[0.05] text-center">
-                    Retry Scheduled
+                    {t.retryBadge}
                   </span>
                 </div>
               </div>
@@ -478,7 +516,7 @@ export default function LiveCallSimulatorModal({
             {/* Multilingual Support Strip */}
             <div className="pt-3 border-t border-slate-200 dark:border-white/[0.08]">
               <div className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <Globe2 className="w-3.5 h-3.5 text-blue-400" /> Multilingual AI Voice Calling:
+                <Globe2 className="w-3.5 h-3.5 text-blue-400" /> {t.multilingualTitle}:
               </div>
               <div className="flex flex-wrap gap-1">
                 {['English', 'हिन्दी', 'Español', 'العربية', 'Français', 'Deutsch'].map((lang) => (
