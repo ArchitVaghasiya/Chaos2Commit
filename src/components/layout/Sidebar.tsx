@@ -15,12 +15,14 @@ import {
   Settings,
   Sparkles,
 } from 'lucide-react';
+import { getTranslation } from '@/lib/i18n/translations';
 
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   voiceMinutesUsed?: number;
   voiceMinutesLimit?: number;
+  currentLanguage?: string;
 }
 
 export default function Sidebar({
@@ -28,22 +30,24 @@ export default function Sidebar({
   setActiveTab,
   voiceMinutesUsed = 12450,
   voiceMinutesLimit = 20000,
+  currentLanguage = 'English',
 }: SidebarProps) {
   const percentage = Math.round((voiceMinutesUsed / voiceMinutesLimit) * 100);
+  const t = getTranslation(currentLanguage);
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'lead-discovery', label: 'Lead Discovery', icon: Search },
-    { id: 'leads', label: 'Leads', icon: Users },
-    { id: 'campaigns', label: 'Campaigns', icon: Megaphone },
-    { id: 'ai-voice-agent', label: 'AI Voice Agent', icon: Headphones },
-    { id: 'conversations', label: 'Conversations', icon: MessageSquare },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { id: 'market-intelligence', label: 'Market Intelligence', icon: Globe2 },
-    { id: 'integrations', label: 'Integrations', icon: SlidersHorizontal },
-    { id: 'billing', label: 'Billing & Plans', icon: CreditCard },
-    { id: 'settings', label: 'Settings', icon: Settings },
-    { id: 'admin', label: 'Admin & Audit', icon: Sparkles },
+    { id: 'dashboard', label: t.navDashboard, icon: LayoutDashboard },
+    { id: 'lead-discovery', label: t.navLeadDiscovery, icon: Search },
+    { id: 'leads', label: t.navLeads, icon: Users },
+    { id: 'campaigns', label: t.navCampaigns, icon: Megaphone },
+    { id: 'ai-voice-agent', label: t.navVoiceAgent, icon: Headphones },
+    { id: 'conversations', label: t.navConversations, icon: MessageSquare },
+    { id: 'analytics', label: t.navAnalytics, icon: BarChart3 },
+    { id: 'market-intelligence', label: t.navMarketIntelligence, icon: Globe2 },
+    { id: 'integrations', label: t.navIntegrations, icon: SlidersHorizontal },
+    { id: 'billing', label: t.navBilling, icon: CreditCard },
+    { id: 'settings', label: t.navSettings, icon: Settings },
+    { id: 'admin', label: t.navAdmin, icon: Sparkles },
   ];
 
   return (
@@ -57,14 +61,14 @@ export default function Sidebar({
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 text-left ${
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 text-left cursor-pointer ${
                 isActive
                   ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 text-white shadow-lg shadow-indigo-600/30 font-semibold'
                   : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'
               }`}
             >
               <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-              <span>{item.label}</span>
+              <span className="truncate">{item.label}</span>
               {item.id === 'lead-discovery' && (
                 <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-md bg-blue-500/30 text-blue-200 font-bold border border-blue-400/30">
                   Live
@@ -79,17 +83,17 @@ export default function Sidebar({
       <div className="mt-6 p-3.5 rounded-xl bg-gradient-to-b from-white/[0.04] to-white/[0.01] border border-white/[0.08] relative overflow-hidden">
         <div className="flex items-center justify-between text-xs mb-2">
           <span className="font-semibold text-slate-200 flex items-center gap-1.5">
-            <Headphones className="w-3.5 h-3.5 text-indigo-400" /> AI Voice Minutes
+            <Headphones className="w-3.5 h-3.5 text-indigo-400" /> {t.voiceQuota}
           </span>
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold">
-            {percentage}% Used
+            {percentage}%
           </span>
         </div>
 
         <div className="text-sm font-bold text-white mb-1.5">
           {voiceMinutesUsed.toLocaleString()}{' '}
           <span className="text-xs font-normal text-slate-400">
-            / {voiceMinutesLimit.toLocaleString()}
+            / {voiceMinutesLimit.toLocaleString()} {t.voiceMinutesUsed}
           </span>
         </div>
 
@@ -103,7 +107,7 @@ export default function Sidebar({
 
         <button
           onClick={() => setActiveTab('billing')}
-          className="w-full py-2 px-3 rounded-lg text-xs font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-md shadow-indigo-600/20 transition-all flex items-center justify-center gap-1.5"
+          className="w-full py-2 px-3 rounded-lg text-xs font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-md shadow-indigo-600/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
         >
           <Sparkles className="w-3.5 h-3.5" /> Upgrade Plan
         </button>

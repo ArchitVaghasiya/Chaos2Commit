@@ -19,7 +19,8 @@ export interface VoiceTurnMessage {
  */
 export async function generateVoiceTurnWithGroq(
   messages: VoiceTurnMessage[],
-  leadContext: { name: string; company: string; requirement: string }
+  leadContext: { name: string; company: string; requirement: string },
+  language = 'English'
 ) {
   const groq = getGroqClient();
   if (!groq) {
@@ -30,11 +31,14 @@ export async function generateVoiceTurnWithGroq(
 You are on a live phone call with ${leadContext.name} from ${leadContext.company}.
 Their public requirement was: "${leadContext.requirement}".
 
+CRITICAL MULTILINGUAL REQUIREMENT:
+The call language selected is "${language}". You MUST speak and reply strictly in natural, professional, spoken ${language}. If the language is Spanish, reply in Spanish. If Hindi, reply in Hindi (or Hinglish/Hindi script). If French, German, or Arabic, reply strictly in that language. Never default to English unless the selected language is English.
+
 Your goal:
 1. Speak concisely in 1-2 natural, spoken sentences (never use bullet points, markdown, or long paragraphs).
-2. Validate their requirement, timeline, and team size.
+2. Validate their requirement, timeline, and team size in ${language}.
 3. Overcome any hesitation with warmth and authority.
-4. When they express interest or ask to connect, propose a meeting for "Thursday at 3 PM with our solutions lead".
+4. When they express interest or ask to connect, propose a meeting for "Thursday at 3 PM with our solutions lead" (translated naturally into ${language}).
 5. Sound natural, friendly, professional, and consultative.`;
 
   const modelsToTry = ['groq/compound-mini', 'openai/gpt-oss-20b'];

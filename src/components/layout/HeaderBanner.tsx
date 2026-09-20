@@ -13,6 +13,7 @@ import {
   Upload,
   Plus
 } from 'lucide-react';
+import { getTranslation } from '@/lib/i18n/translations';
 
 interface HeaderBannerProps {
   currentLanguage?: string;
@@ -35,6 +36,8 @@ export default function HeaderBanner({
     { code: 'de', label: 'Deutsch' },
     { code: 'ar', label: 'العربية' },
   ];
+
+  const t = getTranslation(currentLanguage);
 
   return (
     <header className="w-full glass-card p-4 sm:p-5 mb-6 border-indigo-500/20 bg-gradient-to-r from-[#0c1228]/95 via-[#0e1738]/90 to-[#101432]/95 shadow-2xl relative overflow-hidden">
@@ -60,17 +63,17 @@ export default function HeaderBanner({
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-indigo-200">
-                AI Sales Agent Platform
+                {t.platformTitle}
               </h1>
               <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                <Sparkles className="w-3 h-3" /> Autonomous v2.4
+                <Sparkles className="w-3.5 h-3.5" /> {t.autonomousBadge}
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-300 font-medium mt-0.5">
-              Discover. Qualify. Engage. Convert — All with AI.
+              {t.tagline}
             </p>
             <p className="text-[11px] text-slate-400 hidden md:block">
-              One Platform. End-to-End Autonomous Sales Workflow.
+              {t.onePlatformSubtitle}
             </p>
           </div>
         </div>
@@ -82,8 +85,8 @@ export default function HeaderBanner({
               <Search className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-xs font-bold text-slate-200">AI Lead Discovery</div>
-              <div className="text-[10px] text-slate-400 leading-tight">Find high-intent leads across public channels</div>
+              <div className="text-xs font-bold text-slate-200">{t.discoveryPillar}</div>
+              <div className="text-[10px] text-slate-400 leading-tight">{t.discoveryDesc}</div>
             </div>
           </div>
 
@@ -92,8 +95,8 @@ export default function HeaderBanner({
               <Headphones className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-xs font-bold text-slate-200">AI Voice Agents</div>
-              <div className="text-[10px] text-slate-400 leading-tight">Multilingual calls that qualify &amp; book meetings</div>
+              <div className="text-xs font-bold text-slate-200">{t.voicePillar}</div>
+              <div className="text-[10px] text-slate-400 leading-tight">{t.voiceDesc}</div>
             </div>
           </div>
 
@@ -102,8 +105,8 @@ export default function HeaderBanner({
               <FileCheck2 className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-xs font-bold text-slate-200">Smart Enrichment</div>
-              <div className="text-[10px] text-slate-400 leading-tight">Verified contacts &amp; company intelligence</div>
+              <div className="text-xs font-bold text-slate-200">{t.enrichmentPillar}</div>
+              <div className="text-[10px] text-slate-400 leading-tight">{t.enrichmentDesc}</div>
             </div>
           </div>
 
@@ -112,8 +115,8 @@ export default function HeaderBanner({
               <TrendingUp className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-xs font-bold text-slate-200">Actionable Insights</div>
-              <div className="text-[10px] text-slate-400 leading-tight">Real-time pipeline ROI &amp; conversation metrics</div>
+              <div className="text-xs font-bold text-slate-200">{t.insightsPillar}</div>
+              <div className="text-[10px] text-slate-400 leading-tight">{t.insightsDesc}</div>
             </div>
           </div>
         </div>
@@ -128,7 +131,7 @@ export default function HeaderBanner({
                 className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/20 flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>New Campaign</span>
+                <span>{t.newCampaign}</span>
               </button>
             )}
 
@@ -138,18 +141,18 @@ export default function HeaderBanner({
                 className="px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-200 border border-white/[0.08] text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <Upload className="w-3.5 h-3.5 text-slate-400" />
-                <span>Import CSV</span>
+                <span>{t.importCsv}</span>
               </button>
             )}
 
-            {/* Global Multilingual Selector (PDF Page 4 Note 1) */}
+            {/* Global Multilingual Selector */}
             <div className="relative flex items-center">
               <Globe2 className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none" />
               <select
                 value={currentLanguage}
                 onChange={(e) => onLanguageChange?.(e.target.value)}
                 aria-label="Select platform language"
-                className="pl-7 pr-3 py-1.5 rounded-xl bg-[#080d20] border border-white/[0.1] text-xs text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer appearance-none"
+                className="pl-7 pr-3 py-1.5 rounded-xl bg-[#080d20] border border-indigo-500/30 text-xs text-slate-100 font-medium focus:outline-none focus:border-indigo-400 cursor-pointer shadow-sm hover:border-indigo-400 transition-colors"
               >
                 {languages.map((lang) => (
                   <option key={lang.code} value={lang.label}>
@@ -167,10 +170,10 @@ export default function HeaderBanner({
             </div>
             <div>
               <div className="text-[11px] font-bold text-white tracking-wide">
-                More Conversations. More Meetings.
+                {t.moreConversations}
               </div>
               <div className="text-[10px] text-indigo-200">
-                Let AI do the prospecting while you close deals.
+                {t.closeDeals}
               </div>
             </div>
           </div>

@@ -231,6 +231,7 @@ export default function HomePage() {
             setActiveTab={setActiveTab}
             voiceMinutesUsed={12450}
             voiceMinutesLimit={20000}
+            currentLanguage={currentLanguage}
           />
 
           {/* Center/Right Dynamic Body */}
@@ -239,7 +240,7 @@ export default function HomePage() {
             {activeTab === 'dashboard' && (
               <div className="space-y-6">
                 {/* Top Level Overview KPIs */}
-                <OverviewKpis stats={stats} />
+                <OverviewKpis stats={stats} currentLanguage={currentLanguage} />
 
                 {/* Main Workspace 12-column grid */}
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
@@ -259,6 +260,7 @@ export default function HomePage() {
                       loading={loading}
                       onResetToExample={handleResetToExample}
                       isExampleMode={isExampleMode}
+                      currentLanguage={currentLanguage}
                     />
 
                     {/* Sample Discovered Lead Card or Empty State */}
@@ -268,6 +270,7 @@ export default function HomePage() {
                         onOpenCallModal={openCallModalForLead}
                         onOpenScoreModal={openScoreModalForLead}
                         isExampleMode={isExampleMode}
+                        currentLanguage={currentLanguage}
                       />
                     ) : (
                       <div className="glass-card p-6 mb-6 border-white/[0.06] text-center flex flex-col items-center justify-center">
@@ -337,6 +340,7 @@ export default function HomePage() {
                   loading={loading}
                   onResetToExample={handleResetToExample}
                   isExampleMode={isExampleMode}
+                  currentLanguage={currentLanguage}
                 />
 
                 {selectedLead ? (
@@ -345,6 +349,7 @@ export default function HomePage() {
                     onOpenCallModal={openCallModalForLead}
                     onOpenScoreModal={openScoreModalForLead}
                     isExampleMode={isExampleMode}
+                    currentLanguage={currentLanguage}
                   />
                 ) : (
                   <div className="glass-card p-6 mb-6 border-white/[0.06] text-center flex flex-col items-center justify-center">
@@ -579,6 +584,7 @@ export default function HomePage() {
         lead={selectedLead}
         isOpen={isCallModalOpen}
         onClose={() => setIsCallModalOpen(false)}
+        defaultLanguage={currentLanguage}
         onMeetingBookedSuccess={() => {
           if (selectedLead) {
             setLeads((prev) =>

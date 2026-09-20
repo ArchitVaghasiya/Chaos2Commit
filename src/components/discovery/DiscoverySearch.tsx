@@ -28,6 +28,8 @@ function TwitterIcon({ className = 'w-4 h-4' }: { className?: string }) {
   );
 }
 
+import { getTranslation } from '@/lib/i18n/translations';
+
 export interface DiscoverySearchParams {
   keyword: string;
   platform: string;
@@ -49,6 +51,7 @@ interface DiscoverySearchProps {
   loading?: boolean;
   onResetToExample?: () => void;
   isExampleMode?: boolean;
+  currentLanguage?: string;
 }
 
 export default function DiscoverySearch({
@@ -64,19 +67,8 @@ export default function DiscoverySearch({
   loading = false,
   onResetToExample,
   isExampleMode = true,
+  currentLanguage = 'English',
 }: DiscoverySearchProps) {
-  const [keyword, setKeyword] = useState('');
-  const [internalIndustry, setInternalIndustry] = useState('All Industries');
-  const [internalLocation, setInternalLocation] = useState('Global');
-  const [internalDateRange, setInternalDateRange] = useState('Last 7 Days');
-
-  const industry = controlledIndustry ?? internalIndustry;
-  const setIndustry = controlledSetIndustry ?? setInternalIndustry;
-  const location = controlledLocation ?? internalLocation;
-  const setLocation = controlledSetLocation ?? setInternalLocation;
-  const dateRange = controlledDateRange ?? internalDateRange;
-  const setDateRange = controlledSetDateRange ?? setInternalDateRange;
-
   const platforms = [
     { id: 'LinkedIn', label: 'LinkedIn', count: '12,568', poolDesc: 'Monitored Posts', icon: LinkedinIcon, color: 'text-blue-400', bg: 'bg-blue-500/10' },
     { id: 'X (Twitter)', label: 'X (Twitter)', count: '8,421', poolDesc: 'Public Tweets', icon: TwitterIcon, color: 'text-sky-400', bg: 'bg-sky-500/10' },
@@ -85,7 +77,23 @@ export default function DiscoverySearch({
     { id: 'Freelance Platforms', label: 'Freelance Platforms', count: '2,845', poolDesc: 'Project Postings', icon: Handshake, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
     { id: 'CRM Integrations', label: 'CRM Integrations', count: '3,214', poolDesc: 'Synced Records', icon: Database, color: 'text-pink-400', bg: 'bg-pink-500/10' },
   ];
+  const [keyword, setKeyword] = useState('');
+  const [internalIndustry, setInternalIndustry] = useState('All Industries');
+  const [internalLocation, setInternalLocation] = useState('Global');
+  const [internalDateRange, setInternalDateRange] = useState('Last 7 Days');
 
+  const t = getTranslation(currentLanguage);
+
+  const industry = controlledIndustry !== undefined ? controlledIndustry : internalIndustry;
+  const setIndustry = controlledSetIndustry || setInternalIndustry;
+
+  const location = controlledLocation !== undefined ? controlledLocation : internalLocation;
+  const setLocation = controlledSetLocation || setInternalLocation;
+
+  const dateRange = controlledDateRange !== undefined ? controlledDateRange : internalDateRange;
+  const setDateRange = controlledSetDateRange || setInternalDateRange;
+
+  // Handle explicit form submission
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSearch({
@@ -97,10 +105,11 @@ export default function DiscoverySearch({
     });
   };
 
-  const handleQuickQuery = (tag: string) => {
-    setKeyword(tag);
+  // Handle 1-click quick query tags
+  const handleQuickQuery = (query: string) => {
+    setKeyword(query);
     onSearch({
-      keyword: tag,
+      keyword: query,
       platform: selectedPlatform,
       industry,
       location,
@@ -116,7 +125,8 @@ export default function DiscoverySearch({
   };
 
   const sampleKeywords = [
-    'Microsoft 365 implementation',
+    'SharePoint Migration',
+    'Microsoft 365 workflow automation',
     'SharePoint Online partner',
     'Healthcare EHR workflow',
     'Cloud zero trust security',
@@ -126,7 +136,7 @@ export default function DiscoverySearch({
     <div className="glass-card p-5 mb-6 border-indigo-500/20 shadow-xl">
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <h2 className="text-base font-bold text-white flex items-center gap-2">
-          <Search className="w-4 h-4 text-blue-400" /> Lead Discovery
+          <Search className="w-4 h-4 text-blue-400" /> {t.navLeadDiscovery}
         </h2>
         <div className="flex items-center gap-3">
           {!isExampleMode && (
@@ -153,7 +163,7 @@ export default function DiscoverySearch({
               type="text"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              placeholder="Search by Keyword, Requirement, Industry, Company (e.g. SharePoint, Healthcare EHR)..."
+              placeholder={t.searchPlaceholder}
               className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#090d1f] border border-white/[0.1] text-sm text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
             />
           </div>
@@ -166,11 +176,11 @@ export default function DiscoverySearch({
             {loading ? (
               <span className="flex items-center gap-2">
                 <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                AI Crawling &amp; Scoring...
+                {t.discoveringBtn}
               </span>
             ) : (
               <>
-                <span>Search</span>
+                <span>{t.searchBtn}</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
