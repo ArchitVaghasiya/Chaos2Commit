@@ -102,6 +102,9 @@ export default function LiveCallSimulatorModal({
   const messagesRef = useRef<Message[]>([]);
   const leadRef = useRef(lead);
 
+  // Turn-taking atomic lock: Prevents duplicate messages from being submitted
+  const isSubmittingSpeechRef = useRef<boolean>(false);
+
   // Cross-reference handles to prevent stale closures across async timeouts and recognition callbacks
   const startListeningRef = useRef<() => void>(() => {});
   const stopListeningAndSendRef = useRef<(overrideText?: string) => void>(() => {});
@@ -176,6 +179,7 @@ export default function LiveCallSimulatorModal({
     if (typeof window === 'undefined') return;
     if (callStatusRef.current !== 'CONNECTED') return;
     if (isAiSpeakingRef.current || isAiThinkingRef.current) return;
+    if (isSubmittingSpeechRef.current) return;
     if (isMutedRef.current) return;
     if (inputModeRef.current !== 'mic') return;
 
@@ -190,8 +194,13 @@ export default function LiveCallSimulatorModal({
 
     try {
       if (recognitionRef.current) {
+        const existing = recognitionRef.current;
+        recognitionRef.current = null;
+        existing.onresult = null;
+        existing.onend = null;
+        existing.onerror = null;
         try {
-          recognitionRef.current.abort();
+          existing.abort();
         } catch (_) {}
       }
 
@@ -212,6 +221,9 @@ export default function LiveCallSimulatorModal({
       };
 
       recognition.onresult = (event: any) => {
+        // If already submitting turn, ignore subsequent recognition results
+        if (isSubmittingSpeechRef.current) return;
+
         // Collect full transcript across all continuous parts to prevent dropped words
         let fullTranscript = '';
         for (let i = 0; i < event.results.length; ++i) {
@@ -227,10 +239,11 @@ export default function LiveCallSimulatorModal({
             clearTimeout(silenceTimeoutRef.current);
           }
 
-          // Real phone call silence detection: 1.1s pause automatically submits spoken words
+          // Real phone call silence detection: 1.8s of sustained pause allows the user
+          // to finish their complete sentence and breathe without Ava cutting in prematurely.
           silenceTimeoutRef.current = setTimeout(() => {
             stopListeningAndSendRef.current(currentText);
-          }, 1100);
+          }, 1800);
         }
       };
 
@@ -248,34 +261,32 @@ export default function LiveCallSimulatorModal({
 
       recognition.onend = () => {
         setIsMicListening(false);
-        // If user was speaking and browser fired speech-end, submit immediately
-        const pendingText = latestTranscriptRef.current.trim();
-        if (pendingText) {
-          stopListeningAndSendRef.current(pendingText);
+        // Do not auto-restart if we are already submitting speech or Ava is speaking/thinking
+        if (
+          isSubmittingSpeechRef.current ||
+          isAiSpeakingRef.current ||
+          isAiThinkingRef.current ||
+          callStatusRef.current !== 'CONNECTED' ||
+          !isOpenRef.current
+        ) {
           return;
         }
 
-        // Keep phone line open continuously if not speaking/thinking
-        if (
-          isOpenRef.current &&
-          callStatusRef.current === 'CONNECTED' &&
-          !isAiSpeakingRef.current &&
-          !isAiThinkingRef.current &&
-          !isMutedRef.current &&
-          inputModeRef.current === 'mic'
-        ) {
+        // Keep phone line open continuously if prospect is still in their turn
+        if (!isMutedRef.current && inputModeRef.current === 'mic') {
           setTimeout(() => {
             if (
               isOpenRef.current &&
               callStatusRef.current === 'CONNECTED' &&
               !isAiSpeakingRef.current &&
               !isAiThinkingRef.current &&
+              !isSubmittingSpeechRef.current &&
               !isMutedRef.current &&
               inputModeRef.current === 'mic'
             ) {
               startListeningRef.current();
             }
-          }, 300);
+          }, 250);
         }
       };
 
@@ -289,26 +300,42 @@ export default function LiveCallSimulatorModal({
   startListeningRef.current = startListening;
 
   const stopListeningAndSend = useCallback((overrideText?: string) => {
+    // 1. Guard against duplicate submissions
+    if (isSubmittingSpeechRef.current || isAiSpeakingRef.current || isAiThinkingRef.current) {
+      return;
+    }
+
+    // 2. Clear any pending silence timer
     if (silenceTimeoutRef.current) {
       clearTimeout(silenceTimeoutRef.current);
       silenceTimeoutRef.current = null;
     }
 
+    // 3. Immediately disarm speech recognition so NO lingering events can fire
     if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (_) {}
+      const rec = recognitionRef.current;
       recognitionRef.current = null;
+      rec.onresult = null;
+      rec.onend = null;
+      rec.onerror = null;
+      try {
+        rec.abort();
+      } catch (_) {}
     }
     setIsMicListening(false);
 
+    // 4. Resolve the text to send
     const toSend = (overrideText || latestTranscriptRef.current || speechTranscript).trim();
     latestTranscriptRef.current = '';
     setSpeechTranscript('');
 
-    if (toSend) {
-      handleSendProspectMessageRef.current(toSend);
+    if (!toSend) {
+      return;
     }
+
+    // 5. ATOMIC LOCK: Mark as submitting so nothing else can trigger a send
+    isSubmittingSpeechRef.current = true;
+    handleSendProspectMessageRef.current(toSend);
   }, [speechTranscript]);
 
   stopListeningAndSendRef.current = stopListeningAndSend;
@@ -319,14 +346,19 @@ export default function LiveCallSimulatorModal({
       silenceTimeoutRef.current = null;
     }
     if (recognitionRef.current) {
-      try {
-        recognitionRef.current.abort();
-      } catch (_) {}
+      const rec = recognitionRef.current;
       recognitionRef.current = null;
+      rec.onresult = null;
+      rec.onend = null;
+      rec.onerror = null;
+      try {
+        rec.abort();
+      } catch (_) {}
     }
     setIsMicListening(false);
     latestTranscriptRef.current = '';
     setSpeechTranscript('');
+    isSubmittingSpeechRef.current = false;
   }, []);
 
   // 2. Universal Speech Synthesis with Turn-Taking Transition
@@ -342,10 +374,14 @@ export default function LiveCallSimulatorModal({
 
       // Mute microphone while Ava speaks to prevent self-echo
       if (recognitionRef.current) {
-        try {
-          recognitionRef.current.abort();
-        } catch (_) {}
+        const rec = recognitionRef.current;
         recognitionRef.current = null;
+        rec.onresult = null;
+        rec.onend = null;
+        rec.onerror = null;
+        try {
+          rec.abort();
+        } catch (_) {}
       }
       setIsMicListening(false);
       setIsAiSpeaking(true);
@@ -355,6 +391,10 @@ export default function LiveCallSimulatorModal({
         setIsAiSpeaking(false);
         isAiSpeakingRef.current = false;
         audioRef.current = null;
+
+        // Release submit lock when Ava finishes her turn so prospect can speak
+        isSubmittingSpeechRef.current = false;
+
         // Turn-Taking: Microphone automatically re-opens for prospect when Ava finishes speaking!
         if (
           isOpenRef.current &&
@@ -445,24 +485,30 @@ export default function LiveCallSimulatorModal({
       utterance.onend = () => {
         setIsAiSpeaking(false);
         isAiSpeakingRef.current = false;
+        isSubmittingSpeechRef.current = false;
         if (onEndCallback) onEndCallback();
       };
       utterance.onerror = () => {
         setIsAiSpeaking(false);
         isAiSpeakingRef.current = false;
+        isSubmittingSpeechRef.current = false;
         if (onEndCallback) onEndCallback();
       };
       window.speechSynthesis.speak(utterance);
     } else {
       setIsAiSpeaking(false);
       isAiSpeakingRef.current = false;
+      isSubmittingSpeechRef.current = false;
       if (onEndCallback) onEndCallback();
     }
   };
 
   // 3. Spoken Language Detection & Permanent Lock
   const handleSelectCallLanguage = useCallback((lang: SupportedLanguage, spokenText?: string) => {
-    if (isLanguageSelectedRef.current || callStatusRef.current !== 'CONNECTED') return;
+    if (isLanguageSelectedRef.current || callStatusRef.current !== 'CONNECTED') {
+      isSubmittingSpeechRef.current = false;
+      return;
+    }
 
     // Immediately lock language synchronously in refs and state
     isLanguageSelectedRef.current = true;
@@ -536,13 +582,21 @@ export default function LiveCallSimulatorModal({
     messagesRef.current = updatedMessages;
     setMessages(updatedMessages);
 
+    // Keep submit lock active while Ava speaks the confirmation
+    isSubmittingSpeechRef.current = true;
     speakTextRef.current(confirmationSpeech, lang);
   }, []);
 
   // 4. Send Message to AI Agent (Auto-called by voice or keyboard)
   const handleSendProspectMessage = useCallback(async (textToSend: string) => {
     const trimmed = textToSend.trim();
-    if (!trimmed || callStatusRef.current !== 'CONNECTED' || isAiThinkingRef.current) return;
+    if (!trimmed || callStatusRef.current !== 'CONNECTED' || isAiThinkingRef.current) {
+      isSubmittingSpeechRef.current = false;
+      return;
+    }
+
+    // Ensure submit lock is active
+    isSubmittingSpeechRef.current = true;
 
     // STEP 1: If language has not been selected yet, detect from prospect's speech!
     if (!isLanguageSelectedRef.current) {
@@ -643,9 +697,11 @@ export default function LiveCallSimulatorModal({
         }
       } else {
         setErrorMessage(data?.error || 'Voice response could not be generated. Please retry.');
+        isSubmittingSpeechRef.current = false;
       }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Network error communicating with AI voice agent.');
+      isSubmittingSpeechRef.current = false;
     } finally {
       setIsAiThinking(false);
       isAiThinkingRef.current = false;
@@ -725,6 +781,7 @@ export default function LiveCallSimulatorModal({
       setIsMicListening(false);
       latestTranscriptRef.current = '';
       setSpeechTranscript('');
+      isSubmittingSpeechRef.current = false;
     }
   }, [isOpen, lead?.id, defaultLanguage, speakText]);
 
@@ -791,6 +848,7 @@ export default function LiveCallSimulatorModal({
     setSpeechTranscript('');
     setIsAiSpeaking(false);
     isAiSpeakingRef.current = false;
+    isSubmittingSpeechRef.current = false;
   };
 
   const toggleMute = () => {
@@ -1109,34 +1167,34 @@ export default function LiveCallSimulatorModal({
                   </div>
 
                   {/* Real-Time Live Speech Preview */}
-                  <div className="bg-[#060a17] p-2.5 rounded-xl border border-white/10 text-xs min-h-[44px] text-white flex items-center justify-between gap-3">
+                  <div className="bg-[#060a17] p-2.5 rounded-xl border border-white/10 text-xs min-h-[46px] text-white flex items-center justify-between gap-3">
                     <span className={speechTranscript ? 'text-emerald-300 font-semibold text-xs tracking-wide' : 'text-slate-400 italic text-xs'}>
                       {speechTranscript
                         ? `"${speechTranscript}"`
                         : !isLanguageSelected
-                        ? 'Listening to you... Speak your language to lock it automatically'
-                        : `Listening to your voice... Speak now (Pausing auto-sends)`}
+                        ? 'Ava is listening... Speak your preferred language (e.g. "Hindi", "English")'
+                        : `Ava is listening... Speak your thought naturally (Ava waits for complete sentence)`}
                     </span>
                     {speechTranscript ? (
                       <div className="flex items-center gap-2 shrink-0">
                         <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                          Auto-sending...
+                          Listening...
                         </span>
                         <button
                           type="button"
                           onClick={() => stopListeningAndSend(speechTranscript)}
                           className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-[11px] flex items-center gap-1 shadow-sm transition-all cursor-pointer"
-                          title="Send immediately without waiting for silence"
+                          title="Send immediately without waiting for pause"
                         >
-                          <span>Send</span>
+                          <span>Send Now</span>
                           <Send className="w-3 h-3" />
                         </button>
                       </div>
                     ) : (
                       <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1 shrink-0">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        Auto-Send Active
+                        Patient Listening Active
                       </span>
                     )}
                   </div>

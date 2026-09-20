@@ -17,9 +17,12 @@ export async function POST(request: Request) {
       requirement: lead?.originalPostSnippet || 'Microsoft 365 & SharePoint migration',
     };
 
-    const history: VoiceTurnMessage[] = messages || [];
+    const history: VoiceTurnMessage[] = messages ? [...messages] : [];
     if (prospectSpeech) {
-      history.push({ role: 'user', content: prospectSpeech });
+      const lastMsg = history[history.length - 1];
+      if (!lastMsg || lastMsg.role !== 'user' || lastMsg.content.trim() !== prospectSpeech.trim()) {
+        history.push({ role: 'user', content: prospectSpeech });
+      }
     }
 
     // Try Groq Llama 3.3 first with explicit language instructions (sub-150ms)
