@@ -93,74 +93,74 @@ export default function HeaderBanner({
         </div>
 
         {/* Center: 4 Value Pillars */}
-        <div className="flex items-stretch gap-3 overflow-x-auto hide-scrollbar flex-1 xl:max-w-max pb-2 xl:pb-0">
-          <div className="w-[170px] shrink-0 flex flex-col justify-center p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] hover:border-blue-500/30 transition-all">
+        <div className="flex items-stretch gap-2.5 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden flex-1 xl:max-w-max pb-1 xl:pb-0">
+          <div className="w-[145px] 2xl:w-[155px] shrink-0 flex flex-col justify-center p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] hover:border-blue-500/30 transition-all">
             <div className="flex items-center gap-2 mb-1.5">
               <div className="w-6 h-6 rounded bg-blue-500/10 flex items-center justify-center shrink-0">
                 <Search className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
               </div>
-              <span className="text-[13px] font-bold text-slate-800 dark:text-slate-200 leading-tight">{t.discoveryPillar}</span>
+              <span className="text-[12px] font-bold text-slate-800 dark:text-slate-200 leading-tight">{t.discoveryPillar}</span>
             </div>
-            <p className="text-[11px] text-slate-700 dark:text-slate-400 leading-tight">{t.discoveryDesc}</p>
+            <p className="text-[10.5px] text-slate-700 dark:text-slate-400 leading-tight">{t.discoveryDesc}</p>
           </div>
 
-          <div className="w-[170px] shrink-0 flex flex-col justify-center p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] hover:border-purple-500/30 transition-all">
+          <div className="w-[145px] 2xl:w-[155px] shrink-0 flex flex-col justify-center p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] hover:border-purple-500/30 transition-all">
             <div className="flex items-center gap-2 mb-1.5">
               <div className="w-6 h-6 rounded bg-purple-500/10 flex items-center justify-center shrink-0">
                 <Headphones className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
               </div>
-              <span className="text-[13px] font-bold text-slate-800 dark:text-slate-200 leading-tight">{t.voicePillar}</span>
+              <span className="text-[12px] font-bold text-slate-800 dark:text-slate-200 leading-tight">{t.voicePillar}</span>
             </div>
-            <p className="text-[11px] text-slate-700 dark:text-slate-400 leading-tight">{t.voiceDesc}</p>
+            <p className="text-[10.5px] text-slate-700 dark:text-slate-400 leading-tight">{t.voiceDesc}</p>
           </div>
 
-          <div className="w-[170px] shrink-0 flex flex-col justify-center p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] hover:border-cyan-500/30 transition-all">
+          <div className="w-[145px] 2xl:w-[155px] shrink-0 flex flex-col justify-center p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] hover:border-cyan-500/30 transition-all">
             <div className="flex items-center gap-2 mb-1.5">
               <div className="w-6 h-6 rounded bg-cyan-500/10 flex items-center justify-center shrink-0">
                 <FileCheck2 className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
               </div>
-              <span className="text-[13px] font-bold text-slate-800 dark:text-slate-200 leading-tight">{t.enrichmentPillar}</span>
+              <span className="text-[12px] font-bold text-slate-800 dark:text-slate-200 leading-tight">{t.enrichmentPillar}</span>
             </div>
-            <p className="text-[11px] text-slate-700 dark:text-slate-400 leading-tight">{t.enrichmentDesc}</p>
+            <p className="text-[10.5px] text-slate-700 dark:text-slate-400 leading-tight">{t.enrichmentDesc}</p>
           </div>
 
-          <div className="w-[170px] shrink-0 flex flex-col justify-center p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] hover:border-emerald-500/30 transition-all">
+          <div className="w-[145px] 2xl:w-[155px] shrink-0 flex flex-col justify-center p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] hover:border-emerald-500/30 transition-all">
             <div className="flex items-center gap-2 mb-1.5">
               <div className="w-6 h-6 rounded bg-emerald-500/10 flex items-center justify-center shrink-0">
                 <TrendingUp className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <span className="text-[13px] font-bold text-slate-800 dark:text-slate-200 leading-tight">{t.insightsPillar}</span>
+              <span className="text-[12px] font-bold text-slate-800 dark:text-slate-200 leading-tight">{t.insightsPillar}</span>
             </div>
-            <p className="text-[11px] text-slate-700 dark:text-slate-400 leading-tight">{t.insightsDesc}</p>
+            <p className="text-[10.5px] text-slate-700 dark:text-slate-400 leading-tight">{t.insightsDesc}</p>
           </div>
         </div>
 
-        {/* Right Side: CTA & Actions Stacked */}
-        <div className="flex flex-col gap-3 shrink-0 xl:w-[280px]">
+        {/* Right Side: CTA & Actions with Generous Spacing */}
+        <div className="flex flex-col gap-2.5 shrink-0 xl:w-[350px] 2xl:w-[380px]">
           
-          {/* CTA Banner with Integrated Sign In */}
-          <div className="w-full p-2.5 px-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 shadow-lg text-white relative overflow-hidden flex items-center justify-between gap-2.5">
+          {/* CTA Banner with Integrated Sign In / Profile */}
+          <div className="w-full p-2.5 px-3.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 shadow-md text-white relative overflow-hidden flex items-center justify-between gap-3">
              <div className="absolute top-0 right-0 p-2 opacity-15 pointer-events-none">
                <Sparkles className="w-10 h-10" />
              </div>
              <div className="relative z-10 min-w-0 flex-1">
-                <div className="text-[12px] font-bold tracking-tight leading-tight">{t.moreConversations}</div>
-                <div className="text-[10px] text-indigo-100 leading-tight mt-0.5">{t.closeDeals}</div>
+                <div className="text-xs font-bold tracking-tight leading-tight">{t.moreConversations}</div>
+                <div className="text-[10.5px] text-indigo-100 leading-tight mt-0.5">{t.closeDeals}</div>
              </div>
              {currentUser ? (
                <div className="relative z-10 flex items-center gap-1.5 shrink-0">
                  <button
                    onClick={onOpenProfile}
-                   className="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 active:scale-95 text-white text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer truncate max-w-[120px]"
+                   className="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 active:scale-95 text-white text-xs font-bold flex items-center gap-1 transition-all cursor-pointer truncate max-w-[130px] border border-white/20"
                    title="Click to update profile details"
                  >
-                   <User className="w-3 h-3 shrink-0" />
+                   <User className="w-3.5 h-3.5 shrink-0" />
                    <span className="truncate">{currentUser.name}</span>
                  </button>
                  {onSignOut && (
                    <button
                      onClick={onSignOut}
-                     className="px-2 py-1 rounded-lg bg-white/10 hover:bg-red-500/30 active:scale-95 text-white/90 hover:text-white text-[10px] font-semibold transition-all cursor-pointer shrink-0"
+                     className="px-2 py-1 rounded-lg bg-white/10 hover:bg-red-500/30 active:scale-95 text-white/90 hover:text-white text-[11px] font-semibold transition-all cursor-pointer shrink-0 border border-white/10"
                      title="Sign Out"
                    >
                      Sign Out
@@ -170,7 +170,7 @@ export default function HeaderBanner({
              ) : (
                <Link
                  href="/sign-in"
-                 className="relative z-10 px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 active:scale-95 text-white border border-white/30 text-[11px] font-semibold flex items-center gap-1.5 transition-all shadow-sm shrink-0 whitespace-nowrap cursor-pointer"
+                 className="relative z-10 px-3 py-1 rounded-lg bg-white/20 hover:bg-white/30 active:scale-95 text-white border border-white/30 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm shrink-0 whitespace-nowrap cursor-pointer"
                  title="Sign In / Account"
                >
                  <LogIn className="w-3.5 h-3.5" />
@@ -179,42 +179,48 @@ export default function HeaderBanner({
              )}
           </div>
 
-          {/* Quick Actions Bar */}
-          <div className="flex items-center justify-between gap-1.5 w-full">
-            {onOpenNewCampaign && (
-              <button
-                onClick={onOpenNewCampaign}
-                className="flex-1 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold shadow-md flex items-center justify-center gap-1.5 transition-all whitespace-nowrap"
-              >
-                <Plus className="w-3 h-3 text-white shrink-0" /> {t.newCampaign}
-              </button>
-            )}
+          {/* Quick Actions & Utility Controls */}
+          <div className="flex items-center justify-between gap-2 w-full">
+            {/* Action Buttons Group */}
+            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+              {onOpenNewCampaign && (
+                <button
+                  onClick={onOpenNewCampaign}
+                  className="flex-1 py-2 px-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/20 flex items-center justify-center gap-1.5 transition-all whitespace-nowrap cursor-pointer active:scale-95"
+                >
+                  <Plus className="w-3.5 h-3.5 text-white shrink-0" />
+                  <span className="truncate">{t.newCampaign}</span>
+                </button>
+              )}
 
-            {onOpenCsvImport && (
-              <button
-                onClick={onOpenCsvImport}
-                className="flex-1 py-1.5 rounded-lg bg-black/[0.05] dark:bg-white/[0.05] hover:bg-black/[0.1] dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 border border-black/[0.1] dark:border-white/[0.08] text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all whitespace-nowrap"
-              >
-                <Upload className="w-3 h-3 text-slate-700 dark:text-slate-400 shrink-0" /> {t.importCsv}
-              </button>
-            )}
+              {onOpenCsvImport && (
+                <button
+                  onClick={onOpenCsvImport}
+                  className="py-2 px-2.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.05] hover:bg-black/[0.08] dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 border border-black/[0.08] dark:border-white/[0.08] text-xs font-medium flex items-center justify-center gap-1.5 transition-all whitespace-nowrap cursor-pointer active:scale-95"
+                >
+                  <Upload className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400 shrink-0" />
+                  <span className="truncate">{t.importCsv}</span>
+                </button>
+              )}
+            </div>
 
-            <div className="flex items-center gap-1.5 shrink-0">
+            {/* Language & Theme Controls with Divider */}
+            <div className="flex items-center gap-1.5 shrink-0 pl-1.5 border-l border-slate-200 dark:border-white/[0.08]">
               <div className="relative shrink-0" ref={langRef}>
                 <button
                   onClick={() => setIsLangOpen(!isLangOpen)}
-                  className="h-[26px] px-2 rounded-lg bg-black/[0.05] dark:bg-[#080d20] border border-black/10 dark:border-white/[0.1] flex items-center gap-1.5 transition-colors hover:bg-black/[0.1] dark:hover:bg-white/[0.05] cursor-pointer"
+                  className="h-8 px-2.5 rounded-xl bg-black/[0.04] dark:bg-[#080d20] border border-black/10 dark:border-white/[0.1] flex items-center gap-1.5 transition-colors hover:bg-black/[0.08] dark:hover:bg-white/[0.05] cursor-pointer"
                   title="Change Language"
                 >
-                   <Languages className="w-3.5 h-3.5 text-slate-800 dark:text-slate-300" />
-                   <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                   <Languages className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
+                   <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
                      {languages.find(l => l.label === currentLanguage)?.code.toUpperCase() || 'EN'}
                    </span>
                    <ChevronDown className="w-3 h-3 text-slate-500" />
                 </button>
                 
                 {isLangOpen && (
-                  <div className="absolute top-full right-0 mt-1 w-32 bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-white/[0.1] shadow-xl py-1 z-50 overflow-hidden">
+                  <div className="absolute top-full right-0 mt-1.5 w-32 bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-white/[0.1] shadow-2xl py-1 z-50 overflow-hidden">
                     {languages.map((lang) => (
                       <button
                         key={lang.code}
