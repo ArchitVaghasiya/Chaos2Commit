@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   X,
-  Phone,
   PhoneOff,
   Volume2,
   Calendar,
@@ -11,7 +10,6 @@ import {
   Sparkles,
   Bot,
   User,
-  CheckCircle2,
   Clock,
   Globe2,
   AlertCircle,
@@ -19,8 +17,6 @@ import {
   Lock,
   Timer,
   AlertTriangle,
-  Check,
-  ShieldAlert,
   Mic,
   MicOff,
   Keyboard,
@@ -29,7 +25,6 @@ import { LeadItem } from '../discovery/DiscoveredLeadCard';
 import {
   getTranslation,
   getLocaleForVoice,
-  getAiGreeting,
   getLanguageConfirmationSpeech,
   getCallLimitWrapupSpeech,
   getQuickReplies,
@@ -50,16 +45,7 @@ interface LiveCallSimulatorModalProps {
   defaultLanguage?: string;
 }
 
-const CALL_LIMIT_SECONDS = 180; // 3 Minutes (180 seconds) call limit
-
-const AVAILABLE_LANGUAGES: { code: SupportedLanguage; label: string; flag: string; native: string }[] = [
-  { code: 'English', label: 'English', flag: '🇬🇧', native: 'English' },
-  { code: 'हिन्दी', label: 'Hindi', flag: '🇮🇳', native: 'हिन्दी' },
-  { code: 'Español', label: 'Spanish', flag: '🇪🇸', native: 'Español' },
-  { code: 'Français', label: 'French', flag: '🇫🇷', native: 'Français' },
-  { code: 'Deutsch', label: 'German', flag: '🇩🇪', native: 'Deutsch' },
-  { code: 'العربية', label: 'Arabic', flag: '🇦🇪', native: 'العربية' },
-];
+const CALL_LIMIT_SECONDS = 180; // 3 Minutes (180 seconds) telecom qualification limit
 
 export default function LiveCallSimulatorModal({
   lead,
@@ -79,15 +65,15 @@ export default function LiveCallSimulatorModal({
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>(
     (defaultLanguage as SupportedLanguage) || 'English'
   );
-  // Real Call Language Lock: Once the prospect selects their preferred language, it is permanently locked for the rest of the call
+  // Real Call Flow: Zero buttons. Ava asks by voice, user speaks, language is locked immediately.
   const [isLanguageSelected, setIsLanguageSelected] = useState(false);
   const [isLimitReached, setIsLimitReached] = useState(false);
 
-  // Real-Time Microphone Speech-to-Text State
-  const [inputMode, setInputMode] = useState<'mic' | 'keyboard'>('mic');
+  // 100% Hands-Free Microphone State
   const [isMicListening, setIsMicListening] = useState(false);
   const [speechTranscript, setSpeechTranscript] = useState('');
-  const recognitionRef = useRef<any>(null);
+  const [isMuted, setIsMuted] = useState(false);
+  const [inputMode, setInputMode] = useState<'mic' | 'keyboard'>('mic');
 
   const [callSummary, setCallSummary] = useState(
     'Evaluating requirement fit, timeline, and decision maker authority...'
@@ -96,11 +82,49 @@ export default function LiveCallSimulatorModal({
     'Qualify company rollout scale and propose solutions demo.'
   );
 
+  // State synchronization refs for event listeners and timers
+  const callStatusRef = useRef<'RINGING' | 'CONNECTED' | 'ENDED'>('RINGING');
+  const isAiSpeakingRef = useRef<boolean>(false);
+  const isAiThinkingRef = useRef<boolean>(false);
+  const isMutedRef = useRef<boolean>(false);
+  const inputModeRef = useRef<'mic' | 'keyboard'>('mic');
+  const isLanguageSelectedRef = useRef<boolean>(false);
+  const selectedLanguageRef = useRef<SupportedLanguage>((defaultLanguage as SupportedLanguage) || 'English');
+  const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const recognitionRef = useRef<any>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const currentLeadIdRef = useRef<string | null>(null);
   const isOpenRef = useRef<boolean>(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    callStatusRef.current = callStatus;
+  }, [callStatus]);
+
+  useEffect(() => {
+    isAiSpeakingRef.current = isAiSpeaking;
+  }, [isAiSpeaking]);
+
+  useEffect(() => {
+    isAiThinkingRef.current = isAiThinking;
+  }, [isAiThinking]);
+
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+  }, [isMuted]);
+
+  useEffect(() => {
+    inputModeRef.current = inputMode;
+  }, [inputMode]);
+
+  useEffect(() => {
+    isLanguageSelectedRef.current = isLanguageSelected;
+  }, [isLanguageSelected]);
+
+  useEffect(() => {
+    selectedLanguageRef.current = selectedLanguage;
+  }, [selectedLanguage]);
 
   const t = getTranslation(selectedLanguage);
   const quickReplies = getQuickReplies(selectedLanguage);
@@ -113,51 +137,212 @@ export default function LiveCallSimulatorModal({
     return `${mins.toString().padStart(2, '0')}:${remaining.toString().padStart(2, '0')}`;
   };
 
-  // Universal speech synthesis: Neural Audio (/api/voice/tts) + Web Speech API fallback
-  const speakText = useCallback((text: string, lang: string = selectedLanguage) => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
+  // 1. Hands-Free Microphone Engine (Automatic Voice Activity Detection)
+  const startListening = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    if (callStatusRef.current !== 'CONNECTED') return;
+    if (isAiSpeakingRef.current || isAiThinkingRef.current) return;
+    if (isMutedRef.current) return;
 
-    setIsAiSpeaking(true);
+    const SpeechConstructor =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechConstructor) {
+      console.warn('Web Speech Recognition API not available on this browser.');
+      setInputMode('keyboard');
+      return;
+    }
 
     try {
-      const audioUrl = `/api/voice/tts?lang=${encodeURIComponent(lang)}&text=${encodeURIComponent(text)}`;
-      const audio = new Audio();
-      audio.preload = 'auto';
-      audio.src = audioUrl;
-      audioRef.current = audio;
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch (_) {}
+      }
 
-      audio.onplay = () => setIsAiSpeaking(true);
-      audio.onended = () => {
+      const recognition = new SpeechConstructor();
+      recognitionRef.current = recognition;
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      // Use current locked language locale or default
+      recognition.lang = getLocaleForVoice(selectedLanguageRef.current);
+
+      recognition.onstart = () => {
+        setIsMicListening(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        let interim = '';
+        let final = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const part = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            final += part;
+          } else {
+            interim += part;
+          }
+        }
+        const currentText = (final || interim).trim();
+        if (currentText) {
+          setSpeechTranscript(currentText);
+
+          // Clear previous silence timeout on every word
+          if (silenceTimeoutRef.current) {
+            clearTimeout(silenceTimeoutRef.current);
+          }
+
+          // Real phone call silence detection: 1.35 seconds pause automatically submits spoken words
+          silenceTimeoutRef.current = setTimeout(() => {
+            stopListeningAndSend(currentText);
+          }, 1350);
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        if (event.error !== 'no-speech') {
+          console.warn('Speech recognition notice:', event.error);
+        }
+      };
+
+      recognition.onend = () => {
+        setIsMicListening(false);
+        // Keep phone line open continuously if not speaking/thinking
+        if (
+          isOpenRef.current &&
+          callStatusRef.current === 'CONNECTED' &&
+          !isAiSpeakingRef.current &&
+          !isAiThinkingRef.current &&
+          !isMutedRef.current &&
+          inputModeRef.current === 'mic'
+        ) {
+          setTimeout(() => {
+            if (
+              isOpenRef.current &&
+              callStatusRef.current === 'CONNECTED' &&
+              !isAiSpeakingRef.current &&
+              !isAiThinkingRef.current &&
+              !isMutedRef.current
+            ) {
+              startListening();
+            }
+          }, 350);
+        }
+      };
+
+      recognition.start();
+    } catch (err) {
+      console.warn('Microphone start error:', err);
+      setIsMicListening(false);
+    }
+  }, []);
+
+  const stopListeningAndSend = (overrideText?: string) => {
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
+
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (_) {}
+      recognitionRef.current = null;
+    }
+    setIsMicListening(false);
+
+    const toSend = (overrideText || speechTranscript).trim();
+    if (toSend) {
+      setSpeechTranscript('');
+      handleSendProspectMessage(toSend);
+    }
+  };
+
+  const cancelListening = () => {
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+      } catch (_) {}
+      recognitionRef.current = null;
+    }
+    setIsMicListening(false);
+    setSpeechTranscript('');
+  };
+
+  // 2. Universal Speech Synthesis with Turn-Taking Transition
+  const speakText = useCallback(
+    (text: string, lang: string = selectedLanguageRef.current) => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+
+      // Mute microphone while Ava speaks to prevent self-echo
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch (_) {}
+        recognitionRef.current = null;
+      }
+      setIsMicListening(false);
+      setIsAiSpeaking(true);
+
+      const handleSpeechEnded = () => {
         setIsAiSpeaking(false);
         audioRef.current = null;
-      };
-      audio.onerror = (err) => {
-        console.warn('Neural audio playback failed, trying browser SpeechSynthesis fallback:', err);
-        fallbackBrowserSpeak(text, lang);
+        // Turn-Taking: Microphone automatically re-opens for prospect when Ava finishes speaking!
+        if (
+          callStatusRef.current === 'CONNECTED' &&
+          !isMutedRef.current &&
+          inputModeRef.current === 'mic'
+        ) {
+          setTimeout(() => {
+            startListening();
+          }, 400);
+        }
       };
 
-      // Start playback as soon as enough data is buffered
-      audio.load();
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise.catch((err) => {
-          console.warn('Autoplay blocked by browser policy, attempting SpeechSynthesis:', err);
-          fallbackBrowserSpeak(text, lang);
-        });
+      try {
+        const audioUrl = `/api/voice/tts?lang=${encodeURIComponent(lang)}&text=${encodeURIComponent(text)}`;
+        const audio = new Audio();
+        audio.preload = 'auto';
+        audio.src = audioUrl;
+        audioRef.current = audio;
+
+        audio.onplay = () => setIsAiSpeaking(true);
+        audio.onended = handleSpeechEnded;
+        audio.onerror = (err) => {
+          console.warn('Neural audio error, fallback to browser speech:', err);
+          fallbackBrowserSpeak(text, lang, handleSpeechEnded);
+        };
+
+        audio.load();
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((err) => {
+            console.warn('Autoplay blocked, fallback to browser speech:', err);
+            fallbackBrowserSpeak(text, lang, handleSpeechEnded);
+          });
+        }
+      } catch (err) {
+        console.warn('Audio object error, fallback to browser speech:', err);
+        fallbackBrowserSpeak(text, lang, handleSpeechEnded);
       }
-    } catch (err) {
-      console.warn('Error creating Audio object, falling back to SpeechSynthesis:', err);
-      fallbackBrowserSpeak(text, lang);
-    }
-  }, [selectedLanguage]);
+    },
+    [startListening]
+  );
 
-  const fallbackBrowserSpeak = (text: string, lang: string) => {
+  const fallbackBrowserSpeak = (
+    text: string,
+    lang: string,
+    onEndCallback?: () => void
+  ) => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
@@ -180,224 +365,23 @@ export default function LiveCallSimulatorModal({
       }
 
       utterance.onstart = () => setIsAiSpeaking(true);
-      utterance.onend = () => setIsAiSpeaking(false);
-      utterance.onerror = () => setIsAiSpeaking(false);
+      utterance.onend = () => {
+        setIsAiSpeaking(false);
+        if (onEndCallback) onEndCallback();
+      };
+      utterance.onerror = () => {
+        setIsAiSpeaking(false);
+        if (onEndCallback) onEndCallback();
+      };
       window.speechSynthesis.speak(utterance);
     } else {
       setIsAiSpeaking(false);
+      if (onEndCallback) onEndCallback();
     }
   };
 
-  // Web Speech Recognition Engine (Multilingual, calibrated to selectedLanguage locale)
-  const startListening = () => {
-    if (typeof window === 'undefined') return;
-    const SpeechConstructor =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-    if (!SpeechConstructor) {
-      setInputMode('keyboard');
-      setErrorMessage(t.micNotSupported);
-      return;
-    }
-
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
-    setIsAiSpeaking(false);
-
-    try {
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.abort();
-        } catch (_) {}
-      }
-
-      const recognition = new SpeechConstructor();
-      recognitionRef.current = recognition;
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = getLocaleForVoice(selectedLanguage);
-
-      recognition.onstart = () => {
-        setIsMicListening(true);
-        setSpeechTranscript('');
-      };
-
-      recognition.onresult = (event: any) => {
-        let interim = '';
-        let final = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          const part = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            final += part;
-          } else {
-            interim += part;
-          }
-        }
-        const text = (final || interim).trim();
-        if (text) {
-          setSpeechTranscript(text);
-        }
-      };
-
-      recognition.onerror = (event: any) => {
-        console.warn('SpeechRecognition error:', event.error);
-        if (event.error !== 'no-speech') {
-          setIsMicListening(false);
-        }
-      };
-
-      recognition.onend = () => {
-        setIsMicListening(false);
-      };
-
-      recognition.start();
-    } catch (err: any) {
-      console.warn('Error starting speech recognition:', err);
-      setIsMicListening(false);
-    }
-  };
-
-  const cancelListening = () => {
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.abort();
-      } catch (_) {}
-      recognitionRef.current = null;
-    }
-    setIsMicListening(false);
-    setSpeechTranscript('');
-  };
-
-  const stopListeningAndSend = () => {
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (_) {}
-      recognitionRef.current = null;
-    }
-    setIsMicListening(false);
-
-    const toSend = speechTranscript.trim();
-    if (toSend) {
-      handleSendProspectMessage(toSend);
-      setSpeechTranscript('');
-    }
-  };
-
-  // Pause microphone when AI starts speaking to prevent echo
-  useEffect(() => {
-    if (isAiSpeaking && isMicListening) {
-      cancelListening();
-    }
-  }, [isAiSpeaking, isMicListening]);
-
-  // Initialize or reset call session
-  useEffect(() => {
-    if (isOpen && lead) {
-      if (!isOpenRef.current || currentLeadIdRef.current !== lead.id) {
-        isOpenRef.current = true;
-        currentLeadIdRef.current = lead.id;
-        const initialLang = (defaultLanguage as SupportedLanguage) || 'English';
-        setSelectedLanguage(initialLang);
-        setIsLanguageSelected(false);
-        setIsLimitReached(false);
-        setCallStatus('RINGING');
-        setDuration(0);
-        setIsMeetingBooked(false);
-        setErrorMessage(null);
-        setCallSummary('Evaluating requirement fit, timeline, and decision maker authority...');
-        setNextBestAction('Qualify company rollout scale and propose solutions demo.');
-
-        // Ring for 1.8 seconds then connect
-        const ringTimer = setTimeout(() => {
-          setCallStatus('CONNECTED');
-          
-          // Realistic Call Workflow: First ask prospect for their preferred language!
-          const chooseLangPrompt =
-            "Hello! Before we begin our conversation, which language are you most comfortable with for today's call?";
-
-          const initialAiQuestion: Message = {
-            speaker: 'agent',
-            text: chooseLangPrompt,
-            timestamp: '00:02',
-          };
-          setMessages([initialAiQuestion]);
-          speakText(chooseLangPrompt, 'English');
-        }, 1800);
-
-        return () => clearTimeout(ringTimer);
-      }
-    } else if (!isOpen) {
-      isOpenRef.current = false;
-      currentLeadIdRef.current = null;
-      setMessages([]);
-      setIsLanguageSelected(false);
-      setIsLimitReached(false);
-      setCallStatus('RINGING');
-      setDuration(0);
-      setErrorMessage(null);
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.abort();
-        } catch (_) {}
-        recognitionRef.current = null;
-      }
-      setIsMicListening(false);
-      setSpeechTranscript('');
-    }
-  }, [isOpen, lead?.id, defaultLanguage, speakText]);
-
-  // Duration timer & Call Limit Enforcement (3:00 Max)
-  useEffect(() => {
-    if (callStatus === 'CONNECTED') {
-      timerRef.current = setInterval(() => {
-        setDuration((prev) => {
-          const next = prev + 1;
-          if (next >= CALL_LIMIT_SECONDS) {
-            // Reached call limit! Gracefully end call
-            if (timerRef.current) clearInterval(timerRef.current);
-            setCallStatus('ENDED');
-            setIsLimitReached(true);
-            const wrapupText = getCallLimitWrapupSpeech(selectedLanguage);
-            const wrapupMsg: Message = {
-              speaker: 'agent',
-              text: wrapupText,
-              timestamp: formatTime(CALL_LIMIT_SECONDS),
-            };
-            setMessages((existing) => [...existing, wrapupMsg]);
-            speakText(wrapupText, selectedLanguage);
-          }
-          return next;
-        });
-      }, 1000);
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current);
-    }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [callStatus, selectedLanguage, speakText]);
-
-  // Auto-scroll chat transcript
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isAiSpeaking, isAiThinking]);
-
-  // Step 1: Handle User Selecting Language at Call Start (PERMANENTLY LOCKED FOR CALL)
-  const handleSelectCallLanguage = (lang: SupportedLanguage) => {
+  // 3. Spoken Language Detection & Permanent Lock
+  const handleSelectCallLanguage = (lang: SupportedLanguage, spokenText?: string) => {
     if (isLanguageSelected || callStatus !== 'CONNECTED') return;
 
     setSelectedLanguage(lang);
@@ -406,8 +390,8 @@ export default function LiveCallSimulatorModal({
     if (!lead) return;
 
     const firstName = lead.name ? lead.name.split(' ')[0] : 'there';
-    
-    // Fully localized requirement topic so no English fragments leak into Hindi or other languages
+
+    // Fully localized topic phrase so no English string gets spliced in
     let requirementTopic = 'your public requirement';
     if (lead.companyName) {
       switch (lang) {
@@ -421,7 +405,7 @@ export default function LiveCallSimulatorModal({
           requirementTopic = `votre besoin chez ${lead.companyName}`;
           break;
         case 'Deutsch':
-          requirementTopic = `Ihre aktive Anforderung bei ${lead.companyName}`;
+          requirementTopic = `Ihre geschäftliche Anforderung bei ${lead.companyName}`;
           break;
         case 'العربية':
           requirementTopic = `متطلباتكم في ${lead.companyName}`;
@@ -433,12 +417,10 @@ export default function LiveCallSimulatorModal({
       }
     }
 
-    // 1. Log prospect choice
+    // 1. Prospect's recognized response
     const userChoiceMessage: Message = {
       speaker: 'prospect',
-      text: lang === 'English'
-        ? "I'd prefer to speak in English."
-        : lang === 'हिन्दी'
+      text: spokenText || (lang === 'हिन्दी'
         ? 'मैं हिन्दी में बात करना पसंद करूँगा।'
         : lang === 'Español'
         ? 'Prefiero hablar en español.'
@@ -446,11 +428,13 @@ export default function LiveCallSimulatorModal({
         ? 'Je préfère parler en français.'
         : lang === 'Deutsch'
         ? 'Ich spreche lieber auf Deutsch.'
-        : 'أفضل التحدث باللغة العربية.',
+        : lang === 'العربية'
+        ? 'أفضل التحدث باللغة العربية.'
+        : "I'd prefer to speak in English."),
       timestamp: formatTime(duration),
     };
 
-    // 2. Ava confirms in selected language and begins pitch
+    // 2. Ava confirms in selected language and transitions to sales pitch
     const confirmationSpeech = getLanguageConfirmationSpeech(
       lang,
       firstName,
@@ -468,14 +452,14 @@ export default function LiveCallSimulatorModal({
     speakText(confirmationSpeech, lang);
   };
 
-  // Step 2: Handle Subsequent Prospect Responses in the Locked Language
+  // 4. Send Message to AI Agent (Auto-called by voice or keyboard)
   const handleSendProspectMessage = async (textToSend: string) => {
     if (!textToSend.trim() || callStatus !== 'CONNECTED' || isAiThinking) return;
 
-    // If prospect hasn't officially locked a language yet, detect or use current
+    // STEP 1: If language has not been selected yet, detect from prospect's speech!
     if (!isLanguageSelected) {
       const lower = textToSend.toLowerCase();
-      let matchedLang: SupportedLanguage = selectedLanguage;
+      let matchedLang: SupportedLanguage = 'English';
       if (lower.includes('hindi') || lower.includes('हिंदी') || lower.includes('हिन्दी')) {
         matchedLang = 'हिन्दी';
       } else if (lower.includes('spanish') || lower.includes('español')) {
@@ -490,7 +474,7 @@ export default function LiveCallSimulatorModal({
         matchedLang = 'English';
       }
 
-      handleSelectCallLanguage(matchedLang);
+      handleSelectCallLanguage(matchedLang, textToSend);
       return;
     }
 
@@ -517,7 +501,7 @@ export default function LiveCallSimulatorModal({
             content: m.text,
           })),
           prospectSpeech: textToSend,
-          language: selectedLanguage, // Locked language sent to backend
+          language: selectedLanguage, // Locked language strictly enforced
         }),
       });
 
@@ -550,6 +534,110 @@ export default function LiveCallSimulatorModal({
     }
   };
 
+  // 5. Initial Call Lifecycle: Rings 1.8s then Ava asks for language by VOICE ONLY
+  useEffect(() => {
+    if (isOpen && lead) {
+      if (!isOpenRef.current || currentLeadIdRef.current !== lead.id) {
+        isOpenRef.current = true;
+        currentLeadIdRef.current = lead.id;
+        const initialLang = (defaultLanguage as SupportedLanguage) || 'English';
+        setSelectedLanguage(initialLang);
+        setIsLanguageSelected(false);
+        setIsLimitReached(false);
+        setCallStatus('RINGING');
+        setDuration(0);
+        setIsMeetingBooked(false);
+        setErrorMessage(null);
+        setIsMuted(false);
+        setInputMode('mic');
+        setCallSummary('Evaluating requirement fit, timeline, and decision maker authority...');
+        setNextBestAction('Qualify company rollout scale and propose solutions demo.');
+
+        // Ring for 1.8 seconds then connect
+        const ringTimer = setTimeout(() => {
+          setCallStatus('CONNECTED');
+
+          // REAL CALL: Ava asks by VOICE ONLY. No buttons shown to user.
+          const chooseLangPrompt =
+            "Hello! Before we begin our conversation, which language are you most comfortable with for today's call? You can say Hindi, English, Spanish, or whichever you prefer.";
+
+          const initialAiQuestion: Message = {
+            speaker: 'agent',
+            text: chooseLangPrompt,
+            timestamp: '00:02',
+          };
+          setMessages([initialAiQuestion]);
+          speakText(chooseLangPrompt, 'English');
+        }, 1800);
+
+        return () => clearTimeout(ringTimer);
+      }
+    } else if (!isOpen) {
+      isOpenRef.current = false;
+      currentLeadIdRef.current = null;
+      setMessages([]);
+      setIsLanguageSelected(false);
+      setIsLimitReached(false);
+      setCallStatus('RINGING');
+      setDuration(0);
+      setErrorMessage(null);
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch (_) {}
+        recognitionRef.current = null;
+      }
+      setIsMicListening(false);
+      setSpeechTranscript('');
+    }
+  }, [isOpen, lead?.id, defaultLanguage, speakText]);
+
+  // Duration Timer & Call Limit Enforcement (3:00 Max)
+  useEffect(() => {
+    if (callStatus === 'CONNECTED') {
+      timerRef.current = setInterval(() => {
+        setDuration((prev) => {
+          const next = prev + 1;
+          if (next >= CALL_LIMIT_SECONDS) {
+            // Call limit reached: Gracefully wrap up
+            if (timerRef.current) clearInterval(timerRef.current);
+            setCallStatus('ENDED');
+            setIsLimitReached(true);
+            const wrapupText = getCallLimitWrapupSpeech(selectedLanguage);
+            const wrapupMsg: Message = {
+              speaker: 'agent',
+              text: wrapupText,
+              timestamp: formatTime(CALL_LIMIT_SECONDS),
+            };
+            setMessages((existing) => [...existing, wrapupMsg]);
+            speakText(wrapupText, selectedLanguage);
+          }
+          return next;
+        });
+      }, 1000);
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [callStatus, selectedLanguage, speakText]);
+
+  // Auto-scroll chat transcript
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isAiSpeaking, isAiThinking]);
+
+  // End Call & Mute Handlers
   const handleEndCall = () => {
     setCallStatus('ENDED');
     if (audioRef.current) {
@@ -559,6 +647,7 @@ export default function LiveCallSimulatorModal({
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
+    if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
     if (recognitionRef.current) {
       try {
         recognitionRef.current.abort();
@@ -568,6 +657,18 @@ export default function LiveCallSimulatorModal({
     setIsMicListening(false);
     setSpeechTranscript('');
     setIsAiSpeaking(false);
+  };
+
+  const toggleMute = () => {
+    if (!isMuted) {
+      setIsMuted(true);
+      cancelListening();
+    } else {
+      setIsMuted(false);
+      if (!isAiSpeaking && !isAiThinking && callStatus === 'CONNECTED') {
+        startListening();
+      }
+    }
   };
 
   if (!isOpen || !lead) return null;
@@ -623,7 +724,7 @@ export default function LiveCallSimulatorModal({
                   </span>
                 )}
 
-                {/* Call Limit Display Badge in Header */}
+                {/* Call Limit Display Badge */}
                 <div
                   className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border transition-all ${
                     isApproachingLimit
@@ -641,7 +742,7 @@ export default function LiveCallSimulatorModal({
                   </span>
                 </div>
 
-                {/* Language Locked Status Pill */}
+                {/* Locked Language Status */}
                 {isLanguageSelected && (
                   <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-500/15 text-purple-300 border border-purple-500/30">
                     <Lock className="w-2.5 h-2.5" />
@@ -658,12 +759,26 @@ export default function LiveCallSimulatorModal({
 
           <div className="flex items-center gap-2">
             {callStatus === 'CONNECTED' && (
-              <button
-                onClick={handleEndCall}
-                className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-rose-600/30 cursor-pointer"
-              >
-                <PhoneOff className="w-3.5 h-3.5" /> {t.endCallBtn}
-              </button>
+              <>
+                <button
+                  onClick={toggleMute}
+                  title={isMuted ? 'Unmute microphone' : 'Mute microphone'}
+                  className={`p-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
+                    isMuted
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                      : 'bg-white/[0.08] hover:bg-white/[0.15] text-slate-300 border-white/10'
+                  }`}
+                >
+                  {isMuted ? <MicOff className="w-4 h-4 text-amber-400" /> : <Mic className="w-4 h-4 text-emerald-400" />}
+                </button>
+
+                <button
+                  onClick={handleEndCall}
+                  className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-rose-600/30 cursor-pointer"
+                >
+                  <PhoneOff className="w-3.5 h-3.5" /> {t.endCallBtn}
+                </button>
+              </>
             )}
             <button
               onClick={onClose}
@@ -691,9 +806,9 @@ export default function LiveCallSimulatorModal({
 
         {/* Modal Body: 2 Columns */}
         <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-hidden">
-          {/* Left Column: Live Call Audio & Transcript Stream */}
+          {/* Left Column: Real-Time Phone Call Stream */}
           <div className="lg:col-span-7 p-4 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-white/[0.08] bg-[#070b1e]">
-            {/* Live Call Pill Bar */}
+            {/* Live Call Header Bar */}
             <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] mb-3 text-xs">
               <span className="font-semibold text-white flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -702,7 +817,7 @@ export default function LiveCallSimulatorModal({
               <div className="flex items-center gap-2">
                 <span className="text-[10px] text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 flex items-center gap-1">
                   {isLanguageSelected && <Lock className="w-2.5 h-2.5 text-amber-400" />}
-                  {selectedLanguage}
+                  {isLanguageSelected ? selectedLanguage : 'Detecting Language...'}
                 </span>
                 <span className="text-emerald-400 text-[11px] font-bold uppercase tracking-wider bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                   {callStatus === 'CONNECTED' ? t.connectedStatus : callStatus === 'ENDED' ? 'ENDED' : t.ringingStatus}
@@ -760,47 +875,6 @@ export default function LiveCallSimulatorModal({
                 );
               })}
 
-              {/* Step 1 Prompt: Initial Language Choice Interactive Card (Displayed when call connects and language not yet locked) */}
-              {callStatus === 'CONNECTED' && !isLanguageSelected && (
-                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-950/80 via-blue-950/60 to-purple-950/80 border border-indigo-500/40 shadow-xl space-y-2.5 animate-in fade-in slide-in-from-bottom-2">
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                      <Globe2 className="w-4 h-4 text-indigo-400" />
-                      <span>Select Preferred Language for Call:</span>
-                    </div>
-                    <span className="text-[10px] text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/30 font-semibold flex items-center gap-1">
-                      <Lock className="w-2.5 h-2.5" />
-                      Locks for Call
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-300">
-                    Just like a real sales call, Ava asks which language you are most comfortable with. Click your choice below to lock it for this session:
-                  </p>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
-                    {AVAILABLE_LANGUAGES.map((langItem) => (
-                      <button
-                        key={langItem.code}
-                        type="button"
-                        onClick={() => handleSelectCallLanguage(langItem.code)}
-                        className="p-2 rounded-xl bg-white/[0.06] hover:bg-indigo-600/40 border border-white/[0.12] hover:border-indigo-400 text-left transition-all cursor-pointer group flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg">{langItem.flag}</span>
-                          <div>
-                            <div className="text-xs font-bold text-white group-hover:text-indigo-200">
-                              {langItem.native}
-                            </div>
-                            <div className="text-[10px] text-slate-400">{langItem.label}</div>
-                          </div>
-                        </div>
-                        <Check className="w-3.5 h-3.5 text-indigo-300 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Approaching Limit Notification in Transcript */}
               {isApproachingLimit && (
                 <div className="p-2 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-200 text-xs flex items-center gap-2 animate-pulse">
@@ -822,20 +896,6 @@ export default function LiveCallSimulatorModal({
                 </div>
               )}
 
-              {isAiSpeaking && (
-                <div className="flex items-center gap-2 text-xs text-indigo-400 font-medium animate-pulse pl-9">
-                  <Volume2 className="w-4 h-4 animate-bounce" />
-                  Ava is speaking in {selectedLanguage}...
-                </div>
-              )}
-
-              {isAiThinking && (
-                <div className="flex items-center gap-2 text-xs text-indigo-400 font-medium pl-9">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
-                  <span>Ava is listening &amp; formulating response in {selectedLanguage}...</span>
-                </div>
-              )}
-
               {errorMessage && (
                 <div className="p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between gap-2 animate-in fade-in">
                   <div className="flex items-center gap-2">
@@ -854,166 +914,132 @@ export default function LiveCallSimulatorModal({
               <div ref={chatEndRef} />
             </div>
 
-            {/* Interactive Speak / Reply Controls */}
-            <div className="pt-3 border-t border-white/[0.06] mt-2 space-y-2">
-              <div className="text-[11px] text-slate-400 flex items-center justify-between">
-                <span>
-                  {!isLanguageSelected
-                    ? 'Step 1: Choose or speak language to begin'
-                    : `Simulate or Speak ${lead.name.split(' ')[0]}'s Response (${selectedLanguage}):`}
-                </span>
-                <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                  Groq Multilingual Neural Voice
-                </span>
-              </div>
-
-              {/* Quick Prompt Suggestions in current language (Enabled after language is selected) */}
-              {isLanguageSelected ? (
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => handleSendProspectMessage(quickReplies.reply1)}
-                    disabled={isAiThinking || callStatus !== 'CONNECTED'}
-                    className="px-2.5 py-1 rounded-lg text-[11px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/[0.08] transition-all cursor-pointer disabled:opacity-40"
-                  >
-                    &quot;{quickReplies.reply1}&quot;
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSendProspectMessage(quickReplies.reply2)}
-                    disabled={isAiThinking || callStatus !== 'CONNECTED'}
-                    className="px-2.5 py-1 rounded-lg text-[11px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/[0.08] transition-all cursor-pointer disabled:opacity-40"
-                  >
-                    &quot;{quickReplies.reply2}&quot;
-                  </button>
+            {/* 100% Hands-Free Live Phone Call Status Console */}
+            <div className="pt-3 border-t border-white/[0.06] mt-2 space-y-2.5">
+              {/* Dynamic Conversational State Banner */}
+              {isAiSpeaking ? (
+                <div className="p-3 rounded-2xl bg-indigo-950/60 border border-indigo-500/40 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/40">
+                      <Volume2 className="w-4 h-4 animate-bounce" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-white">Ava is speaking...</div>
+                      <div className="text-[11px] text-indigo-300">
+                        Listening in {selectedLanguage} (Microphone will automatically open when Ava finishes)
+                      </div>
+                    </div>
+                  </div>
+                  {/* Glowing Soundwave Bars */}
+                  <div className="flex items-center gap-1 pr-2">
+                    <span className="w-1 h-3.5 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1 h-6 bg-indigo-300 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1 h-4 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                    <span className="w-1 h-7 bg-indigo-200 rounded-full animate-pulse" style={{ animationDelay: '450ms' }} />
+                    <span className="w-1 h-3 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '600ms' }} />
+                  </div>
                 </div>
-              ) : (
-                <div className="flex flex-wrap gap-1.5">
-                  {AVAILABLE_LANGUAGES.map((l) => (
+              ) : isAiThinking ? (
+                <div className="p-3 rounded-2xl bg-blue-950/60 border border-blue-500/40 flex items-center gap-3">
+                  <Loader2 className="w-5 h-5 animate-spin text-blue-400" />
+                  <div>
+                    <div className="text-xs font-bold text-white">Ava is formulating response...</div>
+                    <div className="text-[11px] text-blue-300">Analyzing requirement and preparing reply in {selectedLanguage}</div>
+                  </div>
+                </div>
+              ) : callStatus === 'CONNECTED' ? (
+                /* Prospect's Turn: Live Microphone is Open */
+                <div className="p-3 rounded-2xl bg-gradient-to-r from-emerald-950/70 via-[#0a1f18] to-teal-950/70 border border-emerald-500/40 space-y-2 animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-emerald-300 font-semibold text-xs">
+                      <span className="relative flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                      </span>
+                      <span>
+                        {!isLanguageSelected
+                          ? 'Microphone Live • Speak your preferred language (e.g. "Hindi", "English")'
+                          : `Microphone Live • Speak naturally in ${selectedLanguage}`}
+                      </span>
+                    </div>
+
+                    {/* Active Voice Waveform */}
+                    <div className="flex items-center gap-1">
+                      <span className="w-1 h-2.5 bg-emerald-400 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1 h-4 bg-emerald-400 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1 h-2 bg-emerald-400 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                      <span className="w-1 h-3.5 bg-emerald-400 rounded-full animate-pulse" style={{ animationDelay: '450ms' }} />
+                    </div>
+                  </div>
+
+                  {/* Real-Time Live Speech Preview */}
+                  <div className="bg-[#060a17] p-2.5 rounded-xl border border-white/10 text-xs min-h-[38px] text-white flex items-center justify-between">
+                    <span className={speechTranscript ? 'text-white font-medium' : 'text-slate-400 italic'}>
+                      {speechTranscript
+                        ? `"${speechTranscript}"`
+                        : !isLanguageSelected
+                        ? 'Listening to you... Speak your language to lock it automatically'
+                        : `Listening to your voice... Speak now (Pausing will auto-send)`}
+                    </span>
+                    <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                      Auto-Send Active
+                    </span>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Auxiliary Controls (Keyboard toggle & Quick Suggestions if needed) */}
+              <div className="flex items-center justify-between pt-1">
+                {isLanguageSelected && (
+                  <div className="flex flex-wrap gap-1.5">
                     <button
-                      key={l.code}
                       type="button"
-                      onClick={() => handleSelectCallLanguage(l.code)}
-                      disabled={callStatus !== 'CONNECTED'}
-                      className="px-2.5 py-1 rounded-lg text-[11px] bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 transition-all cursor-pointer disabled:opacity-40"
-                    >
-                      {l.flag} {l.native}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Voice-First Real Call Interface: Live Microphone (Default) or Keyboard Mode */}
-              {inputMode === 'mic' ? (
-                <div className="space-y-2">
-                  {!isMicListening ? (
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={startListening}
-                        disabled={isAiThinking || isAiSpeaking || callStatus !== 'CONNECTED'}
-                        className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2.5 transition-all cursor-pointer disabled:opacity-50 group"
-                      >
-                        <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                          <Mic className="w-3.5 h-3.5 text-white" />
-                        </div>
-                        <span>{t.micClickToSpeak}</span>
-                        <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-white/20 border border-white/20">
-                          {selectedLanguage}
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setInputMode('keyboard')}
-                        title={t.switchToKeyboard}
-                        className="p-3 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white border border-white/[0.08] transition-all cursor-pointer flex items-center justify-center"
-                      >
-                        <Keyboard className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/40 space-y-2 animate-in fade-in">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-rose-300 font-semibold text-xs">
-                          <span className="relative flex h-2.5 w-2.5">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
-                          </span>
-                          <span>{t.micListening} ({selectedLanguage})</span>
-                        </div>
-                        {/* Live Audio Visualizer Waves */}
-                        <div className="flex items-center gap-1">
-                          <span className="w-1 h-2.5 bg-rose-400 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
-                          <span className="w-1 h-4 bg-rose-400 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
-                          <span className="w-1 h-2 bg-rose-400 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
-                          <span className="w-1 h-3.5 bg-rose-400 rounded-full animate-pulse" style={{ animationDelay: '450ms' }} />
-                        </div>
-                      </div>
-
-                      {/* Live spoken preview */}
-                      <div className="bg-[#090d1f] p-2 rounded-lg border border-white/10 text-xs min-h-[36px] text-white flex items-center">
-                        {speechTranscript ? (
-                          <span className="text-white font-medium">{speechTranscript}</span>
-                        ) : (
-                          <span className="text-slate-400 italic">Listening to your voice... Speak now in {selectedLanguage}</span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={stopListeningAndSend}
-                          className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer"
-                        >
-                          <Send className="w-3.5 h-3.5" />
-                          <span>{t.micStopAndSend}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={cancelListening}
-                          className="py-1.5 px-3 rounded-lg bg-white/[0.08] hover:bg-white/[0.15] text-slate-300 hover:text-white text-xs transition-all cursor-pointer"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={inputText}
-                      onChange={(e) => setInputText(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSendProspectMessage(inputText)}
-                      placeholder={
-                        !isLanguageSelected
-                          ? 'Type preferred language (English, हिन्दी, Español...) or select above...'
-                          : t.typeSpokenWords
-                      }
+                      onClick={() => handleSendProspectMessage(quickReplies.reply1)}
                       disabled={isAiThinking || callStatus !== 'CONNECTED'}
-                      className="flex-1 px-3 py-2 rounded-xl bg-[#090d1f] border border-white/[0.1] text-xs text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 disabled:opacity-50"
-                    />
-                    <button
-                      onClick={() => handleSendProspectMessage(inputText)}
-                      disabled={!inputText.trim() || isAiThinking || callStatus !== 'CONNECTED'}
-                      className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 transition-all cursor-pointer flex items-center justify-center"
+                      className="px-2.5 py-1 rounded-lg text-[10px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/[0.08] transition-all cursor-pointer disabled:opacity-40"
                     >
-                      {isAiThinking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                      &quot;{quickReplies.reply1}&quot;
                     </button>
-
                     <button
                       type="button"
-                      onClick={() => setInputMode('mic')}
-                      title={t.switchToMic}
-                      className="p-2 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 hover:text-white border border-indigo-500/30 transition-all cursor-pointer flex items-center justify-center"
+                      onClick={() => handleSendProspectMessage(quickReplies.reply2)}
+                      disabled={isAiThinking || callStatus !== 'CONNECTED'}
+                      className="px-2.5 py-1 rounded-lg text-[10px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/[0.08] transition-all cursor-pointer disabled:opacity-40"
                     >
-                      <Mic className="w-4 h-4" />
+                      &quot;{quickReplies.reply2}&quot;
                     </button>
                   </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setInputMode(inputMode === 'mic' ? 'keyboard' : 'mic')}
+                  className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1 ml-auto cursor-pointer"
+                >
+                  <Keyboard className="w-3.5 h-3.5" />
+                  <span>{inputMode === 'mic' ? 'Keyboard' : 'Hands-free Voice'}</span>
+                </button>
+              </div>
+
+              {/* Collapsed Keyboard Mode (Only shown if user clicked Keyboard) */}
+              {inputMode === 'keyboard' && (
+                <div className="flex items-center gap-2 pt-1 animate-in fade-in">
+                  <input
+                    type="text"
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSendProspectMessage(inputText)}
+                    placeholder={t.typeSpokenWords}
+                    disabled={isAiThinking || callStatus !== 'CONNECTED'}
+                    className="flex-1 px-3 py-2 rounded-xl bg-[#090d1f] border border-white/[0.1] text-xs text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 disabled:opacity-50"
+                  />
+                  <button
+                    onClick={() => handleSendProspectMessage(inputText)}
+                    disabled={!inputText.trim() || isAiThinking || callStatus !== 'CONNECTED'}
+                    className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 transition-all cursor-pointer flex items-center justify-center"
+                  >
+                    {isAiThinking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  </button>
                 </div>
               )}
             </div>
@@ -1115,22 +1141,20 @@ export default function LiveCallSimulatorModal({
               </div>
             </div>
 
-            {/* Language Lock Strip: Strictly locked once call starts */}
+            {/* Language Lock Strip (No buttons - purely status-driven) */}
             <div className="pt-3 border-t border-white/[0.08]">
               <div className="flex items-center justify-between mb-1.5">
                 <div className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
-                  {isLanguageSelected ? (
-                    <Lock className="w-3.5 h-3.5 text-amber-400" />
-                  ) : (
-                    <Globe2 className="w-3.5 h-3.5 text-blue-400" />
-                  )}
-                  <span>
-                    {isLanguageSelected ? t.languageLockedBadge : t.multilingualTitle}:
-                  </span>
+                  <Lock className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{t.languageLockedBadge}:</span>
                 </div>
-                {isLanguageSelected && (
+                {isLanguageSelected ? (
                   <span className="text-[10px] text-amber-300 font-semibold bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30 flex items-center gap-1">
                     <Lock className="w-2.5 h-2.5" /> Locked
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-blue-300 font-semibold bg-blue-500/20 px-1.5 py-0.5 rounded border border-blue-500/30 animate-pulse">
+                    Spoken Detection...
                   </span>
                 )}
               </div>
@@ -1141,23 +1165,15 @@ export default function LiveCallSimulatorModal({
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                     <span>Session Language: <strong className="text-white">{selectedLanguage}</strong></span>
                   </div>
-                  <span className="text-[10px] text-slate-400">Locked till call end</span>
+                  <span className="text-[10px] text-slate-400 font-medium">Locked for Call</span>
                 </div>
               ) : (
-                <div className="flex flex-wrap gap-1">
-                  {AVAILABLE_LANGUAGES.map((langItem) => (
-                    <button
-                      key={langItem.code}
-                      onClick={() => handleSelectCallLanguage(langItem.code)}
-                      className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition-all cursor-pointer ${
-                        selectedLanguage === langItem.code
-                          ? 'bg-blue-600 text-white border-blue-400 shadow-sm'
-                          : 'bg-white/[0.03] text-slate-400 border-white/[0.08] hover:text-white'
-                      }`}
-                    >
-                      {langItem.flag} {langItem.code}
-                    </button>
-                  ))}
+                <div className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.08] text-slate-300 text-[11px] flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                    <span>Speak your language into the mic to lock it</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400">Zero buttons</span>
                 </div>
               )}
             </div>
