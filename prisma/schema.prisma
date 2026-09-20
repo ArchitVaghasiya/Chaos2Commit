@@ -100,3 +100,17 @@ model CallLog {
 
   createdAt          DateTime  @default(now())
 }
+
+model User {
+  id          String   @id @default(cuid())
+  name        String
+  email       String   @unique
+  password    String
+  companyName String?
+  companySize String?
+  industry    String?
+  role        String   @default("MEMBER")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+

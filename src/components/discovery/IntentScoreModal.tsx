@@ -23,11 +23,11 @@ export default function IntentScoreModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-      <div className="w-full max-w-2xl glass-card border-indigo-500/30 p-6 shadow-2xl relative bg-[#0a0f28]/95">
+      <div className="w-full max-w-2xl glass-card border-indigo-500/30 p-6 shadow-2xl relative bg-white dark:bg-[#0a0f28]/95">
         <button
           onClick={onClose}
           aria-label="Close Intent Score dialog"
-          className="absolute top-4 right-4 p-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white transition-all cursor-pointer"
+          className="absolute top-4 right-4 p-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-600 hover:text-slate-900 dark:text-white transition-all cursor-pointer"
         >
           <X className="w-4 h-4" />
         </button>
@@ -36,18 +36,18 @@ export default function IntentScoreModal({
           <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400">
             AI Qualification &amp; Prioritisation
           </span>
-          <h2 className="text-xl font-bold text-white mt-0.5">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">
             Predictive Intent Score &amp; Pipeline Fit
           </h2>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-600">
             Scored on requirement fit, buying intent, seniority, and company profile.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-5 mb-6">
           {/* Left Column: Big Predictive Intent Score Circle */}
-          <div className="md:col-span-6 p-5 rounded-2xl bg-[#070a1a] border border-indigo-500/20 flex flex-col items-center justify-center text-center relative overflow-hidden">
-            <div className="text-xs font-semibold text-slate-400 mb-2">Predictive Intent Score</div>
+          <div className="md:col-span-6 p-5 rounded-2xl bg-white dark:bg-[#070a1a] border border-indigo-500/20 flex flex-col items-center justify-center text-center relative overflow-hidden">
+            <div className="text-xs font-semibold text-slate-600 mb-2">Predictive Intent Score</div>
 
             {/* Glowing Circular Gauge */}
             <div className="relative flex items-center justify-center w-36 h-36 mb-3">
@@ -79,7 +79,7 @@ export default function IntentScoreModal({
                 </defs>
               </svg>
               <div className="absolute flex flex-col items-center">
-                <span className="text-4xl font-extrabold text-white tracking-tight">
+                <span className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                   {lead.intentScore}
                 </span>
                 <span className="text-[10px] text-emerald-400 font-bold">/ 100</span>
@@ -91,20 +91,20 @@ export default function IntentScoreModal({
             </div>
 
             {/* 4 Qualification Signals */}
-            <div className="grid grid-cols-2 gap-2 w-full text-[11px] pt-3 border-t border-white/[0.06]">
-              <div className="p-1.5 rounded-lg bg-white/[0.03] text-slate-300 flex items-center gap-1.5 justify-center">
+            <div className="grid grid-cols-2 gap-2 w-full text-[11px] pt-3 border-t border-slate-200 dark:border-white/[0.06]">
+              <div className="p-1.5 rounded-lg bg-white/[0.03] text-slate-600 dark:text-slate-300 flex items-center gap-1.5 justify-center">
                 <DollarSign className="w-3 h-3 text-emerald-400" />
                 <span>Budget: {lead.budgetSignal}</span>
               </div>
-              <div className="p-1.5 rounded-lg bg-white/[0.03] text-slate-300 flex items-center gap-1.5 justify-center">
+              <div className="p-1.5 rounded-lg bg-white/[0.03] text-slate-600 dark:text-slate-300 flex items-center gap-1.5 justify-center">
                 <Zap className="w-3 h-3 text-amber-400" />
                 <span>Urgency: {lead.urgencyLevel}</span>
               </div>
-              <div className="p-1.5 rounded-lg bg-white/[0.03] text-slate-300 flex items-center gap-1.5 justify-center">
+              <div className="p-1.5 rounded-lg bg-white/[0.03] text-slate-600 dark:text-slate-300 flex items-center gap-1.5 justify-center">
                 <Award className="w-3 h-3 text-blue-400" />
                 <span>Decision Maker</span>
               </div>
-              <div className="p-1.5 rounded-lg bg-white/[0.03] text-slate-300 flex items-center gap-1.5 justify-center">
+              <div className="p-1.5 rounded-lg bg-white/[0.03] text-slate-600 dark:text-slate-300 flex items-center gap-1.5 justify-center">
                 <Target className="w-3 h-3 text-purple-400" />
                 <span>Active RFP</span>
               </div>
@@ -112,9 +112,9 @@ export default function IntentScoreModal({
           </div>
 
           {/* Right Column: Prioritised Pipeline List */}
-          <div className="md:col-span-6 p-4 rounded-2xl bg-[#070a1a] border border-white/[0.06] flex flex-col justify-between">
+          <div className="md:col-span-6 p-4 rounded-2xl bg-white dark:bg-[#070a1a] border border-slate-200 dark:border-white/[0.06] flex flex-col justify-between">
             <div>
-              <div className="text-xs font-bold uppercase tracking-wider text-slate-300 mb-3 flex items-center justify-between">
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-3 flex items-center justify-between">
                 <span>Prioritised Pipeline</span>
                 <span className="text-[10px] text-indigo-400 font-normal">Ranked by Fit</span>
               </div>
@@ -129,12 +129,12 @@ export default function IntentScoreModal({
                       className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between transition-all ${
                         isCurrent
                           ? 'bg-indigo-600/20 border-indigo-500/50 shadow-md'
-                          : 'bg-white/[0.02] border-white/[0.05] hover:bg-white/[0.05]'
+                          : 'bg-white/[0.02] border-slate-200 dark:border-white/[0.05] hover:bg-white/[0.05]'
                       }`}
                     >
                       <div className="truncate mr-2">
-                        <div className="text-xs font-bold text-white truncate">{p.name}</div>
-                        <div className="text-[11px] text-slate-400 truncate">
+                        <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{p.name}</div>
+                        <div className="text-[11px] text-slate-600 truncate">
                           {p.companyName} • {p.jobTitle}
                         </div>
                       </div>
@@ -144,7 +144,7 @@ export default function IntentScoreModal({
                             ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                             : p.intentScore >= 75
                             ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                            : 'bg-slate-700/50 text-slate-300'
+                            : 'bg-slate-700/50 text-slate-600 dark:text-slate-300'
                         }`}
                       >
                         {p.intentScore}
@@ -155,7 +155,7 @@ export default function IntentScoreModal({
               </div>
             </div>
 
-            <div className="pt-3 border-t border-white/[0.06] text-[11px] text-slate-400 flex items-center justify-between mt-3">
+            <div className="pt-3 border-t border-slate-200 dark:border-white/[0.06] text-[11px] text-slate-600 flex items-center justify-between mt-3">
               <span>Auto-prioritized by AI Sales Agent</span>
               <span className="text-indigo-400 flex items-center gap-0.5 font-medium">
                 Real-time scoring <ArrowUpRight className="w-3 h-3" />

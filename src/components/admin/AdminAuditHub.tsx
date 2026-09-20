@@ -85,84 +85,84 @@ export default function AdminAuditHub() {
   return (
     <div className="space-y-6">
       {/* Top Banner */}
-      <div className="glass-card p-6 border-white/[0.06] shadow-xl">
+      <div className="glass-card p-6 border-slate-200 dark:border-white/[0.06] shadow-xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <div>
             <span className="text-[11px] font-bold uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
               <ShieldAlert className="w-3.5 h-3.5" /> Platform Governance &amp; Administration
             </span>
-            <h2 className="text-xl font-bold text-white mt-0.5">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">
               Lead Quality Monitoring, Fraud Detection &amp; Audit Logs
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-600">
               PDF Page 2 Admin Features: System analytics, voice usage tracking, fraud detection, and security audit logs.
             </p>
           </div>
         </div>
 
         {/* 4 Admin KPI Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 pt-2 border-t border-white/[0.06]">
-          <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-            <div className="text-[10px] text-slate-400 mb-1 flex items-center justify-between">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 pt-2 border-t border-slate-200 dark:border-white/[0.06]">
+          <div className="p-3.5 rounded-xl bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]">
+            <div className="text-[10px] text-slate-600 mb-1 flex items-center justify-between">
               <span>System Health</span>
               <Activity className="w-3.5 h-3.5 text-emerald-400" />
             </div>
-            <div className="text-xl font-extrabold text-white">99.98%</div>
+            <div className="text-xl font-extrabold text-slate-900 dark:text-white">99.98%</div>
             <div className="text-[10px] text-emerald-400 mt-0.5">Operational</div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-            <div className="text-[10px] text-slate-400 mb-1 flex items-center justify-between">
+          <div className="p-3.5 rounded-xl bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]">
+            <div className="text-[10px] text-slate-600 mb-1 flex items-center justify-between">
               <span>Avg Lead Quality Score</span>
               <BarChart2 className="w-3.5 h-3.5 text-blue-400" />
             </div>
-            <div className="text-xl font-extrabold text-white">88.4 / 100</div>
+            <div className="text-xl font-extrabold text-slate-900 dark:text-white">88.4 / 100</div>
             <div className="text-[10px] text-blue-400 mt-0.5">High Intent Benchmark</div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-            <div className="text-[10px] text-slate-400 mb-1 flex items-center justify-between">
+          <div className="p-3.5 rounded-xl bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]">
+            <div className="text-[10px] text-slate-600 mb-1 flex items-center justify-between">
               <span>Fraud &amp; Anomaly Shield</span>
               <Lock className="w-3.5 h-3.5 text-purple-400" />
             </div>
-            <div className="text-xl font-extrabold text-white">0 Breaches</div>
+            <div className="text-xl font-extrabold text-slate-900 dark:text-white">0 Breaches</div>
             <div className="text-[10px] text-purple-400 mt-0.5">1 Anomaly Blocked Today</div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-            <div className="text-[10px] text-slate-400 mb-1 flex items-center justify-between">
+          <div className="p-3.5 rounded-xl bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]">
+            <div className="text-[10px] text-slate-600 mb-1 flex items-center justify-between">
               <span>Concurrent Voice Lines</span>
               <Server className="w-3.5 h-3.5 text-amber-400" />
             </div>
-            <div className="text-xl font-extrabold text-white">12 / 50</div>
+            <div className="text-xl font-extrabold text-slate-900 dark:text-white">12 / 50</div>
             <div className="text-[10px] text-amber-400 mt-0.5">Sub-150ms Latency</div>
           </div>
         </div>
       </div>
 
       {/* Audit Logs Table */}
-      <div className="glass-card p-6 border-white/[0.06] shadow-xl">
+      <div className="glass-card p-6 border-slate-200 dark:border-white/[0.06] shadow-xl">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-sm font-bold text-white">Security &amp; Operational Audit Trail</h3>
-            <p className="text-xs text-slate-400">Cryptographically ordered event log of all system activities</p>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Security &amp; Operational Audit Trail</h3>
+            <p className="text-xs text-slate-600">Cryptographically ordered event log of all system activities</p>
           </div>
 
           <div className="relative w-64">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-slate-600 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchLog}
               onChange={(e) => setSearchLog(e.target.value)}
               placeholder="Search audit trail..."
-              className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-[#090d1f] border border-white/[0.08] text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+              className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-white dark:bg-[#090d1f] border border-slate-200 dark:border-white/[0.08] text-xs text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
             />
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="text-[11px] uppercase bg-white/[0.02] text-slate-400 border-b border-white/[0.06]">
+          <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
+            <thead className="text-[11px] uppercase bg-white/[0.02] text-slate-600 border-b border-slate-200 dark:border-white/[0.06]">
               <tr>
                 <th className="py-3 px-4">Timestamp</th>
                 <th className="py-3 px-4">Actor</th>
@@ -175,11 +175,11 @@ export default function AdminAuditHub() {
             <tbody className="divide-y divide-white/[0.04] font-mono text-[11px]">
               {filteredLogs.map((log) => (
                 <tr key={log.id} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="py-3 px-4 text-slate-400">{log.timestamp}</td>
-                  <td className="py-3 px-4 font-bold text-white">{log.actor}</td>
+                  <td className="py-3 px-4 text-slate-600">{log.timestamp}</td>
+                  <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">{log.actor}</td>
                   <td className="py-3 px-4 text-indigo-300">{log.action}</td>
-                  <td className="py-3 px-4 text-slate-300 max-w-xs truncate">{log.resource}</td>
-                  <td className="py-3 px-4 text-slate-400">{log.ipAddress}</td>
+                  <td className="py-3 px-4 text-slate-600 dark:text-slate-300 max-w-xs truncate">{log.resource}</td>
+                  <td className="py-3 px-4 text-slate-600">{log.ipAddress}</td>
                   <td className="py-3 px-4 text-right">
                     <span
                       className={`px-2 py-0.5 rounded text-[10px] font-bold ${

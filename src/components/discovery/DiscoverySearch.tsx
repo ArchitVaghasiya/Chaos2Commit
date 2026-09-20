@@ -8,9 +8,9 @@ import {
   FolderArchive,
   Handshake,
   Database,
-  Filter,
   ArrowRight,
 } from 'lucide-react';
+import { getTranslation } from '@/lib/i18n/translations';
 
 function LinkedinIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
@@ -28,7 +28,6 @@ function TwitterIcon({ className = 'w-4 h-4' }: { className?: string }) {
   );
 }
 
-import { getTranslation } from '@/lib/i18n/translations';
 
 export interface DiscoverySearchParams {
   keyword: string;
@@ -69,6 +68,18 @@ export default function DiscoverySearch({
   isExampleMode = true,
   currentLanguage = 'English',
 }: DiscoverySearchProps) {
+  const t = getTranslation(currentLanguage);
+  const [keyword, setKeyword] = useState('');
+  const [internalIndustry, setInternalIndustry] = useState('All Industries');
+  const [internalLocation, setInternalLocation] = useState('Global');
+  const [internalDateRange, setInternalDateRange] = useState('Last 7 Days');
+
+  const industry = controlledIndustry ?? internalIndustry;
+  const setIndustry = controlledSetIndustry ?? setInternalIndustry;
+  const location = controlledLocation ?? internalLocation;
+  const setLocation = controlledSetLocation ?? setInternalLocation;
+  const dateRange = controlledDateRange ?? internalDateRange;
+  const setDateRange = controlledSetDateRange ?? setInternalDateRange;
   const platforms = [
     { id: 'LinkedIn', label: 'LinkedIn', count: '12,568', poolDesc: 'Monitored Posts', icon: LinkedinIcon, color: 'text-blue-400', bg: 'bg-blue-500/10' },
     { id: 'X (Twitter)', label: 'X (Twitter)', count: '8,421', poolDesc: 'Public Tweets', icon: TwitterIcon, color: 'text-sky-400', bg: 'bg-sky-500/10' },
@@ -77,21 +88,6 @@ export default function DiscoverySearch({
     { id: 'Freelance Platforms', label: 'Freelance Platforms', count: '2,845', poolDesc: 'Project Postings', icon: Handshake, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
     { id: 'CRM Integrations', label: 'CRM Integrations', count: '3,214', poolDesc: 'Synced Records', icon: Database, color: 'text-pink-400', bg: 'bg-pink-500/10' },
   ];
-  const [keyword, setKeyword] = useState('');
-  const [internalIndustry, setInternalIndustry] = useState('All Industries');
-  const [internalLocation, setInternalLocation] = useState('Global');
-  const [internalDateRange, setInternalDateRange] = useState('Last 7 Days');
-
-  const t = getTranslation(currentLanguage);
-
-  const industry = controlledIndustry !== undefined ? controlledIndustry : internalIndustry;
-  const setIndustry = controlledSetIndustry || setInternalIndustry;
-
-  const location = controlledLocation !== undefined ? controlledLocation : internalLocation;
-  const setLocation = controlledSetLocation || setInternalLocation;
-
-  const dateRange = controlledDateRange !== undefined ? controlledDateRange : internalDateRange;
-  const setDateRange = controlledSetDateRange || setInternalDateRange;
 
   // Handle explicit form submission
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -133,23 +129,23 @@ export default function DiscoverySearch({
   ];
 
   return (
-    <div className="glass-card p-5 mb-6 border-indigo-500/20 shadow-xl">
+    <div className="glass-card p-5 mb-6 border-slate-200 dark:border-indigo-500/20 shadow-xl">
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <h2 className="text-base font-bold text-white flex items-center gap-2">
-          <Search className="w-4 h-4 text-blue-400" /> {t.navLeadDiscovery}
+        <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <Search className="w-4 h-4 text-blue-600 dark:text-blue-400" /> {t.navLeadDiscovery}
         </h2>
         <div className="flex items-center gap-3">
           {!isExampleMode && (
             <button
               type="button"
               onClick={handleResetExample}
-              className="text-[11px] text-indigo-300 hover:text-white px-2 py-0.5 rounded-md bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 transition-all cursor-pointer"
+              className="text-[11px] text-indigo-600 dark:text-indigo-300 hover:underline px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/30 transition-all cursor-pointer"
             >
               Reset to Benchmark Example
             </button>
           )}
-          <span className="text-xs text-slate-400">
-            Autonomous crawler monitoring <span className="text-emerald-400 font-semibold">37,800+</span> active public sources
+          <span className="text-xs text-slate-700 dark:text-slate-400">
+            Autonomous crawler monitoring <span className="text-emerald-600 dark:text-emerald-400 font-semibold">37,800+</span> active public sources
           </span>
         </div>
       </div>
@@ -158,20 +154,20 @@ export default function DiscoverySearch({
       <form onSubmit={handleSearchSubmit} className="space-y-3">
         <div className="flex flex-col md:flex-row items-center gap-2">
           <div className="relative flex-1 w-full">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-4 h-4 text-slate-600 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               placeholder={t.searchPlaceholder}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#090d1f] border border-white/[0.1] text-sm text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white dark:bg-[#090d1f] border border-slate-300 dark:border-white/[0.1] text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-sm dark:shadow-none"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full md:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-semibold shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer disabled:opacity-50"
+            className="w-full md:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-slate-900 dark:text-white text-sm font-semibold shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer disabled:opacity-50"
           >
             {loading ? (
               <span className="flex items-center gap-2">
@@ -220,7 +216,7 @@ export default function DiscoverySearch({
             value={selectedPlatform}
             onChange={(e) => setSelectedPlatform(e.target.value)}
             aria-label="Platform Source Filter"
-            className="px-3 py-1.5 rounded-lg bg-[#090d1f] border border-white/[0.08] text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer"
+            className="px-3 py-1.5 rounded-lg bg-white dark:bg-[#090d1f] border border-slate-300 dark:border-white/[0.08] text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer shadow-sm dark:shadow-none"
           >
             <option value="All Sources">All Sources</option>
             <option value="LinkedIn">LinkedIn</option>
@@ -235,7 +231,7 @@ export default function DiscoverySearch({
             value={industry}
             onChange={(e) => setIndustry(e.target.value)}
             aria-label="Industry Filter"
-            className="px-3 py-1.5 rounded-lg bg-[#090d1f] border border-white/[0.08] text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer"
+            className="px-3 py-1.5 rounded-lg bg-white dark:bg-[#090d1f] border border-slate-300 dark:border-white/[0.08] text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer shadow-sm dark:shadow-none"
           >
             <option value="All Industries">Industry: All</option>
             <option value="IT Services">IT Services</option>
@@ -249,7 +245,7 @@ export default function DiscoverySearch({
             value={location}
             onChange={(e) => setLocation(e.target.value)}
             aria-label="Location Filter"
-            className="px-3 py-1.5 rounded-lg bg-[#090d1f] border border-white/[0.08] text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer"
+            className="px-3 py-1.5 rounded-lg bg-white dark:bg-[#090d1f] border border-slate-300 dark:border-white/[0.08] text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer shadow-sm dark:shadow-none"
           >
             <option value="Global">Location: Global</option>
             <option value="North America">North America</option>
@@ -261,7 +257,7 @@ export default function DiscoverySearch({
             value={dateRange}
             onChange={(e) => setDateRange(e.target.value)}
             aria-label="Date Range Filter"
-            className="px-3 py-1.5 rounded-lg bg-[#090d1f] border border-white/[0.08] text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer"
+            className="px-3 py-1.5 rounded-lg bg-white dark:bg-[#090d1f] border border-slate-300 dark:border-white/[0.08] text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer shadow-sm dark:shadow-none"
           >
             <option value="Last 24 Hours">Date: Last 24 Hours</option>
             <option value="Last 7 Days">Date: Last 7 Days</option>
@@ -270,53 +266,40 @@ export default function DiscoverySearch({
 
           <button
             type="button"
-            className="ml-auto px-2.5 py-1.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition-all"
+            className="ml-auto px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-white/[0.03] hover:bg-slate-200 dark:hover:bg-white/[0.06] border border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition-all shadow-sm dark:shadow-none"
           >
             <SlidersHorizontal className="w-3.5 h-3.5" /> More Filters
           </button>
         </div>
       </form>
 
-      {/* Source Platform Metric Badges - clicking these only toggles filter selection, does NOT trigger search */}
-      <div className="mt-4 pt-3 border-t border-white/[0.06]">
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-[11px] font-semibold text-slate-400 flex items-center gap-1.5 uppercase tracking-wider">
-            <span>Global Ingestion Feeds</span>
-            <span className="text-[10px] lowercase font-normal text-slate-500">(click channel to filter search target)</span>
-          </div>
-          <span className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Live Crawl Index
-          </span>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-          {platforms.map((p) => {
-            const Icon = p.icon;
-            const isSelected = selectedPlatform === p.id;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => {
-                  const next = isSelected ? 'All Sources' : p.id;
-                  setSelectedPlatform(next);
-                }}
-                className={`flex flex-col items-center p-2.5 rounded-xl border transition-all text-center cursor-pointer ${
-                  isSelected
-                    ? 'bg-indigo-600/20 border-indigo-500/60 shadow-md shadow-indigo-500/20 ring-1 ring-indigo-500/40'
-                    : 'bg-white/[0.02] border-white/[0.05] hover:border-white/[0.15] hover:bg-white/[0.04]'
-                }`}
-              >
-                <div className={`p-1.5 rounded-lg ${p.bg} ${p.color} mb-1`}>
-                  <Icon className="w-4 h-4" />
-                </div>
-                <div className="text-[11px] font-medium text-slate-300 truncate w-full">{p.label}</div>
-                <div className="text-xs font-bold text-white mt-0.5">{p.count}</div>
-                <div className="text-[9px] text-slate-400 font-normal leading-tight mt-0.5">{p.poolDesc}</div>
-              </button>
-            );
-          })}
-        </div>
+      {/* Source Platform Metric Badges */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 mt-4 pt-4 border-t border-slate-200 dark:border-white/[0.06]">
+        {platforms.map((p) => {
+          const Icon = p.icon;
+          const isSelected = selectedPlatform === p.id;
+          return (
+            <button
+              key={p.id}
+              onClick={() => {
+                const next = isSelected ? 'All Sources' : p.id;
+                setSelectedPlatform(next);
+                onSearch({ keyword, platform: next, industry, location, dateRange });
+              }}
+              className={`flex flex-col items-center p-2.5 rounded-xl border transition-all text-center ${
+                isSelected
+                  ? 'bg-indigo-600/10 dark:bg-indigo-600/20 border-indigo-500/30 dark:border-indigo-500/60 shadow-sm dark:shadow-md dark:shadow-indigo-500/20 ring-1 ring-indigo-500/20 dark:ring-0'
+                  : 'bg-slate-50 dark:bg-white/[0.02] border-slate-200 dark:border-white/[0.05] hover:border-slate-300 dark:hover:border-slate-200 dark:border-white/[0.15] hover:bg-slate-100 dark:hover:bg-white/[0.04]'
+              }`}
+            >
+              <div className={`p-1.5 rounded-lg ${p.bg} ${p.color} mb-1.5`}>
+                <Icon className="w-4 h-4" />
+              </div>
+              <div className="text-[11px] font-medium text-slate-800 dark:text-slate-300 truncate w-full">{p.label}</div>
+              <div className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">{p.count}</div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
