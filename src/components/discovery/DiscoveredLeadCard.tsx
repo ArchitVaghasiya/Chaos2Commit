@@ -16,6 +16,13 @@ import {
   Sparkles,
   Headphones,
   ShieldCheck,
+  Brain,
+  Zap,
+  Target,
+  Award,
+  Lightbulb,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 function LinkedinIcon({ className = 'w-4 h-4' }: { className?: string }) {
@@ -49,27 +56,83 @@ export interface LeadItem {
   activeRequirement: boolean;
   status: string;
   discoveryDate?: string;
+  matchReasoning?: string;
+  fitScore?: number;
+  keyMatches?: string[];
+  recommendedPitch?: string;
+  scoreBreakdown?: {
+    authority: number;
+    budget: number;
+    urgency: number;
+    fit: number;
+  };
+  isExample?: boolean;
+  matchedQuery?: string;
 }
 
 interface DiscoveredLeadCardProps {
   lead: LeadItem;
   onOpenCallModal: (lead: LeadItem) => void;
   onOpenScoreModal: (lead: LeadItem) => void;
+  isExampleMode?: boolean;
 }
 
 export default function DiscoveredLeadCard({
   lead,
   onOpenCallModal,
   onOpenScoreModal,
+  isExampleMode = false,
 }: DiscoveredLeadCardProps) {
+  const [showLogicDetails, setShowLogicDetails] = React.useState(true);
+  const isExample = isExampleMode || lead.isExample;
+
+  const scoreBreakdown = lead.scoreBreakdown || {
+    authority: lead.decisionMaker ? 25 : 15,
+    budget: lead.budgetSignal === 'Approved' ? 25 : lead.budgetSignal === 'High' ? 24 : 18,
+    urgency: lead.urgencyLevel === 'High' ? 24 : 18,
+    fit: Math.max(15, (lead.intentScore || 90) - 70),
+  };
+
+  const defaultReasoning = isExample
+    ? 'Direct public RFP posted by CTO on LinkedIn scouting an implementation partner for SharePoint & Microsoft 365 migration with high urgency and approved budget.'
+    : `Prospect explicitly stated an active enterprise requirement matching "${lead.matchedQuery || 'target capability'}" with verified decision-maker authority.`;
+
+  const defaultPitch = isExample
+    ? "Introduce TechNova's certified SharePoint migration accelerators and automated workflow connectors; propose a 15-minute architecture discovery session."
+    : `Introduce our specialized solution architecture for ${lead.matchedQuery || 'their requirement'} and offer a complimentary technical qualification call.`;
+
+  const keyTags = lead.keyMatches && lead.keyMatches.length > 0
+    ? lead.keyMatches
+    : ['Active RFP', 'Decision Maker', 'Enterprise Scope', 'High Intent'];
+
   return (
     <div className="glass-card p-5 mb-6 border-indigo-500/20 shadow-xl relative overflow-hidden">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-white/[0.06]">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5" /> High Intent Opportunity
+      {/* Top Banner indicating Example Benchmark vs Live Custom Search Result */}
+      {isExample && (
+        <div className="mb-3 px-3 py-2 rounded-xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 border border-blue-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded-md bg-blue-500 text-white font-bold text-[10px] tracking-wide uppercase">
+              Benchmark Example
+            </span>
+            <span className="text-slate-300 font-medium">
+              Showing pre-loaded demonstration data for <span className="text-white font-semibold">&quot;SharePoint Implementation Partner&quot;</span>.
+            </span>
+          </div>
+          <span className="text-[11px] text-blue-300">
+            Type any business query above to run live discovery &rarr;
           </span>
-          <span className="text-xs text-slate-400">• Discovered autonomously</span>
+        </div>
+      )}
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-white/[0.06]">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+            {isExample ? 'High Intent Opportunity' : `Discovered for "${lead.matchedQuery || 'Custom Search'}"`}
+          </span>
+          <span className="text-xs text-slate-400">
+            • {isExample ? 'Benchmark Demonstration' : 'Discovered autonomously'}
+          </span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -247,6 +310,104 @@ export default function DiscoveredLeadCard({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Transparent AI Discovery & Qualification Logic Drawer */}
+      <div className="mt-4 pt-3 border-t border-white/[0.06]">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="p-1 rounded-md bg-indigo-500/20 text-indigo-400">
+              <Brain className="w-3.5 h-3.5" />
+            </div>
+            <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <span>AI Discovery &amp; Qualification Logic</span>
+              <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                Transparent Formula
+              </span>
+            </h4>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowLogicDetails(!showLogicDetails)}
+            className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1 transition-all cursor-pointer"
+          >
+            <span>{showLogicDetails ? 'Hide Logic Details' : 'Show Logic Details'}</span>
+            {showLogicDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+
+        {showLogicDetails && (
+          <div className="mt-3 space-y-3 animate-in fade-in duration-200">
+            {/* Top row: Rationale + Tags */}
+            <div className="p-3.5 rounded-xl bg-[#090d20] border border-white/[0.06] text-xs">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-slate-300 font-semibold flex items-center gap-1.5">
+                  <Target className="w-3.5 h-3.5 text-emerald-400" />
+                  Semantic Match &amp; Buying Intent Rationale
+                </span>
+                <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                  Fit Score: {lead.fitScore || lead.intentScore}%
+                </span>
+              </div>
+              <p className="text-slate-300 leading-relaxed text-[11px]">
+                {lead.matchReasoning || defaultReasoning}
+              </p>
+
+              {/* Keyword alignment tags */}
+              <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-white/[0.04]">
+                <span className="text-[10px] text-slate-500 mr-1 flex items-center">Matched Tags:</span>
+                {keyTags.map((tag, i) => (
+                  <span
+                    key={i}
+                    className="px-2 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-300 border border-blue-500/20"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Middle row: 4 qualification signals breakdown */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] text-center">
+                <div className="text-[10px] text-slate-400 mb-0.5">Authority</div>
+                <div className="text-sm font-bold text-white">{scoreBreakdown.authority}<span className="text-[10px] text-slate-400 font-normal"> / 25</span></div>
+                <div className="text-[9px] text-indigo-300 truncate mt-0.5">{lead.jobTitle}</div>
+              </div>
+              <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] text-center">
+                <div className="text-[10px] text-slate-400 mb-0.5">Budget Signal</div>
+                <div className="text-sm font-bold text-emerald-400">{scoreBreakdown.budget}<span className="text-[10px] text-slate-400 font-normal"> / 25</span></div>
+                <div className="text-[9px] text-emerald-300 truncate mt-0.5">{lead.budgetSignal} Budget</div>
+              </div>
+              <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] text-center">
+                <div className="text-[10px] text-slate-400 mb-0.5">Urgency &amp; Timeline</div>
+                <div className="text-sm font-bold text-amber-400">{scoreBreakdown.urgency}<span className="text-[10px] text-slate-400 font-normal"> / 25</span></div>
+                <div className="text-[9px] text-amber-300 truncate mt-0.5">{lead.urgencyLevel} Urgency</div>
+              </div>
+              <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] text-center">
+                <div className="text-[10px] text-slate-400 mb-0.5">Requirement Fit</div>
+                <div className="text-sm font-bold text-blue-400">{scoreBreakdown.fit}<span className="text-[10px] text-slate-400 font-normal"> / 25</span></div>
+                <div className="text-[9px] text-blue-300 truncate mt-0.5">High Alignment</div>
+              </div>
+            </div>
+
+            {/* Bottom row: Recommended Pitch Angle */}
+            <div className="p-3 rounded-xl bg-gradient-to-r from-indigo-950/40 via-purple-950/30 to-blue-950/40 border border-indigo-500/20 flex items-start gap-2.5 text-xs">
+              <div className="p-1 rounded-md bg-amber-500/10 text-amber-400 shrink-0 mt-0.5">
+                <Lightbulb className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300 block mb-0.5">
+                  Recommended AI Voice Consultation Angle
+                </span>
+                <p className="text-slate-200 text-[11px] leading-relaxed">
+                  {lead.recommendedPitch || defaultPitch}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

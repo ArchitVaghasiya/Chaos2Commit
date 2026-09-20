@@ -36,104 +36,16 @@ import {
   ArrowRight
 } from 'lucide-react';
 
-const INITIAL_FALLBACK_LEADS: LeadItem[] = [
-  {
-    id: 'lead-john-smith',
-    name: 'John Smith',
-    jobTitle: 'CTO',
-    companyName: 'TechNova Solutions',
-    companyWebsite: 'www.technova.com',
-    industry: 'IT Services',
-    companySize: '51 – 200 employees',
-    email: 'john.smith@technova.com',
-    emailVerified: true,
-    phone: '+1 (555) 123-4567',
-    phoneVerified: true,
-    linkedinProfile: 'https://linkedin.com/in/john-smith-cloud',
-    sourcePlatform: 'LinkedIn',
-    originalPostUrl: 'https://www.linkedin.com/posts/john-smith-technova_sharepoint-m365-migration',
-    originalPostSnippet: 'We are looking for a Microsoft 365 & SharePoint implementation partner to streamline our document management and workflow automation. Please DM if you can help! #Microsoft365 #SharePoint #Workflow #DigitalTransformation',
-    intentScore: 94,
-    budgetSignal: 'High',
-    urgencyLevel: 'High',
-    decisionMaker: true,
-    activeRequirement: true,
-    status: 'READY_TO_ENGAGE',
-    discoveryDate: '08 May 2025'
-  },
-  {
-    id: 'lead-priya-nair',
-    name: 'Priya Nair',
-    jobTitle: 'VP of Engineering',
-    companyName: 'CloudTech Inc.',
-    companyWebsite: 'www.cloudtech.io',
-    industry: 'Software',
-    companySize: '201 – 500 employees',
-    email: 'priya.nair@cloudtech.io',
-    emailVerified: true,
-    phone: '+1 (555) 872-9012',
-    phoneVerified: true,
-    linkedinProfile: 'https://linkedin.com/in/priya-nair-crm',
-    sourcePlatform: 'X (Twitter)',
-    originalPostUrl: 'https://x.com/priyanair_tech/status/17892182739182',
-    originalPostSnippet: 'Evaluating modern CRM migration and workflow tools to consolidate our sales pipeline. Who is doing great work here?',
-    intentScore: 87,
-    budgetSignal: 'Approved',
-    urgencyLevel: 'Medium',
-    decisionMaker: true,
-    activeRequirement: true,
-    status: 'READY_TO_ENGAGE',
-    discoveryDate: '07 May 2025'
-  },
-  {
-    id: 'lead-marc-weber',
-    name: 'Marc Weber',
-    jobTitle: 'Head of Data Infrastructure',
-    companyName: 'DataSystems GmbH',
-    companyWebsite: 'www.datasystems.eu',
-    industry: 'Consulting',
-    companySize: '500+ employees',
-    email: 'm.weber@datasystems.eu',
-    emailVerified: true,
-    phone: '+49 30 9182345',
-    phoneVerified: true,
-    linkedinProfile: 'https://linkedin.com/in/marc-weber-data',
-    sourcePlatform: 'Company Websites',
-    originalPostUrl: 'https://datasystems.eu/procurement/rfp-data-warehouse-2025',
-    originalPostSnippet: 'Public RFP: Looking for certified data engineering partners for Snowflake and cloud data warehouse modernization.',
-    intentScore: 82,
-    budgetSignal: 'High',
-    urgencyLevel: 'Medium',
-    decisionMaker: true,
-    activeRequirement: true,
-    status: 'READY_TO_ENGAGE',
-    discoveryDate: '06 May 2025'
-  },
-  {
-    id: 'lead-ana-lopez',
-    name: 'Ana Lopez',
-    jobTitle: 'Director of IT Systems',
-    companyName: 'Brightpath Health',
-    companyWebsite: 'www.brightpath.com',
-    industry: 'Healthcare',
-    companySize: '51 – 200 employees',
-    email: 'ana.lopez@brightpath.com',
-    emailVerified: true,
-    phone: '+1 (555) 432-8765',
-    phoneVerified: true,
-    linkedinProfile: 'https://linkedin.com/in/ana-lopez-brightpath',
-    sourcePlatform: 'Directories',
-    originalPostUrl: 'https://directories.techprocure.org/notices/10293',
-    originalPostSnippet: 'Seeking automation audit consultants for HIPAA-compliant clinical workflows.',
-    intentScore: 78,
-    budgetSignal: 'Approved',
-    urgencyLevel: 'High',
-    decisionMaker: true,
-    activeRequirement: true,
-    status: 'READY_TO_ENGAGE',
-    discoveryDate: '05 May 2025'
-  }
-];
+import { SEED_LEADS_CATALOG } from '@/lib/ai/lead-discovery-engine';
+
+const INITIAL_FALLBACK_LEADS: LeadItem[] = (SEED_LEADS_CATALOG as any[]).map(l => ({
+  ...l,
+  id: l.id || `lead-${l.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+  emailVerified: l.emailVerified ?? true,
+  phoneVerified: l.phoneVerified ?? true,
+  status: l.status || 'READY_TO_ENGAGE',
+  discoveryDate: l.discoveryDate || '08 May 2025'
+})) as LeadItem[];
 
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -148,6 +60,7 @@ export default function HomePage() {
   const [isScoreModalOpen, setIsScoreModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<any>(null);
+  const [isExampleMode, setIsExampleMode] = useState(true);
   const [hasSearched, setHasSearched] = useState(false);
   const [searchEmptyMessage, setSearchEmptyMessage] = useState<string | null>(null);
 
@@ -197,7 +110,8 @@ export default function HomePage() {
 
       if (leadsRes.status === 'fulfilled' && leadsRes.value.ok) {
         const data = await leadsRes.value.json();
-        if (data.leads && data.leads.length > 0) {
+        // Keep clean benchmark example data on first load; only populate DB leads when not in example mode
+        if (data.leads && data.leads.length > 0 && !isExampleMode) {
           setLeads(data.leads);
           setSelectedLead((prev) => {
             if (!prev) return data.leads[0];
@@ -216,27 +130,37 @@ export default function HomePage() {
     } catch (err) {
       console.error('Initial load error:', err);
     }
-  }, []);
+  }, [isExampleMode]);
 
   useEffect(() => {
     loadInitialData();
   }, [loadInitialData]);
 
-  // Lead Discovery search - triggered ONLY on explicit Search button click
+  const handleResetToExample = () => {
+    setLeads(INITIAL_FALLBACK_LEADS);
+    setSelectedLead(INITIAL_FALLBACK_LEADS[0]);
+    setIsExampleMode(true);
+    setHasSearched(false);
+    setSearchEmptyMessage(null);
+  };
+
+  // Lead Discovery search - triggered ONLY on explicit Search button click or 1-click quick query
   const handleSearch = async (params: DiscoverySearchParams) => {
     const trimmed = (params.keyword || '').trim();
 
-    // If user searched nothing, show nothing! ("if i search nothing so it shouldn't show anything")
+    // If user searched nothing, show prompt
     if (!trimmed) {
       setLeads([]);
       setSelectedLead(null);
       setHasSearched(true);
+      setIsExampleMode(false);
       setSearchEmptyMessage('Please enter a keyword, industry, or requirement to search for opportunities.');
       return;
     }
 
     setLoading(true);
     setHasSearched(true);
+    setIsExampleMode(false);
     setSearchEmptyMessage(null);
 
     try {
@@ -333,6 +257,8 @@ export default function HomePage() {
                       dateRange={selectedDateRange}
                       setDateRange={setSelectedDateRange}
                       loading={loading}
+                      onResetToExample={handleResetToExample}
+                      isExampleMode={isExampleMode}
                     />
 
                     {/* Sample Discovered Lead Card or Empty State */}
@@ -341,6 +267,7 @@ export default function HomePage() {
                         lead={selectedLead}
                         onOpenCallModal={openCallModalForLead}
                         onOpenScoreModal={openScoreModalForLead}
+                        isExampleMode={isExampleMode}
                       />
                     ) : (
                       <div className="glass-card p-6 mb-6 border-white/[0.06] text-center flex flex-col items-center justify-center">
@@ -408,6 +335,8 @@ export default function HomePage() {
                   dateRange={selectedDateRange}
                   setDateRange={setSelectedDateRange}
                   loading={loading}
+                  onResetToExample={handleResetToExample}
+                  isExampleMode={isExampleMode}
                 />
 
                 {selectedLead ? (
@@ -415,6 +344,7 @@ export default function HomePage() {
                     lead={selectedLead}
                     onOpenCallModal={openCallModalForLead}
                     onOpenScoreModal={openScoreModalForLead}
+                    isExampleMode={isExampleMode}
                   />
                 ) : (
                   <div className="glass-card p-6 mb-6 border-white/[0.06] text-center flex flex-col items-center justify-center">

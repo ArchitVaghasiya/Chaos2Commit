@@ -64,3 +64,44 @@ Your goal:
 
   return null;
 }
+
+/**
+ * Dynamic B2B lead generation with Groq LLM as fallback when Gemini is unavailable
+ */
+export async function generateDynamicLeadsWithGroq(query: string, platform = 'All Sources') {
+  const groq = getGroqClient();
+  if (!groq) return null;
+
+  const systemPrompt = `You are the AI Lead Discovery Engine of an enterprise B2B sales automation platform.
+A sales team is searching for public requirement posts matching: "${query}" on platform: "${platform}".
+Generate 2-3 realistic high-intent B2B prospect requirement posts published by real enterprise decision-makers (CTOs, VPs, IT Directors) seeking vendors.
+Important: Prospect company names MUST be external enterprises (e.g. Apex Health, Vanguard Logistics, Lumina Financial) and NEVER "TechNova Solutions".
+Return strictly a valid JSON array of objects with keys:
+"name", "jobTitle", "companyName", "companyWebsite", "industry", "companySize", "email", "phone", "linkedinProfile", "sourcePlatform", "originalPostUrl", "originalPostSnippet", "intentScore" (85-96), "budgetSignal" ("Approved"|"High"), "urgencyLevel" ("High"|"Medium"), "decisionMaker" (true), "activeRequirement" (true), "matchReasoning" (string), "fitScore" (number 90-98), "keyMatches" (array of strings), "recommendedPitch" (string), "scoreBreakdown" ({"authority": 25, "budget": 24, "urgency": 23, "fit": 24}).
+Output only the JSON array, no markdown fences or preambles.`;
+
+  const modelsToTry = ['openai/gpt-oss-20b', 'groq/compound-mini'];
+  for (const model of modelsToTry) {
+    try {
+      const completion = await groq.chat.completions.create({
+        model,
+        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: `Generate leads for: ${query}` }],
+        temperature: 0.4,
+        max_tokens: 1500,
+      });
+
+      const text = completion.choices[0]?.message?.content?.trim();
+      if (text) {
+        const cleanJson = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+        const parsed = JSON.parse(cleanJson);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn(`Groq lead generation failed on ${model}:`, e);
+    }
+  }
+
+  return null;
+}

@@ -164,6 +164,26 @@ export default function IntentScoreModal({
           </div>
         </div>
 
+        {/* AI Intent Qualification Insight Callout */}
+        <div className="mb-4 p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-xs">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[11px] font-bold text-indigo-300 uppercase tracking-wider">
+              AI Qualification Rationale
+            </span>
+            <span className="text-[10px] text-emerald-400 font-bold">
+              Fit Score: {lead.fitScore || lead.intentScore}%
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-300 leading-relaxed">
+            {lead.matchReasoning || 'Direct requirement match scored based on verified decision-maker authority, approved enterprise budget signal, and immediate procurement timeline.'}
+          </p>
+          {lead.recommendedPitch && (
+            <div className="mt-2 pt-2 border-t border-white/[0.04] text-[11px] text-amber-300">
+              <span className="font-bold text-amber-400">Consultative Pitch Angle:</span> {lead.recommendedPitch}
+            </div>
+          )}
+        </div>
+
         <button
           onClick={onClose}
           className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-lg shadow-indigo-600/20 cursor-pointer"

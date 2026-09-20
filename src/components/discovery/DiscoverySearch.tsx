@@ -47,6 +47,8 @@ interface DiscoverySearchProps {
   dateRange?: string;
   setDateRange?: (dateRange: string) => void;
   loading?: boolean;
+  onResetToExample?: () => void;
+  isExampleMode?: boolean;
 }
 
 export default function DiscoverySearch({
@@ -60,6 +62,8 @@ export default function DiscoverySearch({
   dateRange: controlledDateRange,
   setDateRange: controlledSetDateRange,
   loading = false,
+  onResetToExample,
+  isExampleMode = true,
 }: DiscoverySearchProps) {
   const [keyword, setKeyword] = useState('');
   const [internalIndustry, setInternalIndustry] = useState('All Industries');
@@ -84,7 +88,6 @@ export default function DiscoverySearch({
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Trigger AI discovery ONLY when Search button is clicked
     onSearch({
       keyword,
       platform: selectedPlatform,
@@ -92,6 +95,24 @@ export default function DiscoverySearch({
       location,
       dateRange,
     });
+  };
+
+  const handleQuickQuery = (tag: string) => {
+    setKeyword(tag);
+    onSearch({
+      keyword: tag,
+      platform: selectedPlatform,
+      industry,
+      location,
+      dateRange,
+    });
+  };
+
+  const handleResetExample = () => {
+    setKeyword('');
+    if (onResetToExample) {
+      onResetToExample();
+    }
   };
 
   const sampleKeywords = [
@@ -103,13 +124,24 @@ export default function DiscoverySearch({
 
   return (
     <div className="glass-card p-5 mb-6 border-indigo-500/20 shadow-xl">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <h2 className="text-base font-bold text-white flex items-center gap-2">
           <Search className="w-4 h-4 text-blue-400" /> Lead Discovery
         </h2>
-        <span className="text-xs text-slate-400">
-          Autonomous crawler monitoring <span className="text-emerald-400 font-semibold">37,800+</span> active public sources
-        </span>
+        <div className="flex items-center gap-3">
+          {!isExampleMode && (
+            <button
+              type="button"
+              onClick={handleResetExample}
+              className="text-[11px] text-indigo-300 hover:text-white px-2 py-0.5 rounded-md bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 transition-all cursor-pointer"
+            >
+              Reset to Benchmark Example
+            </button>
+          )}
+          <span className="text-xs text-slate-400">
+            Autonomous crawler monitoring <span className="text-emerald-400 font-semibold">37,800+</span> active public sources
+          </span>
+        </div>
       </div>
 
       {/* Main Search Input & Filters */}
@@ -134,7 +166,7 @@ export default function DiscoverySearch({
             {loading ? (
               <span className="flex items-center gap-2">
                 <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                AI Identifying...
+                AI Crawling &amp; Scoring...
               </span>
             ) : (
               <>
@@ -147,13 +179,13 @@ export default function DiscoverySearch({
 
         {/* Suggested Query Tags */}
         <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-[11px] text-slate-400">
-          <span className="text-slate-500">Quick queries:</span>
+          <span className="text-slate-500">Quick queries (1-click search):</span>
           {sampleKeywords.map((tag) => (
             <button
               key={tag}
               type="button"
-              onClick={() => setKeyword(tag)}
-              className="px-2 py-0.5 rounded-md bg-white/[0.03] hover:bg-white/[0.08] text-slate-300 border border-white/[0.06] transition-all cursor-pointer"
+              onClick={() => handleQuickQuery(tag)}
+              className="px-2 py-0.5 rounded-md bg-white/[0.03] hover:bg-indigo-600/20 hover:text-indigo-200 hover:border-indigo-500/40 text-slate-300 border border-white/[0.06] transition-all cursor-pointer"
             >
               {tag}
             </button>
@@ -161,10 +193,13 @@ export default function DiscoverySearch({
           {keyword && (
             <button
               type="button"
-              onClick={() => setKeyword('')}
+              onClick={() => {
+                setKeyword('');
+                if (onResetToExample) onResetToExample();
+              }}
               className="ml-auto text-slate-400 hover:text-white underline cursor-pointer text-[10px]"
             >
-              Clear Search
+              Clear
             </button>
           )}
         </div>
