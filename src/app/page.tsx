@@ -711,7 +711,7 @@ export default function HomePage() {
             {activeTab === 'integrations' && <IntegrationsHub />}
 
             {/* 10. Billing & Plans Hub (Starter, Growth & Enterprise) */}
-            {activeTab === 'billing' && <BillingHub />}
+            {activeTab === 'billing' && <BillingHub currentLanguage={currentLanguage} />}
 
             {/* 11. Settings & Onboarding Hub (PDF Page 3 User Journey Steps 1–6) */}
             {activeTab === 'settings' && <SettingsOnboardingHub />}
