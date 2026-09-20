@@ -488,7 +488,7 @@ export default function HomePage() {
 
 
                     {/* Campaign Performance Multi-Line Trend Chart */}
-                    <CampaignPerformanceChart />
+                    <CampaignPerformanceChart currentLanguage={currentLanguage} />
 
                   </div>
 
@@ -687,7 +687,7 @@ export default function HomePage() {
                     <VoiceActivityRail onViewAll={() => setActiveTab('conversations')} />
                   </div>
                   <div className="xl:col-span-6">
-                    <CampaignPerformanceChart />
+                    <CampaignPerformanceChart currentLanguage={currentLanguage} />
                   </div>
                 </div>
               </div>
@@ -700,7 +700,7 @@ export default function HomePage() {
             {activeTab === 'analytics' && (
               <div className="space-y-6">
                 <OverviewKpis stats={stats} currentLanguage={currentLanguage} />
-                <CampaignPerformanceChart />
+                <CampaignPerformanceChart currentLanguage={currentLanguage} />
                 <DonutCharts />
               </div>
             )}
