@@ -24,6 +24,8 @@ interface HeaderBannerProps {
   onLanguageChange?: (lang: string) => void;
   onOpenCsvImport?: () => void;
   onOpenNewCampaign?: () => void;
+  currentUser?: { name: string; email?: string } | null;
+  onSignOut?: () => void;
 }
 
 export default function HeaderBanner({
@@ -31,6 +33,8 @@ export default function HeaderBanner({
   onLanguageChange,
   onOpenCsvImport,
   onOpenNewCampaign,
+  currentUser,
+  onSignOut,
 }: HeaderBannerProps) {
   const t = getTranslation(currentLanguage);
   const [isLangOpen, setIsLangOpen] = useState(false);
@@ -140,14 +144,31 @@ export default function HeaderBanner({
                 <div className="text-[12px] font-bold tracking-tight leading-tight">{t.moreConversations}</div>
                 <div className="text-[10px] text-indigo-100 leading-tight mt-0.5">{t.closeDeals}</div>
              </div>
-             <Link
-               href="/sign-in"
-               className="relative z-10 px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 active:scale-95 text-white border border-white/30 text-[11px] font-semibold flex items-center gap-1.5 transition-all shadow-sm shrink-0 whitespace-nowrap cursor-pointer"
-               title="Sign In / Account"
-             >
-               <LogIn className="w-3.5 h-3.5" />
-               <span>Sign In</span>
-             </Link>
+             {currentUser ? (
+               <div className="relative z-10 flex items-center gap-1.5 shrink-0">
+                 <span className="text-[11px] font-bold text-white/90 truncate max-w-[80px]">
+                   {currentUser.name}
+                 </span>
+                 {onSignOut && (
+                   <button
+                     onClick={onSignOut}
+                     className="px-2 py-1 rounded-lg bg-white/20 hover:bg-white/30 active:scale-95 text-white text-[10px] font-semibold transition-all cursor-pointer shrink-0"
+                     title="Sign Out"
+                   >
+                     Sign Out
+                   </button>
+                 )}
+               </div>
+             ) : (
+               <Link
+                 href="/sign-in"
+                 className="relative z-10 px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 active:scale-95 text-white border border-white/30 text-[11px] font-semibold flex items-center gap-1.5 transition-all shadow-sm shrink-0 whitespace-nowrap cursor-pointer"
+                 title="Sign In / Account"
+               >
+                 <LogIn className="w-3.5 h-3.5" />
+                 <span>Sign In</span>
+               </Link>
+             )}
           </div>
 
           {/* Quick Actions Bar */}

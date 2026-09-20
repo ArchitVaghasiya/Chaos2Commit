@@ -5,27 +5,22 @@ import Link from 'next/link';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { 
   Sparkles, 
-  Bot, 
-  Headphones, 
   Search, 
   ShieldCheck, 
-  CheckCircle2, 
-  TrendingUp, 
+  Headphones, 
   ArrowLeft,
   Languages,
   ChevronDown,
   Check
 } from 'lucide-react';
+import { AuthLanguageProvider, useAuthLanguage } from '@/contexts/AuthLanguageContext';
+import { AuthSupportedLanguage } from '@/lib/i18n/authTranslations';
 
-export default function AuthLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const [currentLanguage, setCurrentLanguage] = useState('English');
+function AuthLayoutInner({ children }: { children: React.ReactNode }) {
+  const { language, setLanguage, t } = useAuthLanguage();
   const [isLangOpen, setIsLangOpen] = useState(false);
 
-  const languages = [
+  const languages: { code: string; label: AuthSupportedLanguage }[] = [
     { code: 'en', label: 'English' },
     { code: 'es', label: 'Español' },
     { code: 'hi', label: 'हिन्दी' },
@@ -88,19 +83,19 @@ export default function AuthLayout({
             className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 px-3 py-1.5 rounded-lg hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-all"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            Back to Dashboard
+            {t.backToDashboard}
           </Link>
 
           {/* Language Switcher */}
           <div className="relative">
             <button
               onClick={() => setIsLangOpen(!isLangOpen)}
-              className="h-8 px-2.5 rounded-lg bg-black/[0.04] dark:bg-[#0f172a] border border-black/10 dark:border-white/[0.1] flex items-center gap-1.5 transition-colors hover:bg-black/[0.08] dark:hover:bg-white/[0.08] text-xs font-medium"
+              className="h-8 px-2.5 rounded-lg bg-black/[0.04] dark:bg-[#0f172a] border border-black/10 dark:border-white/[0.1] flex items-center gap-1.5 transition-colors hover:bg-black/[0.08] dark:hover:bg-white/[0.08] text-xs font-medium cursor-pointer"
               title="Change Language"
             >
               <Languages className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
               <span className="text-slate-700 dark:text-slate-300">
-                {languages.find(l => l.label === currentLanguage)?.code.toUpperCase() || 'EN'}
+                {languages.find(l => l.label === language)?.code.toUpperCase() || 'EN'}
               </span>
               <ChevronDown className="w-3 h-3 text-slate-500" />
             </button>
@@ -111,17 +106,17 @@ export default function AuthLayout({
                   <button
                     key={lang.code}
                     onClick={() => {
-                      setCurrentLanguage(lang.label);
+                      setLanguage(lang.label);
                       setIsLangOpen(false);
                     }}
-                    className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center justify-between ${
-                      currentLanguage === lang.label 
+                    className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center justify-between cursor-pointer ${
+                      language === lang.label 
                         ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-semibold' 
                         : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[0.05]'
                     }`}
                   >
                     {lang.label}
-                    {currentLanguage === lang.label && <Check className="w-3.5 h-3.5" />}
+                    {language === lang.label && <Check className="w-3.5 h-3.5" />}
                   </button>
                 ))}
               </div>
@@ -142,18 +137,18 @@ export default function AuthLayout({
             <div className="space-y-4">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Next-Gen Autonomous Sales Automation</span>
+                <span>{t.multiLangBadge}</span>
               </div>
 
               <h2 className="text-4xl xl:text-5xl font-extrabold tracking-tight leading-tight text-slate-900 dark:text-white">
-                Discover leads. <br />
+                {t.heroHeadline} <br />
                 <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 dark:from-blue-400 dark:via-indigo-300 dark:to-purple-400">
-                  Close deals autonomously.
+                  {t.heroHighlight}
                 </span>
               </h2>
 
               <p className="text-slate-600 dark:text-slate-300 text-base leading-relaxed max-w-lg">
-                Harness AI agents that actively scan public web requests, enrich prospect intelligence, and conduct natural multilingual phone qualification calls on your behalf.
+                {t.heroDescription}
               </p>
             </div>
 
@@ -164,9 +159,9 @@ export default function AuthLayout({
                   <Search className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">High-Intent Discovery Engine</h4>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">{t.feature1Title}</h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Real-time web monitoring identifies buyers with urgent technical and business requirements.
+                    {t.feature1Desc}
                   </p>
                 </div>
               </div>
@@ -176,9 +171,9 @@ export default function AuthLayout({
                   <Headphones className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">Multilingual Voice AI Qualification</h4>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">{t.feature2Title}</h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Human-parity phone agents engage prospects natively in English, Spanish, Hindi, French, and more.
+                    {t.feature2Desc}
                   </p>
                 </div>
               </div>
@@ -188,9 +183,9 @@ export default function AuthLayout({
                   <ShieldCheck className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">Enterprise-Grade Security & CRM Sync</h4>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">{t.feature3Title}</h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Instant bidirectional synchronization with HubSpot, Salesforce, and webhook integrations.
+                    {t.feature3Desc}
                   </p>
                 </div>
               </div>
@@ -239,5 +234,13 @@ export default function AuthLayout({
       </footer>
 
     </div>
+  );
+}
+
+export default function AuthLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthLanguageProvider>
+      <AuthLayoutInner>{children}</AuthLayoutInner>
+    </AuthLanguageProvider>
   );
 }

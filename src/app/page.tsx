@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import HeaderBanner from '@/components/layout/HeaderBanner';
 import Sidebar from '@/components/layout/Sidebar';
 import OverviewKpis from '@/components/dashboard/OverviewKpis';
@@ -138,6 +139,34 @@ const INITIAL_FALLBACK_LEADS: LeadItem[] = [
 ];
 
 export default function HomePage() {
+  const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<{ name: string; email: string; companyName?: string } | null>(null);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('chaos2commit_user');
+    if (!saved) {
+      router.replace('/sign-in');
+    } else {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.name) {
+          setCurrentUser(parsed);
+          setIsAuthChecking(false);
+        } else {
+          router.replace('/sign-in');
+        }
+      } catch {
+        router.replace('/sign-in');
+      }
+    }
+  }, [router]);
+
+  const handleSignOut = () => {
+    localStorage.removeItem('chaos2commit_user');
+    router.replace('/sign-in');
+  };
+
   const [currentLanguage, setCurrentLanguage] = useState('English');
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -299,6 +328,20 @@ export default function HomePage() {
     setSelectedLead(newLeads[0]);
   };
 
+  if (isAuthChecking) {
+    return (
+      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#090d20] text-white">
+        <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-2xl shadow-indigo-500/20 mb-5 animate-pulse">
+          <img src="/ai_sales_logo.jpg" alt="Loading" className="w-full h-full object-cover scale-[2.2]" />
+        </div>
+        <div className="flex items-center gap-2 text-sm font-semibold text-indigo-400">
+          <RefreshCw className="w-4 h-4 animate-spin" />
+          <span>Verifying authentication...</span>
+        </div>
+      </div>
+    );
+  }
+
   if (showSplash) {
     return (
       <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#090d20] text-white overflow-hidden">
@@ -362,6 +405,8 @@ export default function HomePage() {
           onLanguageChange={setCurrentLanguage}
           onOpenCsvImport={() => setActiveTab('leads')}
           onOpenNewCampaign={() => setActiveTab('campaigns')}
+          currentUser={currentUser}
+          onSignOut={handleSignOut}
         />
 
         {/* Main Two-Column Layout (Sidebar + Content Workspace) */}
