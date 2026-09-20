@@ -118,7 +118,9 @@ export default function LiveCallSimulatorModal({
 
     try {
       const audioUrl = `/api/voice/tts?lang=${encodeURIComponent(lang)}&text=${encodeURIComponent(text)}`;
-      const audio = new Audio(audioUrl);
+      const audio = new Audio();
+      audio.preload = 'auto';
+      audio.src = audioUrl;
       audioRef.current = audio;
 
       audio.onplay = () => setIsAiSpeaking(true);
@@ -131,6 +133,8 @@ export default function LiveCallSimulatorModal({
         fallbackBrowserSpeak(text, lang);
       };
 
+      // Start playback as soon as enough data is buffered
+      audio.load();
       const playPromise = audio.play();
       if (playPromise !== undefined) {
         playPromise.catch((err) => {
@@ -277,9 +281,32 @@ export default function LiveCallSimulatorModal({
     if (!lead) return;
 
     const firstName = lead.name ? lead.name.split(' ')[0] : 'there';
-    const requirementTopic = lead.companyName
-      ? `your active requirement at ${lead.companyName}`
-      : 'your public requirement';
+    
+    // Fully localized requirement topic so no English fragments leak into Hindi or other languages
+    let requirementTopic = 'your public requirement';
+    if (lead.companyName) {
+      switch (lang) {
+        case 'हिन्दी':
+          requirementTopic = `${lead.companyName} में आपकी सक्रिय व्यावसायिक आवश्यकता`;
+          break;
+        case 'Español':
+          requirementTopic = `su requerimiento activo en ${lead.companyName}`;
+          break;
+        case 'Français':
+          requirementTopic = `votre besoin chez ${lead.companyName}`;
+          break;
+        case 'Deutsch':
+          requirementTopic = `Ihre aktive Anforderung bei ${lead.companyName}`;
+          break;
+        case 'العربية':
+          requirementTopic = `متطلباتكم في ${lead.companyName}`;
+          break;
+        case 'English':
+        default:
+          requirementTopic = `your active requirement at ${lead.companyName}`;
+          break;
+      }
+    }
 
     // 1. Log prospect choice
     const userChoiceMessage: Message = {
@@ -575,7 +602,19 @@ export default function LiveCallSimulatorModal({
                     >
                       <div className="flex items-center justify-between gap-3 text-[10px] opacity-75 mb-1 font-semibold">
                         <span>{isAgent ? t.aiSalesAgentLabel : lead.name}</span>
-                        <span>{msg.timestamp}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span>{msg.timestamp}</span>
+                          {isAgent && (
+                            <button
+                              type="button"
+                              onClick={() => speakText(msg.text, selectedLanguage)}
+                              title="Listen / Replay Voice (आवाज़ दोबारा सुनें)"
+                              className="p-1 rounded hover:bg-white/10 text-indigo-300 hover:text-white transition-all cursor-pointer flex items-center gap-0.5"
+                            >
+                              <Volume2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <p>{msg.text}</p>
                     </div>
