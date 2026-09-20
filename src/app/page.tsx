@@ -629,11 +629,12 @@ export default function HomePage() {
                 leads={leads}
                 onOpenCallModal={openCallModalForLead}
                 onImportLeads={handleImportLeads}
+                currentLanguage={currentLanguage}
               />
             )}
 
             {/* 4. Campaigns Management Tab (Video Slide 6 Lead Volume Chart & Controls) */}
-            {activeTab === 'campaigns' && <CampaignsHub />}
+            {activeTab === 'campaigns' && <CampaignsHub currentLanguage={currentLanguage} />}
 
             {/* 5. AI Voice Agent Hub */}
             {activeTab === 'ai-voice-agent' && (
