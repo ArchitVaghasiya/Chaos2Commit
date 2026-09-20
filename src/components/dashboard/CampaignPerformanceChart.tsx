@@ -359,30 +359,32 @@ export default function CampaignPerformanceChart({ currentLanguage = 'English' }
         {/* Floating Tooltip Card on Hover */}
         {activeHoverIndex !== null && (
           <div
-            className="absolute -top-3 z-30 p-3 rounded-xl bg-white/95 dark:bg-[#0c1432]/95 border border-indigo-500/30 shadow-2xl backdrop-blur-md pointer-events-none transition-all duration-150"
+            className="absolute top-0 z-30 p-3.5 rounded-xl bg-white/95 dark:bg-[#0c1432]/95 border border-indigo-500/30 shadow-2xl backdrop-blur-md pointer-events-none transition-all duration-150 w-64 min-w-[240px]"
             style={{
               left: `${(xCoords[activeHoverIndex] / 880) * 100}%`,
               transform:
-                activeHoverIndex > 2
-                  ? 'translateX(calc(-100% - 14px))'
-                  : 'translateX(14px)',
+                activeHoverIndex >= 3
+                  ? 'translateX(calc(-100% - 16px))'
+                  : 'translateX(16px)',
             }}
           >
-            <div className="text-[11px] font-bold text-indigo-500 dark:text-indigo-400 border-b border-slate-200 dark:border-white/[0.08] pb-1.5 mb-2 flex items-center justify-between gap-4">
-              <span>{dates[activeHoverIndex]}</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-300">
+            <div className="text-xs font-bold text-slate-900 dark:text-white border-b border-slate-200 dark:border-white/[0.08] pb-2 mb-2.5 flex items-center justify-between gap-2">
+              <span className="whitespace-nowrap font-bold text-indigo-600 dark:text-indigo-400">
+                {dates[activeHoverIndex]}
+              </span>
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 whitespace-nowrap border border-indigo-500/20">
                 {((seriesData[3].values[activeHoverIndex] / seriesData[0].values[activeHoverIndex]) * 100).toFixed(1)}% {t.conversion}
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+            <div className="space-y-2">
               {seriesData.map((s) => (
-                <div key={s.id} className="flex items-center justify-between gap-3">
-                  <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 text-[11px]">
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} />
+                <div key={s.id} className="flex items-center justify-between gap-4 text-xs">
+                  <span className="flex items-center gap-2 text-slate-700 dark:text-slate-300 whitespace-nowrap text-[11px]">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: s.color }} />
                     {s.name}
                   </span>
-                  <span className="font-bold text-slate-900 dark:text-white">
+                  <span className="font-bold text-slate-900 dark:text-white tabular-nums text-xs">
                     {s.values[activeHoverIndex].toLocaleString()}
                   </span>
                 </div>
