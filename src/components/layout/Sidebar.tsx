@@ -49,7 +49,7 @@ export default function Sidebar({
   return (
     <aside className="group w-[76px] hover:w-64 transition-[width] duration-300 ease-in-out glass-card py-4 px-3.5 flex flex-col justify-between shrink-0 border-indigo-500/10 min-h-[850px] shadow-xl overflow-hidden relative z-50">
       {/* Top Nav List */}
-      <nav className="space-y-1.5 w-[220px]">
+      <nav className="space-y-1.5 w-full">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -57,7 +57,7 @@ export default function Sidebar({
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-4 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 text-left ${
+              className={`w-full flex items-center gap-4 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 text-left overflow-hidden ${
                 isActive
                   ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 text-slate-900 dark:text-white shadow-lg shadow-indigo-600/30 font-semibold'
                   : 'text-slate-800 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.05]'

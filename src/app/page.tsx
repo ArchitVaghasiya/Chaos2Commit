@@ -535,28 +535,9 @@ export default function HomePage() {
                                   : 'bg-blue-500/20 text-blue-600 dark:text-blue-300 border border-blue-500/30'
                               }`}
                             >
-                              <div className="flex items-start justify-between gap-2 mb-2">
-                                <div className="truncate">
-                                  <div className="text-xs font-bold text-white truncate flex items-center gap-1.5">
-                                    {l.name}
-                                    {l.emailVerified && (
-                                      <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
-                                    )}
-                                  </div>
-                                  <div className="text-[11px] text-slate-400 truncate">
-                                    {l.jobTitle} • {l.companyName}
-                                  </div>
-                                </div>
-                                <span
-                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ${
-                                    l.intentScore >= 90
-                                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                                      : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                                  }`}
-                                >
-                                  {l.intentScore} Intent
-                                </span>
-                              </div>
+                              {l.intentScore} Intent
+                            </span>
+                          </div>
 
                           <p className="text-[11px] text-slate-800 dark:text-slate-300 line-clamp-2 bg-slate-100 dark:bg-white/[0.02] p-2 rounded-lg mb-2.5">
                             &quot;{l.originalPostSnippet}&quot;
@@ -579,7 +560,7 @@ export default function HomePage() {
                       );
                     })}
                   </div>
-                )}
+                </div>
               </div>
             )}
 
@@ -613,7 +594,7 @@ export default function HomePage() {
                     </div>
 
                     <button
-                      onClick={() => openCallModalForLead(selectedLead)}
+                      onClick={() => selectedLead && openCallModalForLead(selectedLead)}
                       className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-slate-900 dark:text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
                     >
                       <PhoneCall className="w-4 h-4" /> Launch Live Voice Call

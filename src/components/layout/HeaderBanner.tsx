@@ -48,12 +48,8 @@ export default function HeaderBanner({
         
         {/* Left Side: Brand & Robot Icon */}
         <div className="flex items-center gap-4 shrink-0">
-          <div className="w-16 h-16 rounded-2xl overflow-hidden shrink-0 relative shadow-lg shadow-emerald-500/30">
+          <div className="w-14 h-14 rounded-2xl overflow-hidden shrink-0 relative shadow-lg shadow-emerald-500/30">
             <img src="/ai_sales_logo.jpg" alt="AI Sales Logo" className="w-full h-full object-cover scale-[2.5]" />
-            <span className="absolute -bottom-1 -right-1 flex h-4 w-4">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border-2 border-white dark:border-[#090d20]"></span>
-            </span>
           </div>
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-1">

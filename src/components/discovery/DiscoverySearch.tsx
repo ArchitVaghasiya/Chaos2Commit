@@ -243,7 +243,7 @@ export default function DiscoverySearch({
               onClick={() => {
                 const next = isSelected ? 'All Sources' : p.id;
                 setSelectedPlatform(next);
-                onSearch(keyword, next);
+                onSearch({ keyword, platform: next, industry, location, dateRange });
               }}
               className={`flex flex-col items-center p-2.5 rounded-xl border transition-all text-center ${
                 isSelected
