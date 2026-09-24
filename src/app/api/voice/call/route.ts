@@ -276,16 +276,22 @@ export async function POST(request: Request) {
           leadStatusUpdate = 'MEETING_BOOKED';
         }
 
-        // Update Lead record
-        await prisma.lead.update({
-          where: { id: leadId },
-          data: {
-            status: leadStatusUpdate,
-            dndStatus: dndFlag,
-            scheduledCallbackAt: callbackTime,
-            retryCount: isCallbackRequested ? (lead?.retryCount || 0) + 1 : lead?.retryCount || 0,
-          },
-        });
+        // Update Lead record if exists
+        if (lead) {
+          try {
+            await prisma.lead.update({
+              where: { id: lead.id },
+              data: {
+                status: leadStatusUpdate,
+                dndStatus: dndFlag,
+                scheduledCallbackAt: callbackTime,
+                retryCount: isCallbackRequested ? (lead?.retryCount || 0) + 1 : lead?.retryCount || 0,
+              },
+            });
+          } catch (updateErr) {
+            console.warn('Lead status update skipped:', updateErr);
+          }
+        }
 
         // Persist or update CallLog
         const summaryText = isNegativeDnd
@@ -308,23 +314,29 @@ export async function POST(request: Request) {
           ? 'Send calendar invite, architecture deck, and prep solutions engineer.'
           : 'Continue qualification on timeline and deployment scope.';
 
-        await prisma.callLog.create({
-          data: {
-            leadId,
-            campaignId: campaignId || lead?.campaignId || null,
-            status: isNegativeDnd ? 'DND_REQUESTED' : isHumanHandoff ? 'HUMAN_HANDOFF' : isCallbackRequested ? 'RETRY_SCHEDULED' : 'CONNECTED',
-            outcome: isNegativeDnd ? 'DND' : isHumanHandoff ? 'HUMAN_HANDOFF' : isCallbackRequested ? 'RETRY_SCHEDULED' : isMeetingBooked ? 'MEETING_BOOKED' : 'INTERESTED',
-            durationSeconds: 145,
-            language,
-            telephonyProvider: 'STUDIO_WEB',
-            sentiment,
-            callSummary: summaryText,
-            nextBestAction: nextActionText,
-            transcriptJson: JSON.stringify(fullTranscript),
-            meetingScheduledAt: isMeetingBooked ? new Date(Date.now() + 86400000 * 2) : null,
-            callbackScheduledAt: callbackTime,
-          },
-        });
+        if (lead) {
+          try {
+            await prisma.callLog.create({
+              data: {
+                leadId: lead.id,
+                campaignId: campaignId || lead?.campaignId || null,
+                status: isNegativeDnd ? 'DND_REQUESTED' : isHumanHandoff ? 'HUMAN_HANDOFF' : isCallbackRequested ? 'RETRY_SCHEDULED' : 'CONNECTED',
+                outcome: isNegativeDnd ? 'DND' : isHumanHandoff ? 'HUMAN_HANDOFF' : isCallbackRequested ? 'RETRY_SCHEDULED' : isMeetingBooked ? 'MEETING_BOOKED' : 'INTERESTED',
+                durationSeconds: 145,
+                language,
+                telephonyProvider: 'STUDIO_WEB',
+                sentiment,
+                callSummary: summaryText,
+                nextBestAction: nextActionText,
+                transcriptJson: JSON.stringify(fullTranscript),
+                meetingScheduledAt: isMeetingBooked ? new Date(Date.now() + 86400000 * 2) : null,
+                callbackScheduledAt: callbackTime,
+              },
+            });
+          } catch (callLogErr) {
+            console.warn('CallLog creation skipped:', callLogErr);
+          }
+        }
       } catch (dbErr) {
         console.warn('Call turn persistence error (non-fatal):', dbErr);
       }
