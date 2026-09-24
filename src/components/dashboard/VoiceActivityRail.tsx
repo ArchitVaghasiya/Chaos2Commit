@@ -28,7 +28,7 @@ export default function VoiceActivityRail({ onViewAll }: VoiceActivityRailProps)
   return (
     <div className="glass-card p-4 mb-5 border-slate-200 dark:border-white/[0.06] shadow-xl">
       <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200 dark:border-white/[0.06]">
-        <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+        <h3 className="text-xs font-heading font-bold text-slate-900 dark:text-white uppercase tracking-wider">
           AI Voice Agent Activity
         </h3>
         <button

@@ -153,10 +153,10 @@ export default function SignInPage() {
 
         {/* Card Header */}
         <div className="mb-5 text-center sm:text-left relative z-10">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950 dark:text-white font-heading">
             {t.signInTitle}
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-sm text-slate-700 dark:text-slate-300 font-medium mt-1">
             {t.signInSubtitle}
           </p>
         </div>
@@ -217,49 +217,52 @@ export default function SignInPage() {
         {/* Email/Name & Password Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+            <label className="block text-sm font-bold text-slate-850 dark:text-slate-100 mb-1.5">
               {t.workEmailOrName}
             </label>
             <div className="relative">
-              <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <User className="w-5 h-5 text-slate-500 dark:text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 placeholder={t.workEmailOrNamePlaceholder}
+                autoComplete="username"
                 required
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-black/[0.03] dark:bg-black/30 border border-black/[0.1] dark:border-white/[0.1] text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+                className="w-full pl-11 pr-4 py-3 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-300 dark:border-white/[0.12] text-base font-medium text-slate-950 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 transition-all shadow-sm"
               />
             </div>
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <label className="block text-sm font-bold text-slate-850 dark:text-slate-100">
                 {t.passwordLabel}
               </label>
               <button
                 type="button"
                 onClick={() => setShowForgotModal(true)}
-                className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                className="text-xs font-bold text-indigo-700 dark:text-indigo-300 hover:underline cursor-pointer"
               >
                 {t.forgotPasswordLink}
               </button>
             </div>
             <div className="relative">
-              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Lock className="w-5 h-5 text-slate-500 dark:text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={t.passwordPlaceholder}
+                autoComplete="current-password"
                 required
-                className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-black/[0.03] dark:bg-black/30 border border-black/[0.1] dark:border-white/[0.1] text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+                className="w-full pl-11 pr-11 py-3 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-300 dark:border-white/[0.12] text-base font-medium text-slate-950 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 transition-all shadow-sm"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer p-1"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -275,7 +278,7 @@ export default function SignInPage() {
                 onChange={(e) => setRememberMe(e.target.checked)}
                 className="w-4 h-4 rounded text-indigo-600 border-slate-300 dark:border-slate-700 bg-transparent focus:ring-indigo-500 focus:ring-offset-0"
               />
-              <span className="text-xs text-slate-600 dark:text-slate-400">
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                 {t.rememberMeLabel}
               </span>
             </label>
@@ -285,7 +288,7 @@ export default function SignInPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3.5 px-6 rounded-2xl font-bold text-base tracking-wide text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:via-indigo-500 hover:to-purple-500 shadow-xl shadow-indigo-500/30 hover:shadow-indigo-500/40 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50 disabled:pointer-events-none mt-3"
+            className="w-full py-3.5 px-6 rounded-2xl font-bold text-base tracking-wide text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:via-indigo-500 hover:to-purple-500 shadow-xl shadow-indigo-500/30 hover:shadow-indigo-500/40 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50 disabled:pointer-events-none mt-3 font-heading"
           >
             {isLoading ? (
               <>
@@ -302,11 +305,11 @@ export default function SignInPage() {
         </form>
 
         {/* Footer Link to Sign Up */}
-        <div className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400">
+        <div className="mt-6 text-center text-sm font-medium text-slate-600 dark:text-slate-300">
           {t.dontHaveAccount}{' '}
           <Link
             href="/sign-up"
-            className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1"
+            className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1 ml-1"
           >
             {t.createAccountLink}
           </Link>

@@ -63,14 +63,14 @@ function AuthLayoutInner({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
-              <span className="font-extrabold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-indigo-900 to-indigo-600 dark:from-white dark:via-slate-100 dark:to-indigo-300">
+              <span className="font-extrabold text-xl tracking-tight font-heading bg-clip-text text-transparent bg-gradient-to-r from-slate-950 via-indigo-950 to-indigo-600 dark:from-white dark:via-slate-100 dark:to-indigo-300">
                 Chaos2Commit
               </span>
-              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 uppercase tracking-wider">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 uppercase tracking-wider">
                 Autonomous AI
               </span>
             </div>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+            <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">
               Sales Intelligence & Voice Platform
             </span>
           </div>
@@ -80,7 +80,7 @@ function AuthLayoutInner({ children }: { children: React.ReactNode }) {
         <div className="flex items-center gap-3">
           <Link
             href="/"
-            className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 px-3 py-1.5 rounded-lg hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-all"
+            className="hidden sm:flex items-center gap-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-300 px-3.5 py-2 rounded-lg hover:bg-black/[0.04] dark:hover:bg-white/[0.05] transition-all"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             {t.backToDashboard}
@@ -140,14 +140,14 @@ function AuthLayoutInner({ children }: { children: React.ReactNode }) {
                 <span>{t.multiLangBadge}</span>
               </div>
 
-              <h2 className="text-4xl xl:text-5xl font-extrabold tracking-tight leading-tight text-slate-900 dark:text-white">
+              <h2 className="text-4xl xl:text-5xl font-extrabold tracking-tight leading-tight text-slate-950 dark:text-white font-heading">
                 {t.heroHeadline} <br />
                 <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 dark:from-blue-400 dark:via-indigo-300 dark:to-purple-400">
                   {t.heroHighlight}
                 </span>
               </h2>
 
-              <p className="text-slate-600 dark:text-slate-300 text-base leading-relaxed max-w-lg">
+              <p className="text-slate-700 dark:text-slate-200 text-lg leading-relaxed max-w-lg font-medium">
                 {t.heroDescription}
               </p>
             </div>
@@ -159,32 +159,32 @@ function AuthLayoutInner({ children }: { children: React.ReactNode }) {
                   <Search className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">{t.feature1Title}</h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  <h4 className="text-base font-bold text-slate-950 dark:text-white font-heading">{t.feature1Title}</h4>
+                  <p className="text-sm text-slate-700 dark:text-slate-300 mt-1 font-medium">
                     {t.feature1Desc}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-white/60 dark:bg-white/[0.03] border border-black/[0.05] dark:border-white/[0.06] backdrop-blur-sm shadow-sm">
-                <div className="w-9 h-9 rounded-xl bg-purple-500/10 dark:bg-purple-500/20 flex items-center justify-center shrink-0 text-purple-600 dark:text-purple-400">
+              <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-white/70 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] backdrop-blur-sm shadow-sm">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 dark:bg-purple-500/20 flex items-center justify-center shrink-0 text-purple-600 dark:text-purple-400">
                   <Headphones className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">{t.feature2Title}</h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  <h4 className="text-base font-bold text-slate-950 dark:text-white font-heading">{t.feature2Title}</h4>
+                  <p className="text-sm text-slate-700 dark:text-slate-300 mt-1 font-medium">
                     {t.feature2Desc}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-white/60 dark:bg-white/[0.03] border border-black/[0.05] dark:border-white/[0.06] backdrop-blur-sm shadow-sm">
-                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center shrink-0 text-emerald-600 dark:text-emerald-400">
+              <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-white/70 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] backdrop-blur-sm shadow-sm">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center shrink-0 text-emerald-600 dark:text-emerald-400">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">{t.feature3Title}</h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  <h4 className="text-base font-bold text-slate-950 dark:text-white font-heading">{t.feature3Title}</h4>
+                  <p className="text-sm text-slate-700 dark:text-slate-300 mt-1 font-medium">
                     {t.feature3Desc}
                   </p>
                 </div>
@@ -192,20 +192,20 @@ function AuthLayoutInner({ children }: { children: React.ReactNode }) {
             </div>
 
             {/* Social Proof & Metrics */}
-            <div className="pt-4 border-t border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between">
+            <div className="pt-4 border-t border-slate-200 dark:border-white/[0.1] flex items-center justify-between">
               <div>
-                <div className="text-2xl font-extrabold text-slate-900 dark:text-white">94.2%</div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">Prospect Fit Accuracy</div>
+                <div className="text-3xl font-extrabold text-slate-950 dark:text-white tabular-nums font-heading">94.2%</div>
+                <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">Prospect Fit Accuracy</div>
               </div>
-              <div className="h-8 w-[1px] bg-black/[0.06] dark:border-white/[0.08]" />
+              <div className="h-8 w-[1px] bg-slate-200 dark:bg-white/[0.1]" />
               <div>
-                <div className="text-2xl font-extrabold text-slate-900 dark:text-white">12,450+</div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">Voice Minutes Run</div>
+                <div className="text-3xl font-extrabold text-slate-950 dark:text-white tabular-nums font-heading">12,450+</div>
+                <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">Voice Minutes Run</div>
               </div>
-              <div className="h-8 w-[1px] bg-black/[0.06] dark:border-white/[0.08]" />
+              <div className="h-8 w-[1px] bg-slate-200 dark:bg-white/[0.1]" />
               <div>
-                <div className="text-2xl font-extrabold text-slate-900 dark:text-white">3.8x</div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">Pipeline Velocity</div>
+                <div className="text-3xl font-extrabold text-slate-950 dark:text-white tabular-nums font-heading">3.8x</div>
+                <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">Pipeline Velocity</div>
               </div>
             </div>
 

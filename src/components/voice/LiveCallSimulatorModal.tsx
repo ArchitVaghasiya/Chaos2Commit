@@ -21,6 +21,7 @@ import {
   Mic,
   MicOff,
   Keyboard,
+  Minimize2,
 } from 'lucide-react';
 import { LeadItem } from '../discovery/DiscoveredLeadCard';
 import {
@@ -42,6 +43,7 @@ interface LiveCallSimulatorModalProps {
   lead: LeadItem | null;
   isOpen: boolean;
   onClose: () => void;
+  onMinimize?: () => void;
   onMeetingBookedSuccess?: () => void;
   defaultLanguage?: string;
 }
@@ -52,6 +54,7 @@ export default function LiveCallSimulatorModal({
   lead,
   isOpen,
   onClose,
+  onMinimize,
   onMeetingBookedSuccess,
   defaultLanguage = 'English',
 }: LiveCallSimulatorModalProps) {
@@ -1083,48 +1086,48 @@ export default function LiveCallSimulatorModal({
   const progressPercent = Math.min(100, (duration / CALL_LIMIT_SECONDS) * 100);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-4 overflow-y-auto">
-      <div className="w-full max-w-4xl glass-card border-indigo-500/30 bg-[#090d22] shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 dark:bg-black/80 backdrop-blur-md p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
+      <div className="w-full max-w-4xl glass-card rounded-2xl border border-slate-200/90 dark:border-indigo-500/30 bg-white/95 dark:bg-[#090d22] text-slate-900 dark:text-white shadow-2xl overflow-hidden flex flex-col max-h-[92vh] transition-colors">
         {/* Top Call Header */}
-        <div className="p-4 border-b border-white/[0.08] bg-gradient-to-r from-blue-950/70 via-indigo-950/70 to-purple-950/70 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="p-4 border-b border-slate-200/80 dark:border-white/[0.08] bg-gradient-to-r from-indigo-50/70 via-blue-50/50 to-purple-50/70 dark:from-blue-950/70 dark:via-indigo-950/70 dark:to-purple-950/70 flex items-center justify-between transition-colors">
+          <div className="flex items-center gap-3.5">
             <div className="relative">
-              <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/30">
-                <Bot className="w-6 h-6 text-white" />
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-700 dark:from-indigo-600 dark:to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-indigo-600/25">
+                <Bot className="w-5 h-5 text-white" />
               </div>
               {callStatus === 'CONNECTED' && (
                 <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-[#090d22]"></span>
+                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-white dark:border-[#090d22]"></span>
                 </span>
               )}
             </div>
 
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-base font-bold text-white flex items-center gap-1.5">
+                <h2 className="text-base font-heading font-bold text-slate-900 dark:text-white flex items-center gap-1.5 tracking-tight">
                   {t.voiceSimulatorTitle}
                 </h2>
 
                 {callStatus === 'CONNECTED' && (
-                  <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                  <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-ping" />
                     {t.connectedStatus.toUpperCase()} • {formatTime(duration)}
                   </span>
                 )}
 
                 {callStatus === 'RINGING' && (
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse">
+                  <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 animate-pulse">
                     {t.ringingStatus}
                   </span>
                 )}
 
                 {callStatus === 'ENDED' && (
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
                       isLimitReached
-                        ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
-                        : 'bg-slate-500/20 text-slate-300 border-slate-500/30'
+                        ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/40'
+                        : 'bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-500/30'
                     }`}
                   >
                     {isLimitReached ? t.callLimitReached : 'CALL ENDED'}
@@ -1133,15 +1136,15 @@ export default function LiveCallSimulatorModal({
 
                 {/* Call Limit Display Badge */}
                 <div
-                  className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border transition-all ${
+                  className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border transition-all ${
                     isApproachingLimit
-                      ? 'bg-amber-500/25 text-amber-300 border-amber-500/40 animate-pulse'
+                      ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/40 animate-pulse'
                       : isLimitReached
-                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
-                      : 'bg-blue-500/15 text-blue-300 border-blue-500/30'
+                      ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/40'
+                      : 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/25'
                   }`}
                 >
-                  <Timer className="w-3 h-3" />
+                  <Timer className="w-3.5 h-3.5" />
                   <span>
                     {isLimitReached
                       ? 'Limit 3:00 Reached'
@@ -1151,15 +1154,15 @@ export default function LiveCallSimulatorModal({
 
                 {/* Locked Language Status */}
                 {isLanguageSelected && (
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                  <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/25">
                     <Lock className="w-2.5 h-2.5" />
                     <span>{selectedLanguage} (Locked)</span>
                   </span>
                 )}
               </div>
 
-              <p className="text-[11px] text-slate-300">
-                {t.outboundCallTo} <span className="font-semibold text-white">{lead.name}</span> ({lead.jobTitle} at {lead.companyName}) • {lead.phone}
+              <p className="text-[12px] text-slate-600 dark:text-slate-300 mt-0.5">
+                {t.outboundCallTo} <span className="font-semibold text-slate-900 dark:text-white">{lead.name}</span> ({lead.jobTitle} at {lead.companyName}) • <span className="font-mono text-slate-700 dark:text-slate-300">{lead.phone}</span>
               </p>
             </div>
           </div>
@@ -1171,14 +1174,14 @@ export default function LiveCallSimulatorModal({
               onClick={handleTriggerRealCall}
               disabled={isTriggeringRealCall}
               title="Ring Yash's verified phone number (+91 97373 62307) live over telecom"
-              className="px-2.5 py-1.5 rounded-lg bg-emerald-600/25 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 shadow-sm"
+              className="px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 dark:border-emerald-500/40 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 shadow-sm"
             >
               {isTriggeringRealCall ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : (
-                <Phone className="w-3.5 h-3.5 text-emerald-400" />
+                <Phone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               )}
-              <span>{isTriggeringRealCall ? 'Dialing...' : 'Dial My Real Phone 📲'}</span>
+              <span>{isTriggeringRealCall ? 'Dialing...' : 'Dial Real Phone 📲'}</span>
             </button>
 
             {callStatus === 'CONNECTED' && (
@@ -1186,27 +1189,38 @@ export default function LiveCallSimulatorModal({
                 <button
                   onClick={toggleMute}
                   title={isMuted ? 'Unmute microphone' : 'Mute microphone'}
-                  className={`p-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
+                  className={`p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
                     isMuted
-                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                      : 'bg-white/[0.08] hover:bg-white/[0.15] text-slate-300 border-white/10'
+                      ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 dark:border-amber-500/40'
+                      : 'bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.08] dark:hover:bg-white/[0.15] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10'
                   }`}
                 >
-                  {isMuted ? <MicOff className="w-4 h-4 text-amber-400" /> : <Mic className="w-4 h-4 text-emerald-400" />}
+                  {isMuted ? <MicOff className="w-4 h-4 text-amber-600 dark:text-amber-400" /> : <Mic className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
                 </button>
 
                 <button
                   onClick={handleEndCall}
-                  className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-rose-600/30 cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-rose-600/30 cursor-pointer active:scale-95"
                 >
                   <PhoneOff className="w-3.5 h-3.5" /> {t.endCallBtn}
                 </button>
               </>
             )}
+            {onMinimize && (
+              <button
+                type="button"
+                onClick={onMinimize}
+                aria-label="Minimize Call to Floating HUD"
+                title="Minimize call to floating widget (keep browsing)"
+                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.05] dark:hover:bg-white/[0.1] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/[0.06] transition-all cursor-pointer"
+              >
+                <Minimize2 className="w-4 h-4" />
+              </button>
+            )}
             <button
               onClick={onClose}
               aria-label="Close Live Call dialog"
-              className="p-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white transition-all cursor-pointer"
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.05] dark:hover:bg-white/[0.1] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/[0.06] transition-all cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -1215,15 +1229,15 @@ export default function LiveCallSimulatorModal({
 
         {/* Real Telecom Calling Status Banner */}
         {realCallNotice && (
-          <div className="px-4 py-2 bg-gradient-to-r from-emerald-950 via-teal-950 to-emerald-950 border-b border-emerald-500/30 flex items-center justify-between text-xs text-emerald-300 animate-in fade-in">
+          <div className="px-4 py-2 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 dark:from-emerald-950 dark:via-teal-950 dark:to-emerald-950 border-b border-emerald-200 dark:border-emerald-500/30 flex items-center justify-between text-xs text-emerald-800 dark:text-emerald-300 animate-in fade-in">
             <div className="flex items-center gap-2">
-              <Phone className="w-3.5 h-3.5 text-emerald-400 animate-bounce" />
+              <Phone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 animate-bounce" />
               <span className="font-semibold">{realCallNotice}</span>
             </div>
             <button
               type="button"
               onClick={() => setRealCallNotice(null)}
-              className="text-[10px] text-emerald-400 underline hover:text-white cursor-pointer"
+              className="text-[11px] text-emerald-600 dark:text-emerald-400 underline hover:text-emerald-900 dark:hover:text-white cursor-pointer font-medium"
             >
               Dismiss
             </button>
@@ -1231,14 +1245,14 @@ export default function LiveCallSimulatorModal({
         )}
 
         {/* Call Limit Progress Bar */}
-        <div className="w-full bg-white/[0.05] h-1.5 relative overflow-hidden">
+        <div className="w-full bg-slate-100 dark:bg-white/[0.05] h-1.5 relative overflow-hidden">
           <div
             className={`h-full transition-all duration-1000 ${
               isLimitReached
                 ? 'bg-rose-500'
                 : isApproachingLimit
                 ? 'bg-amber-400'
-                : 'bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-400'
+                : 'bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500'
             }`}
             style={{ width: `${progressPercent}%` }}
           />
@@ -1247,19 +1261,19 @@ export default function LiveCallSimulatorModal({
         {/* Modal Body: 2 Columns */}
         <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-hidden">
           {/* Left Column: Real-Time Phone Call Stream */}
-          <div className="lg:col-span-7 p-4 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-white/[0.08] bg-[#070b1e]">
+          <div className="lg:col-span-7 p-4 sm:p-5 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-200/80 dark:border-white/[0.08] bg-slate-50/60 dark:bg-[#070b1e]">
             {/* Live Call Header Bar */}
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] mb-3 text-xs">
-              <span className="font-semibold text-white flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/[0.06] mb-3 text-xs shadow-sm">
+              <span className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
                 Live Call • {lead.companyName}
               </span>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 flex items-center gap-1">
-                  {isLanguageSelected && <Lock className="w-2.5 h-2.5 text-amber-400" />}
+                <span className="text-[11px] font-medium text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-500/20 flex items-center gap-1">
+                  {isLanguageSelected && <Lock className="w-2.5 h-2.5 text-amber-500 dark:text-amber-400" />}
                   {isLanguageSelected ? selectedLanguage : 'Detecting Language...'}
                 </span>
-                <span className="text-emerald-400 text-[11px] font-bold uppercase tracking-wider bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                <span className="text-emerald-700 dark:text-emerald-400 text-[11px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-500/20">
                   {callStatus === 'CONNECTED' ? t.connectedStatus : callStatus === 'ENDED' ? 'ENDED' : t.ringingStatus}
                 </span>
               </div>
@@ -1277,18 +1291,18 @@ export default function LiveCallSimulatorModal({
                     }`}
                   >
                     {isAgent && (
-                      <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white shrink-0 text-xs font-bold shadow-md shadow-indigo-600/30">
+                      <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white shrink-0 text-xs font-bold shadow-sm shadow-indigo-600/30">
                         AI
                       </div>
                     )}
                     <div
-                      className={`max-w-[84%] p-3 rounded-2xl text-xs leading-relaxed ${
+                      className={`max-w-[84%] p-3.5 rounded-2xl text-[13px] leading-relaxed ${
                         isAgent
-                          ? 'bg-[#141b3c] border border-indigo-500/30 text-slate-100 rounded-tl-none shadow-md'
+                          ? 'bg-white dark:bg-[#141b3c] border border-slate-200 dark:border-indigo-500/30 text-slate-800 dark:text-slate-100 rounded-tl-none shadow-sm'
                           : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-tr-none shadow-md'
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-3 text-[10px] opacity-75 mb-1 font-semibold">
+                      <div className="flex items-center justify-between gap-3 text-[11px] opacity-75 mb-1.5 font-semibold">
                         <span>{isAgent ? t.aiSalesAgentLabel : lead.name}</span>
                         <div className="flex items-center gap-1.5">
                           <span>{msg.timestamp}</span>
@@ -1297,17 +1311,17 @@ export default function LiveCallSimulatorModal({
                               type="button"
                               onClick={() => speakText(msg.text, selectedLanguage, true)}
                               title="Listen / Replay Voice (आवाज़ दोबारा सुनें)"
-                              className="p-1 rounded hover:bg-white/10 text-indigo-300 hover:text-white transition-all cursor-pointer flex items-center gap-0.5"
+                              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-white/10 text-indigo-600 hover:text-indigo-800 dark:text-indigo-300 dark:hover:text-white transition-all cursor-pointer flex items-center gap-0.5"
                             >
                               <Volume2 className="w-3.5 h-3.5" />
                             </button>
                           )}
                         </div>
                       </div>
-                      <p>{msg.text}</p>
+                      <p className="font-normal">{msg.text}</p>
                     </div>
                     {!isAgent && (
-                      <div className="w-7 h-7 rounded-lg bg-slate-700 flex items-center justify-center text-white shrink-0 text-xs font-bold">
+                      <div className="w-7 h-7 rounded-lg bg-slate-600 dark:bg-slate-700 flex items-center justify-center text-white shrink-0 text-xs font-bold shadow-sm">
                         <User className="w-3.5 h-3.5" />
                       </div>
                     )}
@@ -1317,35 +1331,35 @@ export default function LiveCallSimulatorModal({
 
               {/* Approaching Limit Notification in Transcript */}
               {isApproachingLimit && (
-                <div className="p-2 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-200 text-xs flex items-center gap-2 animate-pulse">
-                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span>{t.approachingLimitWarning} ({remainingSeconds}s remaining). Wrapping up qualification...</span>
+                <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-500/20 border border-amber-200 dark:border-amber-500/40 text-amber-800 dark:text-amber-200 text-xs flex items-center gap-2 animate-pulse">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <span className="font-medium">{t.approachingLimitWarning} ({remainingSeconds}s remaining). Wrapping up qualification...</span>
                 </div>
               )}
 
               {/* Call Limit Reached Notification */}
               {isLimitReached && (
-                <div className="p-2.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-200 text-xs flex items-center justify-between gap-2">
+                <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-500/20 border border-rose-200 dark:border-rose-500/40 text-rose-800 dark:text-rose-200 text-xs flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-rose-400 shrink-0" />
-                    <span>{t.callLimitReached}. Follow-up invitation emailed to prospect.</span>
+                    <Clock className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                    <span className="font-medium">{t.callLimitReached}. Follow-up invitation emailed to prospect.</span>
                   </div>
-                  <span className="text-[10px] font-bold uppercase bg-rose-500/30 px-2 py-0.5 rounded border border-rose-500/50">
+                  <span className="text-[10px] font-bold uppercase bg-rose-100 dark:bg-rose-500/30 text-rose-800 dark:text-rose-200 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-500/50">
                     Max 3:00
                   </span>
                 </div>
               )}
 
               {errorMessage && (
-                <div className="p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between gap-2 animate-in fade-in">
+                <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-500/15 border border-rose-200 dark:border-rose-500/30 text-rose-800 dark:text-rose-300 text-xs flex items-center justify-between gap-2 animate-in fade-in">
                   <div className="flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
-                    <span>{errorMessage}</span>
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
+                    <span className="font-medium">{errorMessage}</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setErrorMessage(null)}
-                    className="text-[11px] text-rose-400 hover:text-white underline cursor-pointer shrink-0"
+                    className="text-[11px] text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-white underline cursor-pointer shrink-0 font-semibold"
                   >
                     Dismiss
                   </button>
@@ -1355,43 +1369,43 @@ export default function LiveCallSimulatorModal({
             </div>
 
             {/* 100% Hands-Free Live Phone Call Status Console */}
-            <div className="pt-3 border-t border-white/[0.06] mt-2 space-y-2.5">
+            <div className="pt-3 border-t border-slate-200/80 dark:border-white/[0.06] mt-2 space-y-2.5">
               {/* Dynamic Conversational State Banner */}
               {isAiSpeaking ? (
-                <div className="p-3 rounded-2xl bg-indigo-950/60 border border-indigo-500/40 flex items-center justify-between">
+                <div className="p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-500/40 flex items-center justify-between shadow-sm">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/40">
                       <Volume2 className="w-4 h-4 animate-bounce" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-white">Ava is speaking...</div>
-                      <div className="text-[11px] text-indigo-300">
+                      <div className="text-xs font-bold text-slate-900 dark:text-white">Ava is speaking...</div>
+                      <div className="text-[11px] text-indigo-700 dark:text-indigo-300 font-medium">
                         Listening in {selectedLanguage} (Microphone will automatically open when Ava finishes)
                       </div>
                     </div>
                   </div>
                   {/* Glowing Soundwave Bars */}
                   <div className="flex items-center gap-1 pr-2">
-                    <span className="w-1 h-3.5 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1 h-6 bg-indigo-300 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1 h-4 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
-                    <span className="w-1 h-7 bg-indigo-200 rounded-full animate-pulse" style={{ animationDelay: '450ms' }} />
-                    <span className="w-1 h-3 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '600ms' }} />
+                    <span className="w-1 h-3.5 bg-indigo-500 dark:bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1 h-6 bg-indigo-600 dark:bg-indigo-300 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1 h-4 bg-indigo-500 dark:bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                    <span className="w-1 h-7 bg-indigo-600 dark:bg-indigo-200 rounded-full animate-pulse" style={{ animationDelay: '450ms' }} />
+                    <span className="w-1 h-3 bg-indigo-500 dark:bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '600ms' }} />
                   </div>
                 </div>
               ) : isAiThinking ? (
-                <div className="p-3 rounded-2xl bg-blue-950/60 border border-blue-500/40 flex items-center gap-3">
-                  <Loader2 className="w-5 h-5 animate-spin text-blue-400" />
+                <div className="p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-500/40 flex items-center gap-3 shadow-sm">
+                  <Loader2 className="w-5 h-5 animate-spin text-blue-600 dark:text-blue-400" />
                   <div>
-                    <div className="text-xs font-bold text-white">Ava is formulating response...</div>
-                    <div className="text-[11px] text-blue-300">Analyzing requirement and preparing reply in {selectedLanguage}</div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">Ava is formulating response...</div>
+                    <div className="text-[11px] text-blue-700 dark:text-blue-300 font-medium">Analyzing requirement and preparing reply in {selectedLanguage}</div>
                   </div>
                 </div>
               ) : callStatus === 'CONNECTED' ? (
                 /* Prospect's Turn: Live Microphone is Open */
-                <div className="p-3 rounded-2xl bg-gradient-to-r from-emerald-950/70 via-[#0a1f18] to-teal-950/70 border border-emerald-500/40 space-y-2 animate-in fade-in">
+                <div className="p-3 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 dark:from-emerald-950/70 dark:via-[#0a1f18] dark:to-teal-950/70 border border-emerald-200 dark:border-emerald-500/40 space-y-2 animate-in fade-in shadow-sm">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-emerald-300 font-semibold text-xs">
+                    <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-xs">
                       <span className="relative flex h-2.5 w-2.5">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
@@ -1405,16 +1419,16 @@ export default function LiveCallSimulatorModal({
 
                     {/* Active Voice Waveform */}
                     <div className="flex items-center gap-1">
-                      <span className="w-1 h-2.5 bg-emerald-400 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
-                      <span className="w-1 h-4 bg-emerald-400 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
-                      <span className="w-1 h-2 bg-emerald-400 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
-                      <span className="w-1 h-3.5 bg-emerald-400 rounded-full animate-pulse" style={{ animationDelay: '450ms' }} />
+                      <span className="w-1 h-2.5 bg-emerald-500 dark:bg-emerald-400 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1 h-4 bg-emerald-600 dark:bg-emerald-400 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1 h-2 bg-emerald-500 dark:bg-emerald-400 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                      <span className="w-1 h-3.5 bg-emerald-600 dark:bg-emerald-400 rounded-full animate-pulse" style={{ animationDelay: '450ms' }} />
                     </div>
                   </div>
 
                   {/* Real-Time Live Speech Preview */}
-                  <div className="bg-[#060a17] p-2.5 rounded-xl border border-white/10 text-xs min-h-[46px] text-white flex items-center justify-between gap-3">
-                    <span className={speechTranscript ? 'text-emerald-300 font-semibold text-xs tracking-wide' : 'text-slate-400 italic text-xs'}>
+                  <div className="bg-white dark:bg-[#060a17] p-2.5 rounded-xl border border-slate-200 dark:border-white/10 text-xs min-h-[46px] text-slate-900 dark:text-white flex items-center justify-between gap-3 shadow-inner">
+                    <span className={speechTranscript ? 'text-emerald-700 dark:text-emerald-300 font-semibold text-xs tracking-wide' : 'text-slate-500 dark:text-slate-400 italic text-xs'}>
                       {speechTranscript
                         ? `"${speechTranscript}"`
                         : !isLanguageSelected
@@ -1423,14 +1437,14 @@ export default function LiveCallSimulatorModal({
                     </span>
                     {speechTranscript ? (
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                        <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-ping" />
                           Listening...
                         </span>
                         <button
                           type="button"
                           onClick={() => stopListeningAndSend(speechTranscript)}
-                          className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-[11px] flex items-center gap-1 shadow-sm transition-all cursor-pointer"
+                          className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] flex items-center gap-1 shadow-sm transition-all cursor-pointer"
                           title="Send immediately without waiting for pause"
                         >
                           <span>Send Now</span>
@@ -1438,8 +1452,8 @@ export default function LiveCallSimulatorModal({
                         </button>
                       </div>
                     ) : (
-                      <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1 shrink-0">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-1 shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
                         Patient Listening Active
                       </span>
                     )}
@@ -1455,7 +1469,7 @@ export default function LiveCallSimulatorModal({
                       type="button"
                       onClick={() => handleSendProspectMessage(quickReplies.reply1)}
                       disabled={isAiThinking || callStatus !== 'CONNECTED'}
-                      className="px-2.5 py-1 rounded-lg text-[10px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/[0.08] transition-all cursor-pointer disabled:opacity-40"
+                      className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-white dark:bg-white/[0.04] hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/[0.08] transition-all cursor-pointer disabled:opacity-40 shadow-sm"
                     >
                       &quot;{quickReplies.reply1}&quot;
                     </button>
@@ -1463,7 +1477,7 @@ export default function LiveCallSimulatorModal({
                       type="button"
                       onClick={() => handleSendProspectMessage(quickReplies.reply2)}
                       disabled={isAiThinking || callStatus !== 'CONNECTED'}
-                      className="px-2.5 py-1 rounded-lg text-[10px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/[0.08] transition-all cursor-pointer disabled:opacity-40"
+                      className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-white dark:bg-white/[0.04] hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/[0.08] transition-all cursor-pointer disabled:opacity-40 shadow-sm"
                     >
                       &quot;{quickReplies.reply2}&quot;
                     </button>
@@ -1473,7 +1487,7 @@ export default function LiveCallSimulatorModal({
                 <button
                   type="button"
                   onClick={() => setInputMode(inputMode === 'mic' ? 'keyboard' : 'mic')}
-                  className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1 ml-auto cursor-pointer"
+                  className="text-[11px] font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 ml-auto cursor-pointer"
                 >
                   <Keyboard className="w-3.5 h-3.5" />
                   <span>{inputMode === 'mic' ? 'Keyboard' : 'Hands-free Voice'}</span>
@@ -1490,12 +1504,12 @@ export default function LiveCallSimulatorModal({
                     onKeyDown={(e) => e.key === 'Enter' && handleSendProspectMessage(inputText)}
                     placeholder={t.typeSpokenWords}
                     disabled={isAiThinking || callStatus !== 'CONNECTED'}
-                    className="flex-1 px-3 py-2 rounded-xl bg-[#090d1f] border border-white/[0.1] text-xs text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 disabled:opacity-50"
+                    className="flex-1 px-3 py-2 rounded-xl bg-white dark:bg-[#090d1f] border border-slate-200 dark:border-white/[0.1] text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 disabled:opacity-50 shadow-sm"
                   />
                   <button
                     onClick={() => handleSendProspectMessage(inputText)}
                     disabled={!inputText.trim() || isAiThinking || callStatus !== 'CONNECTED'}
-                    className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 transition-all cursor-pointer flex items-center justify-center"
+                    className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 transition-all cursor-pointer flex items-center justify-center shadow-md shadow-indigo-600/30"
                   >
                     {isAiThinking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   </button>
@@ -1505,95 +1519,95 @@ export default function LiveCallSimulatorModal({
           </div>
 
           {/* Right Column: Call Summary & Next Best Action */}
-          <div className="lg:col-span-5 p-4 bg-[#0a0e28] flex flex-col justify-between space-y-4">
+          <div className="lg:col-span-5 p-4 sm:p-5 bg-white dark:bg-[#0a0e28] flex flex-col justify-between space-y-4">
             <div className="space-y-4">
               {/* Call Limit Metric Box */}
-              <div className="p-3.5 rounded-xl bg-[#060918] border border-white/[0.08] space-y-2">
-                <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-300">
-                  <span className="flex items-center gap-1.5">
-                    <Timer className="w-3.5 h-3.5 text-indigo-400" />
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#060918] border border-slate-200/80 dark:border-white/[0.08] space-y-2 shadow-sm">
+                <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  <span className="flex items-center gap-1.5 font-heading">
+                    <Timer className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                     {t.callLimitLabel}
                   </span>
                   <span
-                    className={`font-mono text-xs ${
+                    className={`font-mono text-xs font-bold ${
                       isApproachingLimit
-                        ? 'text-amber-400 font-bold animate-pulse'
+                        ? 'text-amber-600 dark:text-amber-400 animate-pulse'
                         : isLimitReached
-                        ? 'text-rose-400 font-bold'
-                        : 'text-indigo-300'
+                        ? 'text-rose-600 dark:text-rose-400'
+                        : 'text-indigo-600 dark:text-indigo-300'
                     }`}
                   >
                     {formatTime(remainingSeconds)} left
                   </span>
                 </div>
-                <div className="w-full bg-white/[0.08] h-2 rounded-full overflow-hidden">
+                <div className="w-full bg-slate-200 dark:bg-white/[0.08] h-2 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-1000 ${
                       isLimitReached
                         ? 'bg-rose-500'
                         : isApproachingLimit
                         ? 'bg-amber-400'
-                        : 'bg-indigo-500'
+                        : 'bg-indigo-600 dark:bg-indigo-500'
                     }`}
                     style={{ width: `${progressPercent}%` }}
                   />
                 </div>
-                <p className="text-[10px] text-slate-400">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
                   Standard telecom limit enforced for initial autonomous outreach. Call cleanly wraps up at 3:00.
                 </p>
               </div>
 
               {/* Call Summary Card */}
-              <div className="p-3.5 rounded-xl bg-[#060918] border border-white/[0.08]">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-400" /> {t.callSummaryTitle}
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#060918] border border-slate-200/80 dark:border-white/[0.08] shadow-sm">
+                <div className="text-[11px] font-heading font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" /> {t.callSummaryTitle}
                 </div>
-                <p className="text-xs text-slate-200 leading-relaxed bg-white/[0.02] p-2.5 rounded-lg border border-white/[0.04]">
+                <p className="text-[12px] sm:text-[13px] text-slate-700 dark:text-slate-200 leading-relaxed bg-white dark:bg-white/[0.02] p-3 rounded-lg border border-slate-200/80 dark:border-white/[0.04]">
                   {callSummary}
                 </p>
               </div>
 
               {/* Next Best Action Card */}
-              <div className="p-3.5 rounded-xl bg-[#060918] border border-white/[0.08]">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1 flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-emerald-400" /> {t.nextBestActionTitle}
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#060918] border border-slate-200/80 dark:border-white/[0.08] shadow-sm">
+                <div className="text-[11px] font-heading font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {t.nextBestActionTitle}
                 </div>
-                <p className="text-xs text-emerald-300 leading-relaxed bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20 font-medium">
+                <p className="text-[12px] sm:text-[13px] text-emerald-800 dark:text-emerald-300 leading-relaxed bg-emerald-50 dark:bg-emerald-500/10 p-3 rounded-lg border border-emerald-200 dark:border-emerald-500/20 font-medium">
                   {nextBestAction}
                 </p>
               </div>
 
               {/* Outcomes Handled Automatically Badges */}
               <div>
-                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-2">
+                <div className="text-[11px] font-heading font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
                   {t.outcomesHandledTitle}
                 </div>
-                <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
                   <span
-                    className={`p-2 rounded-lg border text-center font-semibold transition-all ${
+                    className={`p-2.5 rounded-xl border text-center font-semibold transition-all ${
                       isMeetingBooked
-                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm'
-                        : 'bg-white/[0.02] text-slate-400 border-white/[0.05]'
+                        ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40 shadow-sm'
+                        : 'bg-slate-50 dark:bg-white/[0.02] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/[0.05]'
                     }`}
                   >
                     {t.interestedBadge}
                   </span>
 
                   <span
-                    className={`p-2 rounded-lg border text-center font-semibold transition-all ${
+                    className={`p-2.5 rounded-xl border text-center font-semibold transition-all ${
                       isMeetingBooked
-                        ? 'bg-gradient-to-r from-emerald-600/30 to-teal-600/30 text-emerald-300 border-emerald-500/50 shadow-md animate-pulse'
-                        : 'bg-white/[0.02] text-slate-400 border-white/[0.05]'
+                        ? 'bg-gradient-to-r from-emerald-600/20 to-teal-600/20 text-emerald-800 dark:text-emerald-300 border-emerald-400 dark:border-emerald-500/50 shadow-md animate-pulse'
+                        : 'bg-slate-50 dark:bg-white/[0.02] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/[0.05]'
                     }`}
                   >
                     {t.meetingBookedBadge}
                   </span>
 
-                  <span className="p-2 rounded-lg bg-white/[0.02] text-slate-400 border border-white/[0.05] text-center">
+                  <span className="p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/[0.05] text-center font-medium">
                     {t.voicemailBadge}
                   </span>
 
-                  <span className="p-2 rounded-lg bg-white/[0.02] text-slate-400 border border-white/[0.05] text-center">
+                  <span className="p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/[0.05] text-center font-medium">
                     {t.retryBadge}
                   </span>
                 </div>
@@ -1601,38 +1615,38 @@ export default function LiveCallSimulatorModal({
             </div>
 
             {/* Language Lock Strip (No buttons - purely status-driven) */}
-            <div className="pt-3 border-t border-white/[0.08]">
+            <div className="pt-3 border-t border-slate-200/80 dark:border-white/[0.08]">
               <div className="flex items-center justify-between mb-1.5">
-                <div className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-amber-400" />
+                <div className="text-[11px] font-heading font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
                   <span>{t.languageLockedBadge}:</span>
                 </div>
                 {isLanguageSelected ? (
-                  <span className="text-[10px] text-amber-300 font-semibold bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30 flex items-center gap-1">
+                  <span className="text-[10px] text-amber-800 dark:text-amber-300 font-semibold bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30 flex items-center gap-1">
                     <Lock className="w-2.5 h-2.5" /> Locked
                   </span>
                 ) : (
-                  <span className="text-[10px] text-blue-300 font-semibold bg-blue-500/20 px-1.5 py-0.5 rounded border border-blue-500/30 animate-pulse">
+                  <span className="text-[10px] text-blue-700 dark:text-blue-300 font-semibold bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/25 animate-pulse">
                     Spoken Detection...
                   </span>
                 )}
               </div>
 
               {isLanguageSelected ? (
-                <div className="p-2 rounded-lg bg-white/[0.03] border border-amber-500/20 text-slate-300 text-[11px] flex items-center justify-between">
+                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-amber-300/60 dark:border-amber-500/20 text-slate-700 dark:text-slate-300 text-[11px] flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>Session Language: <strong className="text-white">{selectedLanguage}</strong></span>
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
+                    <span>Session Language: <strong className="text-slate-900 dark:text-white font-bold">{selectedLanguage}</strong></span>
                   </div>
-                  <span className="text-[10px] text-slate-400 font-medium">Locked for Call</span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Locked for Call</span>
                 </div>
               ) : (
-                <div className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.08] text-slate-300 text-[11px] flex items-center justify-between">
+                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-slate-300 text-[11px] flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                    <span className="w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400 animate-pulse" />
                     <span>Speak your language into the mic to lock it</span>
                   </div>
-                  <span className="text-[10px] text-slate-400">Zero buttons</span>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Zero buttons</span>
                 </div>
               )}
             </div>
