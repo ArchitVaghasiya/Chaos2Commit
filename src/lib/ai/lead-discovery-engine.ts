@@ -1,4 +1,4 @@
-import { analyzeLeadIntentWithGemini, generateDynamicLeadsWithGemini } from './gemini';
+import { generateDynamicLeadsWithGemini } from './gemini';
 import { generateDynamicLeadsWithGroq } from './groq';
 
 export interface DiscoveredLeadRaw {
@@ -352,7 +352,7 @@ export const SEED_LEADS_CATALOG: DiscoveredLeadRaw[] = [
   // 2. X (TWITTER) (Public Tweets)
   // ==========================================
   {
-    id: 'lead-priya-nair',
+    id: 'lead-priya-nair-x',
     name: 'Priya Nair',
     jobTitle: 'VP of Engineering',
     companyName: 'CloudTech Inc.',
@@ -433,7 +433,7 @@ export const SEED_LEADS_CATALOG: DiscoveredLeadRaw[] = [
     matchedQuery: 'inventory synchronization Shopify Plus ERP'
   },
   {
-    id: 'lead-tariq-mansoor',
+    id: 'lead-tariq-mansoor-x',
     name: 'Tariq Al-Mansoor',
     jobTitle: 'Chief Technology Officer',
     companyName: 'SmartLogix AI',
@@ -464,7 +464,7 @@ export const SEED_LEADS_CATALOG: DiscoveredLeadRaw[] = [
   // 3. COMPANY WEBSITES (Career & RFP Portals)
   // ==========================================
   {
-    id: 'lead-marc-weber',
+    id: 'lead-marc-weber-x',
     name: 'Marc Weber',
     jobTitle: 'Head of Data Infrastructure',
     companyName: 'DataSystems GmbH',
@@ -956,7 +956,11 @@ function generateSyntheticDomainLeads(
       keyMatches: keyTags,
       recommendedPitch: `Introduce TechNova's proven accelerators for ${cleanQ} and offer a zero-friction 15-minute technical discovery session with our solutions lead.`,
       scoreBreakdown: { authority: 25, budget: 24, urgency: 23, fit: 21 },
-      matchedQuery: cleanQ
+      matchedQuery: cleanQ,
+      location: location && location !== 'Global' ? location : 'San Francisco, CA',
+      country: location && location.includes('India') ? 'India' : 'United States',
+      timezone: location && location.includes('India') ? 'Asia/Kolkata' : 'America/Los_Angeles',
+      preferredLanguage: location && location.includes('India') ? 'हिन्दी' : 'English',
     },
     {
       id: `lead-synth-${Date.now()}-2`,
@@ -982,7 +986,11 @@ function generateSyntheticDomainLeads(
       keyMatches: keyTags,
       recommendedPitch: `Highlight enterprise case studies, SLA commitments, and turnkey implementation timelines for ${cleanQ}.`,
       scoreBreakdown: { authority: 24, budget: 23, urgency: 22, fit: 20 },
-      matchedQuery: cleanQ
+      matchedQuery: cleanQ,
+      location: location && location !== 'Global' ? location : 'Austin, TX',
+      country: 'United States',
+      timezone: 'America/Chicago',
+      preferredLanguage: 'English',
     }
   ];
 }

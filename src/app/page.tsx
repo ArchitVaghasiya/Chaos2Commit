@@ -899,9 +899,30 @@ export default function HomePage() {
         }}
       />
 
-
-
-      {/* Update Profile Details Modal */}
+      {/* Floating Multitasking Audio Call HUD */}
+      {isCallMinimized && selectedLead && (
+        <FloatingAudioCallHUD
+          isOpen={isCallMinimized}
+          lead={selectedLead}
+          defaultLanguage={currentLanguage}
+          onExpand={() => {
+            setIsCallMinimized(false);
+            setIsCallModalOpen(true);
+          }}
+          onRestoreModal={() => {
+            setIsCallMinimized(false);
+            setIsCallModalOpen(true);
+          }}
+          onHangUp={() => {
+            setIsCallMinimized(false);
+            warning('Call Ended', `Active audio session with ${selectedLead?.name || 'prospect'} ended.`);
+          }}
+          onEndCall={() => {
+            setIsCallMinimized(false);
+            warning('Call Ended', `Active audio session with ${selectedLead?.name || 'prospect'} ended.`);
+          }}
+        />
+      )}
       <UpdateProfileModal
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}

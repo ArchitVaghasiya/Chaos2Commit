@@ -104,3 +104,35 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: 'Discovery failed' }, { status: 500 });
   }
 }
+
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const query = searchParams.get('query') || '';
+    const platform = searchParams.get('platform') || 'All Sources';
+    const industry = searchParams.get('industry') || undefined;
+    const location = searchParams.get('location') || undefined;
+
+    if (!query.trim()) {
+      return NextResponse.json({
+        success: true,
+        query: '',
+        platform,
+        totalDiscovered: 0,
+        leads: [],
+      });
+    }
+
+    const discovered = await discoverLeads(query.trim(), platform, industry, location);
+    return NextResponse.json({
+      success: true,
+      query,
+      platform,
+      totalDiscovered: discovered.length,
+      leads: discovered,
+    });
+  } catch (error) {
+    console.error('Discovery GET API error:', error);
+    return NextResponse.json({ success: false, error: 'Discovery GET failed' }, { status: 500 });
+  }
+}

@@ -208,11 +208,17 @@ export default function LiveCallSimulatorModal({
           setIsAiSpeaking(false);
           if (onEnd) onEnd();
         };
-        utterance.onerror = () => {
+        utterance.onerror = (e) => {
+          if ((e as any)?.error !== 'canceled' && (e as any)?.error !== 'interrupted') {
+            console.warn('SpeechSynthesis error event:', (e as any)?.error);
+          }
           setIsAiSpeaking(false);
           if (onEnd) onEnd();
         };
 
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
         window.speechSynthesis.speak(utterance);
       } catch (err) {
         console.warn('SpeechSynthesis error:', err);
@@ -246,7 +252,8 @@ export default function LiveCallSimulatorModal({
           transcript += event.results[i][0].transcript;
         }
         setSpeechTranscript(transcript);
-        if (event.results[0].isFinal) {
+        const lastResult = event.results[event.results.length - 1];
+        if (lastResult && lastResult.isFinal) {
           handleSendMessage(transcript);
           setSpeechTranscript('');
         }
@@ -1172,17 +1179,33 @@ export default function LiveCallSimulatorModal({
 
             {/* Bottom Actions */}
             <div className="pt-3 border-t border-white/[0.08] flex items-center justify-between">
-              <span className="text-[10px] text-slate-400 font-mono">SQLite CallLog Active</span>
-              <button
-                type="button"
-                onClick={() => {
-                  stopSpeech();
-                  onClose();
-                }}
-                className="px-4 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-white text-xs font-semibold transition-all cursor-pointer"
-              >
-                Close Console
-              </button>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-slate-400 font-mono">SQLite CallLog Active</span>
+                <span className="text-[10px] text-emerald-400 font-mono">• Sub-150ms Groq</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {onMinimize && (
+                  <button
+                    type="button"
+                    onClick={onMinimize}
+                    className="px-3 py-2 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5"
+                    title="Minimize call to floating widget"
+                  >
+                    <Minimize2 className="w-3.5 h-3.5" />
+                    <span>Minimize</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    stopSpeech();
+                    onClose();
+                  }}
+                  className="px-4 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-white text-xs font-semibold transition-all cursor-pointer"
+                >
+                  Close Console
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -86,10 +86,14 @@ export async function POST(request: Request) {
         });
 
         // Update lead status to CALL_SCHEDULED / CONTACTED
-        await prisma.lead.update({
-          where: { id: leadId },
-          data: { status: 'CALL_SCHEDULED' },
-        });
+        if (lead) {
+          try {
+            await prisma.lead.update({
+              where: { id: resolvedLeadId },
+              data: { status: 'CALL_SCHEDULED' },
+            });
+          } catch (_) {}
+        }
       } catch (dbErr) {
         console.warn('Could not persist initial Twilio call log in DB:', dbErr);
       }
