@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 
 export async function POST(request: Request) {
   try {
-    const { leads } = await request.json();
+    const { leads, duplicateStrategy = 'SKIP', workflowMode = 'CALLING_ONLY' } = await request.json();
 
     if (!Array.isArray(leads) || leads.length === 0) {
       return NextResponse.json({ success: false, error: 'No leads provided' }, { status: 400 });
@@ -11,6 +11,7 @@ export async function POST(request: Request) {
 
     let importedCount = 0;
     let duplicateCount = 0;
+    let updatedCount = 0;
 
     for (const lead of leads) {
       // Duplicate detection by email or name + company
@@ -25,6 +26,21 @@ export async function POST(request: Request) {
 
       if (existing) {
         duplicateCount++;
+        if (duplicateStrategy === 'OVERWRITE') {
+          await prisma.lead.update({
+            where: { id: existing.id },
+            data: {
+              phone: lead.phone || existing.phone,
+              jobTitle: lead.jobTitle || existing.jobTitle,
+              industry: lead.industry || existing.industry,
+              location: lead.location || existing.location,
+              country: lead.country || existing.country,
+              preferredLanguage: lead.preferredLanguage || existing.preferredLanguage,
+              workflowType: workflowMode,
+            },
+          });
+          updatedCount++;
+        }
         continue;
       }
 
@@ -39,12 +55,17 @@ export async function POST(request: Request) {
           jobTitle: lead.jobTitle || 'Executive',
           industry: lead.industry || 'IT Services',
           companySize: lead.companySize || '51 – 200 employees',
-          sourcePlatform: lead.sourcePlatform || 'CRM Import',
-          originalPostSnippet: lead.originalPostSnippet || 'Imported via CSV/Excel custom list.',
+          sourcePlatform: lead.sourcePlatform || 'CSV/Excel Import',
+          originalPostUrl: lead.originalPostUrl || null,
+          originalPostSnippet: lead.originalPostSnippet || 'Uploaded via CSV/Excel lead campaign.',
           intentScore: lead.intentScore || 80,
           budgetSignal: lead.budgetSignal || 'Approved',
           urgencyLevel: lead.urgencyLevel || 'Medium',
           status: 'READY_TO_ENGAGE',
+          location: lead.location || 'Global',
+          country: lead.country || 'United States',
+          preferredLanguage: lead.preferredLanguage || 'English',
+          workflowType: workflowMode || lead.workflowType || 'CALLING_ONLY',
         },
       });
       importedCount++;
@@ -54,7 +75,8 @@ export async function POST(request: Request) {
       success: true,
       importedCount,
       duplicateCount,
-      message: `Successfully imported ${importedCount} leads (${duplicateCount} duplicates skipped)`,
+      updatedCount,
+      message: `Successfully processed ${leads.length} leads: ${importedCount} imported, ${duplicateCount} duplicates handled (${duplicateStrategy})`,
     });
   } catch (error) {
     console.error('Lead import error:', error);

@@ -69,6 +69,14 @@ export interface LeadItem {
   };
   isExample?: boolean;
   matchedQuery?: string;
+  location?: string;
+  country?: string;
+  timezone?: string;
+  preferredLanguage?: string;
+  workflowType?: string;
+  retryCount?: number;
+  scheduledCallbackAt?: string | null;
+  dndStatus?: boolean;
 }
 
 interface DiscoveredLeadCardProps {
@@ -180,40 +188,40 @@ export default function DiscoveredLeadCard({
             {/* Author Bar */}
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 p-0.5 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 p-0.5 flex items-center justify-center">
                   <div className="w-full h-full rounded-full bg-white dark:bg-slate-900 flex items-center justify-center text-sm font-bold text-slate-900 dark:text-white">
                     {lead.name.split(' ').map((n) => n[0]).join('')}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <div className="text-base font-bold text-slate-950 dark:text-white flex items-center gap-1.5 font-heading">
                     {lead.name}
-                    <span className="text-[11px] font-normal text-slate-700 dark:text-slate-400">• 2nd</span>
+                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">• 2nd</span>
                   </div>
-                  <div className="text-xs text-slate-800 dark:text-slate-300">
-                    {lead.jobTitle} at {lead.companyName}
+                  <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                    {lead.jobTitle} at <span className="font-semibold text-slate-900 dark:text-white">{lead.companyName}</span>
                   </div>
-                  <div className="text-[10px] text-slate-700 dark:text-slate-400 flex items-center gap-1 mt-0.5">
+                  <div className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1 mt-0.5 font-medium">
                     <span>1d • Edited •</span>
-                    <Globe className="w-3 h-3 text-slate-600 dark:text-slate-400" />
+                    <Globe className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                   </div>
                 </div>
               </div>
 
-              <div className="p-1.5 rounded bg-blue-600 text-white">
+              <div className="p-2 rounded-lg bg-blue-600 text-white">
                 <LinkedinIcon className="w-4 h-4 fill-current" />
               </div>
             </div>
 
             {/* Post Content */}
-            <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed bg-slate-100 dark:bg-white/[0.02] p-3 rounded-lg border border-slate-200 dark:border-white/[0.04] mb-3">
+            <p className="text-sm text-slate-800 dark:text-slate-100 leading-relaxed bg-slate-100/90 dark:bg-white/[0.04] p-3.5 rounded-xl border border-slate-300/80 dark:border-white/[0.08] mb-3 font-medium">
               &quot;{lead.originalPostSnippet}&quot;
             </p>
           </div>
 
           {/* Social Reactions Footer */}
-          <div className="pt-2 border-t border-slate-200 dark:border-white/[0.06] flex items-center justify-between text-[11px] text-slate-700 dark:text-slate-400">
-            <div className="flex items-center gap-1">
+          <div className="pt-2 border-t border-slate-200 dark:border-white/[0.06] flex items-center justify-between text-xs font-medium text-slate-700 dark:text-slate-300">
+            <div className="flex items-center gap-1.5">
               <span className="flex -space-x-1">
                 <span className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-[9px] text-white">👍</span>
                 <span className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center text-[9px] text-white">❤️</span>
@@ -226,15 +234,15 @@ export default function DiscoveredLeadCard({
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-1 pt-2 mt-2 border-t border-slate-200 dark:border-white/[0.04] text-[11px] text-slate-700 dark:text-slate-400 text-center">
-            <button type="button" className="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-white/[0.05] flex items-center justify-center gap-1 cursor-pointer">
-              <ThumbsUp className="w-3 h-3" /> Like
+          <div className="grid grid-cols-3 gap-1 pt-2 mt-2 border-t border-slate-200 dark:border-white/[0.04] text-xs font-semibold text-slate-700 dark:text-slate-300 text-center">
+            <button type="button" className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-white/[0.08] flex items-center justify-center gap-1.5 cursor-pointer">
+              <ThumbsUp className="w-3.5 h-3.5" /> Like
             </button>
-            <button type="button" className="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-white/[0.05] flex items-center justify-center gap-1 cursor-pointer">
-              <MessageCircle className="w-3 h-3" /> Comment
+            <button type="button" className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-white/[0.08] flex items-center justify-center gap-1.5 cursor-pointer">
+              <MessageCircle className="w-3.5 h-3.5" /> Comment
             </button>
-            <button type="button" className="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-white/[0.05] flex items-center justify-center gap-1 cursor-pointer">
-              <Repeat2 className="w-3 h-3" /> Repost
+            <button type="button" className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-white/[0.08] flex items-center justify-center gap-1.5 cursor-pointer">
+              <Repeat2 className="w-3.5 h-3.5" /> Repost
             </button>
           </div>
         </div>
@@ -243,11 +251,11 @@ export default function DiscoveredLeadCard({
         <div className="lg:col-span-6 p-4 rounded-xl bg-slate-50 dark:bg-[#090d20] border border-slate-200 dark:border-white/[0.06] flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100 flex items-center gap-1.5 font-heading">
                 <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 {t.leadEnrichedDetails}
               </h3>
-              <span className="text-[10px] text-slate-700 dark:text-slate-400">
+              <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
                 {t.discoveredOn}: {lead.discoveryDate || '08 May 2025'}
               </span>
             </div>
@@ -333,6 +341,20 @@ export default function DiscoveredLeadCard({
                 <span className="text-slate-800 dark:text-slate-300 font-medium">
                   {lead.industry} • {lead.companySize}
                 </span>
+              </div>
+
+              <div className="flex items-center justify-between py-1 border-b border-slate-200 dark:border-white/[0.03]">
+                <span className="text-slate-700 dark:text-slate-400 flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-indigo-500" /> Location &amp; Language
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-semibold text-slate-900 dark:text-white text-[11px]">
+                    {lead.location ? `${lead.location} (${lead.country || ''})` : 'Global'}
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30 font-bold">
+                    {lead.preferredLanguage || 'English'}
+                  </span>
+                </div>
               </div>
 
               {/* Mandatory Transparency Link to Original Post */}
