@@ -69,6 +69,14 @@ export interface LeadItem {
   };
   isExample?: boolean;
   matchedQuery?: string;
+  location?: string;
+  country?: string;
+  timezone?: string;
+  preferredLanguage?: string;
+  workflowType?: string;
+  retryCount?: number;
+  scheduledCallbackAt?: string | null;
+  dndStatus?: boolean;
 }
 
 interface DiscoveredLeadCardProps {
@@ -333,6 +341,20 @@ export default function DiscoveredLeadCard({
                 <span className="text-slate-800 dark:text-slate-300 font-medium">
                   {lead.industry} • {lead.companySize}
                 </span>
+              </div>
+
+              <div className="flex items-center justify-between py-1 border-b border-slate-200 dark:border-white/[0.03]">
+                <span className="text-slate-700 dark:text-slate-400 flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-indigo-500" /> Location &amp; Language
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-semibold text-slate-900 dark:text-white text-[11px]">
+                    {lead.location ? `${lead.location} (${lead.country || ''})` : 'Global'}
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30 font-bold">
+                    {lead.preferredLanguage || 'English'}
+                  </span>
+                </div>
               </div>
 
               {/* Mandatory Transparency Link to Original Post */}

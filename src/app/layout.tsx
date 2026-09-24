@@ -14,6 +14,19 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'AI Sales Agent Platform | Discover. Qualify. Engage. Convert.',
   description: 'Enterprise AI sales automation platform that discovers public requirements, enriches prospect intelligence, and autonomously qualifies leads via multilingual voice agents.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'AI Sales Agent',
+  },
+};
+
+export const viewport = {
+  themeColor: '#090d20',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({

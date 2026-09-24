@@ -32,7 +32,7 @@ You are on a live phone call with ${leadContext.name} from ${leadContext.company
 Their public requirement was: "${leadContext.requirement}".
 
 CRITICAL MULTILINGUAL REQUIREMENT:
-The call language selected is "${language}". You MUST speak and reply strictly in natural, professional, spoken ${language}. If the language is Spanish, reply in Spanish. If Hindi, reply in Hindi (or Hinglish/Hindi script). If French, German, or Arabic, reply strictly in that language. Never default to English unless the selected language is English.
+The call language selected is "${language}". You MUST speak and reply strictly in natural, professional, spoken ${language}. If the language is Spanish, reply in Spanish. If Hindi, reply in Hindi. If Gujarati, reply in Gujarati (ગુજરાતી લિપિ). If French, German, or Arabic, reply strictly in that language. Never default to English unless the selected language is English.
 
 Your goal:
 1. Speak concisely in 1-2 natural, spoken sentences (never use bullet points, markdown, or long paragraphs).
@@ -41,7 +41,13 @@ Your goal:
 4. When they express interest or ask to connect, propose a meeting for "Thursday at 3 PM with our solutions lead" (translated naturally into ${language}).
 5. Sound natural, friendly, professional, and consultative.`;
 
-  const modelsToTry = ['groq/compound-mini', 'openai/gpt-oss-20b'];
+  const modelsToTry = [
+    'llama-3.3-70b-versatile',
+    'llama-3.1-8b-instant',
+    'groq/compound-mini',
+    'qwen/qwen3.8-27b',
+    'openai/gpt-oss-20b'
+  ];
 
   for (const model of modelsToTry) {
     try {

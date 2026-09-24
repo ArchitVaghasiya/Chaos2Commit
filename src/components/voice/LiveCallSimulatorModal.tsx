@@ -4,9 +4,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   X,
   PhoneOff,
-  Volume2,
+  PhoneCall,
   Calendar,
-  Send,
   Sparkles,
   Bot,
   User,
@@ -14,27 +13,58 @@ import {
   Globe2,
   AlertCircle,
   Loader2,
-  Lock,
-  Timer,
-  AlertTriangle,
+  CheckCircle2,
+  ExternalLink,
+  ShieldAlert,
+  ArrowRight,
+  RefreshCw,
+  PhoneForwarded,
   Mic,
   MicOff,
-  Keyboard,
+  Send,
+  Volume2,
+  UserCheck,
+  PhoneMissed,
+  ShieldCheck,
+  Radio,
+  Zap,
 } from 'lucide-react';
 import { LeadItem } from '../discovery/DiscoveredLeadCard';
 import {
+  SupportedLanguage,
   getTranslation,
   getLocaleForVoice,
-  getLanguageConfirmationSpeech,
-  getCallLimitWrapupSpeech,
+  getAiGreeting,
   getQuickReplies,
-  SupportedLanguage,
 } from '@/lib/i18n/translations';
 
 interface Message {
-  speaker: 'agent' | 'prospect';
+  speaker: 'agent' | 'prospect' | 'system';
   text: string;
   timestamp: string;
+}
+
+interface TwilioDiagnostics {
+  isConfigured: boolean;
+  account?: {
+    sid: string;
+    friendlyName: string;
+    status: string;
+    type: string;
+    isTrial: boolean;
+  };
+  envPhoneNumber: string;
+  isEnvPhoneOwned: boolean;
+  ownedNumbers: { phoneNumber: string; sid: string; friendlyName: string }[];
+  verifiedNumbers: { phoneNumber: string; friendlyName: string; sid: string }[];
+  targetPhone: string;
+  isTargetVerified: boolean;
+  needsTwilioNumber: boolean;
+  needsTargetVerification: boolean;
+  isReady: boolean;
+  publicWebhookUrl?: string | null;
+  actionSteps?: { step: number; title: string; detail: string; link?: string; completed: boolean }[];
+  error?: string;
 }
 
 interface LiveCallSimulatorModalProps {
@@ -45,8 +75,6 @@ interface LiveCallSimulatorModalProps {
   defaultLanguage?: string;
 }
 
-const CALL_LIMIT_SECONDS = 180; // 3 Minutes (180 seconds) telecom qualification limit
-
 export default function LiveCallSimulatorModal({
   lead,
   isOpen,
@@ -54,932 +82,73 @@ export default function LiveCallSimulatorModal({
   onMeetingBookedSuccess,
   defaultLanguage = 'English',
 }: LiveCallSimulatorModalProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [callStatus, setCallStatus] = useState<'RINGING' | 'CONNECTED' | 'ENDED'>('RINGING');
-  const [duration, setDuration] = useState(0);
-  const [inputText, setInputText] = useState('');
-  const [isAiSpeaking, setIsAiSpeaking] = useState(false);
-  const [isAiThinking, setIsAiThinking] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isMeetingBooked, setIsMeetingBooked] = useState(false);
+  // Mode Selection: Browser Live AI Call (Demo) vs Real Twilio Mobile Call
+  const [telephonyMode, setTelephonyMode] = useState<'BROWSER_SIM' | 'TWILIO_PSTN'>('BROWSER_SIM');
+
+  // Shared Core State
+  const [phoneNumber, setPhoneNumber] = useState(lead?.phone || '+91 9737362307');
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>(
     (defaultLanguage as SupportedLanguage) || 'English'
   );
-  // Real Call Flow: Zero buttons. Ava asks by voice, user speaks, language is locked immediately.
-  const [isLanguageSelected, setIsLanguageSelected] = useState(false);
-  const [isLimitReached, setIsLimitReached] = useState(false);
+  const [callStatus, setCallStatus] = useState<'IDLE' | 'DIALING' | 'RINGING' | 'CONNECTED' | 'ENDED'>('IDLE');
+  const [duration, setDuration] = useState(0);
+  const [messages, setMessages] = useState<Message[]>([]);
 
-  // 100% Hands-Free Microphone State
+  // Browser Simulator Speech & Input State
+  const [inputText, setInputText] = useState('');
+  const [isAiSpeaking, setIsAiSpeaking] = useState(false);
+  const [isAiThinking, setIsAiThinking] = useState(false);
   const [isMicListening, setIsMicListening] = useState(false);
   const [speechTranscript, setSpeechTranscript] = useState('');
-  const [isMuted, setIsMuted] = useState(false);
-  const [inputMode, setInputMode] = useState<'mic' | 'keyboard'>('mic');
 
+  // Real-Time AI Intelligence State
+  const [currentSentiment, setCurrentSentiment] = useState<'POSITIVE' | 'NEUTRAL' | 'HESITANT' | 'OBJECTION' | 'NEGATIVE'>('POSITIVE');
   const [callSummary, setCallSummary] = useState(
-    'Evaluating requirement fit, timeline, and decision maker authority...'
+    'Awaiting phone call connection to evaluate requirement fit, timeline, and decision maker authority...'
   );
   const [nextBestAction, setNextBestAction] = useState(
-    'Qualify company rollout scale and propose solutions demo.'
+    'Qualify enterprise rollout scale and propose solutions demo.'
   );
+  const [isMeetingBooked, setIsMeetingBooked] = useState(false);
+  const [isNegativeDnd, setIsNegativeDnd] = useState(false);
+  const [isHumanHandoff, setIsHumanHandoff] = useState(false);
+  const [isCallbackScheduled, setIsCallbackScheduled] = useState(false);
 
-  // State synchronization refs for event listeners and timers
-  const callStatusRef = useRef<'RINGING' | 'CONNECTED' | 'ENDED'>('RINGING');
-  const isAiSpeakingRef = useRef<boolean>(false);
-  const isAiThinkingRef = useRef<boolean>(false);
-  const isMutedRef = useRef<boolean>(false);
-  const inputModeRef = useRef<'mic' | 'keyboard'>('mic');
-  const isLanguageSelectedRef = useRef<boolean>(false);
-  const selectedLanguageRef = useRef<SupportedLanguage>((defaultLanguage as SupportedLanguage) || 'English');
-  const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const recognitionRef = useRef<any>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  // Twilio Specific State
+  const [twilioSid, setTwilioSid] = useState<string | null>(null);
+  const [isDialingTwilio, setIsDialingTwilio] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [trialNotice, setTrialNotice] = useState<string | null>(null);
+  const [diagnostics, setDiagnostics] = useState<TwilioDiagnostics | null>(null);
+  const [isCheckingDiagnostics, setIsCheckingDiagnostics] = useState(false);
+  const [newTwilioNumberInput, setNewTwilioNumberInput] = useState('');
+  const [isSavingTwilioNumber, setIsSavingTwilioNumber] = useState(false);
+
+  // Refs for audio & speech recognition
   const chatEndRef = useRef<HTMLDivElement | null>(null);
-  const currentLeadIdRef = useRef<string | null>(null);
-  const isOpenRef = useRef<boolean>(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const latestTranscriptRef = useRef<string>('');
-  const durationRef = useRef<number>(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const recognitionRef = useRef<any>(null);
   const messagesRef = useRef<Message[]>([]);
-  const leadRef = useRef(lead);
-
-  // Turn-taking atomic lock: Prevents duplicate messages from being submitted
-  const isSubmittingSpeechRef = useRef<boolean>(false);
-
-  // 3-Minute Limit Guard: Strictly guarantees wrapup logic and audio trigger only once
-  const isLimitHandledRef = useRef<boolean>(false);
-  // Abort controller for in-flight /api/voice/call network requests
-  const callAbortControllerRef = useRef<AbortController | null>(null);
-
-  // Cross-reference handles to prevent stale closures across async timeouts and recognition callbacks
-  const startListeningRef = useRef<() => void>(() => {});
-  const stopListeningAndSendRef = useRef<(overrideText?: string) => void>(() => {});
-  const handleSendProspectMessageRef = useRef<(text: string) => Promise<void>>(async () => {});
-  const speakTextRef = useRef<(text: string, lang?: string, isWrapup?: boolean) => void>(() => {});
-
-  // Immediate synchronous sync of refs in render
-  callStatusRef.current = callStatus;
-  isAiSpeakingRef.current = isAiSpeaking;
-  isAiThinkingRef.current = isAiThinking;
-  isMutedRef.current = isMuted;
-  inputModeRef.current = inputMode;
-  isLanguageSelectedRef.current = isLanguageSelected;
-  selectedLanguageRef.current = selectedLanguage;
-  durationRef.current = duration;
-  messagesRef.current = messages;
-  leadRef.current = lead;
-
-  useEffect(() => {
-    callStatusRef.current = callStatus;
-  }, [callStatus]);
-
-  useEffect(() => {
-    isAiSpeakingRef.current = isAiSpeaking;
-  }, [isAiSpeaking]);
-
-  useEffect(() => {
-    isAiThinkingRef.current = isAiThinking;
-  }, [isAiThinking]);
-
-  useEffect(() => {
-    isMutedRef.current = isMuted;
-  }, [isMuted]);
-
-  useEffect(() => {
-    inputModeRef.current = inputMode;
-  }, [inputMode]);
-
-  useEffect(() => {
-    isLanguageSelectedRef.current = isLanguageSelected;
-  }, [isLanguageSelected]);
-
-  useEffect(() => {
-    selectedLanguageRef.current = selectedLanguage;
-  }, [selectedLanguage]);
-
-  useEffect(() => {
-    durationRef.current = duration;
-  }, [duration]);
+  const callStatusRef = useRef(callStatus);
 
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
 
   useEffect(() => {
-    leadRef.current = lead;
-  }, [lead]);
+    callStatusRef.current = callStatus;
+  }, [callStatus]);
 
-  const t = getTranslation(selectedLanguage);
-  const quickReplies = getQuickReplies(selectedLanguage);
-  const remainingSeconds = Math.max(0, CALL_LIMIT_SECONDS - duration);
-  const isApproachingLimit = callStatus === 'CONNECTED' && remainingSeconds > 0 && remainingSeconds <= 25;
-
-  const formatTime = (secs: number) => {
-    const mins = Math.floor(secs / 60);
-    const remaining = secs % 60;
-    return `${mins.toString().padStart(2, '0')}:${remaining.toString().padStart(2, '0')}`;
-  };
-
-  // 1. Hands-Free Microphone Engine (Automatic Voice Activity Detection)
-  const startListening = useCallback(() => {
-    if (typeof window === 'undefined') return;
-    if (callStatusRef.current !== 'CONNECTED') return;
-    if (isAiSpeakingRef.current || isAiThinkingRef.current) return;
-    if (isSubmittingSpeechRef.current) return;
-    if (isMutedRef.current) return;
-    if (inputModeRef.current !== 'mic') return;
-
-    const SpeechConstructor =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-    if (!SpeechConstructor) {
-      console.warn('Web Speech Recognition API not available on this browser.');
-      setInputMode('keyboard');
-      return;
-    }
-
-    try {
-      if (recognitionRef.current) {
-        const existing = recognitionRef.current;
-        recognitionRef.current = null;
-        existing.onresult = null;
-        existing.onend = null;
-        existing.onerror = null;
-        try {
-          existing.abort();
-        } catch (_) {}
-      }
-
-      const recognition = new SpeechConstructor();
-      recognitionRef.current = recognition;
-      recognition.continuous = true;
-      recognition.interimResults = true;
-
-      // Locale: If language already selected/locked, use that locale (e.g. hi-IN for Hindi).
-      // If language not locked yet, use default en-US/en-IN to capture prospect's spoken preference.
-      const currentLockedLang = selectedLanguageRef.current;
-      recognition.lang = isLanguageSelectedRef.current
-        ? getLocaleForVoice(currentLockedLang)
-        : 'en-US';
-
-      recognition.onstart = () => {
-        setIsMicListening(true);
-      };
-
-      recognition.onresult = (event: any) => {
-        // If already submitting turn, ignore subsequent recognition results
-        if (isSubmittingSpeechRef.current) return;
-
-        // Collect full transcript across all continuous parts to prevent dropped words
-        let fullTranscript = '';
-        for (let i = 0; i < event.results.length; ++i) {
-          fullTranscript += event.results[i][0].transcript + ' ';
-        }
-        const currentText = fullTranscript.trim();
-        if (currentText) {
-          latestTranscriptRef.current = currentText;
-          setSpeechTranscript(currentText);
-
-          // Reset silence timer on each spoken word
-          if (silenceTimeoutRef.current) {
-            clearTimeout(silenceTimeoutRef.current);
-          }
-
-          // Real phone call silence detection: 1.8s of sustained pause allows the user
-          // to finish their complete sentence and breathe without Ava cutting in prematurely.
-          silenceTimeoutRef.current = setTimeout(() => {
-            stopListeningAndSendRef.current(currentText);
-          }, 1800);
-        }
-      };
-
-      recognition.onerror = (event: any) => {
-        if (event.error === 'not-allowed') {
-          setErrorMessage('Microphone access denied. Please allow microphone permissions in your browser.');
-          setIsMicListening(false);
-        } else if (event.error === 'audio-capture') {
-          setErrorMessage('No microphone detected. Please connect a microphone or use keyboard.');
-          setIsMicListening(false);
-        } else if (event.error !== 'no-speech') {
-          console.warn('Speech recognition notice:', event.error);
-        }
-      };
-
-      recognition.onend = () => {
-        setIsMicListening(false);
-        // Do not auto-restart if we are already submitting speech or Ava is speaking/thinking
-        if (
-          isSubmittingSpeechRef.current ||
-          isAiSpeakingRef.current ||
-          isAiThinkingRef.current ||
-          callStatusRef.current !== 'CONNECTED' ||
-          !isOpenRef.current
-        ) {
-          return;
-        }
-
-        // Keep phone line open continuously if prospect is still in their turn
-        if (!isMutedRef.current && inputModeRef.current === 'mic') {
-          setTimeout(() => {
-            if (
-              isOpenRef.current &&
-              callStatusRef.current === 'CONNECTED' &&
-              !isAiSpeakingRef.current &&
-              !isAiThinkingRef.current &&
-              !isSubmittingSpeechRef.current &&
-              !isMutedRef.current &&
-              inputModeRef.current === 'mic'
-            ) {
-              startListeningRef.current();
-            }
-          }, 250);
-        }
-      };
-
-      recognition.start();
-    } catch (err) {
-      console.warn('Microphone start error:', err);
-      setIsMicListening(false);
-    }
-  }, []);
-
-  startListeningRef.current = startListening;
-
-  const stopListeningAndSend = useCallback((overrideText?: string) => {
-    // 1. Guard against duplicate submissions
-    if (isSubmittingSpeechRef.current || isAiSpeakingRef.current || isAiThinkingRef.current) {
-      return;
-    }
-
-    // 2. Clear any pending silence timer
-    if (silenceTimeoutRef.current) {
-      clearTimeout(silenceTimeoutRef.current);
-      silenceTimeoutRef.current = null;
-    }
-
-    // 3. Immediately disarm speech recognition so NO lingering events can fire
-    if (recognitionRef.current) {
-      const rec = recognitionRef.current;
-      recognitionRef.current = null;
-      rec.onresult = null;
-      rec.onend = null;
-      rec.onerror = null;
-      try {
-        rec.abort();
-      } catch (_) {}
-    }
-    setIsMicListening(false);
-
-    // 4. Resolve the text to send
-    const toSend = (overrideText || latestTranscriptRef.current || speechTranscript).trim();
-    latestTranscriptRef.current = '';
-    setSpeechTranscript('');
-
-    if (!toSend) {
-      return;
-    }
-
-    // 5. ATOMIC LOCK: Mark as submitting so nothing else can trigger a send
-    isSubmittingSpeechRef.current = true;
-    handleSendProspectMessageRef.current(toSend);
-  }, [speechTranscript]);
-
-  stopListeningAndSendRef.current = stopListeningAndSend;
-
-  const cancelListening = useCallback(() => {
-    if (silenceTimeoutRef.current) {
-      clearTimeout(silenceTimeoutRef.current);
-      silenceTimeoutRef.current = null;
-    }
-    if (recognitionRef.current) {
-      const rec = recognitionRef.current;
-      recognitionRef.current = null;
-      rec.onresult = null;
-      rec.onend = null;
-      rec.onerror = null;
-      try {
-        rec.abort();
-      } catch (_) {}
-    }
-    setIsMicListening(false);
-    latestTranscriptRef.current = '';
-    setSpeechTranscript('');
-    isSubmittingSpeechRef.current = false;
-  }, []);
-
-  // Stop and cancel all ongoing speech and audio hardware/synthesis immediately
-  const stopAllAudio = useCallback(() => {
-    if (audioRef.current) {
-      try {
-        const audio = audioRef.current;
-        audioRef.current = null;
-        audio.onplay = null;
-        audio.onended = null;
-        audio.onerror = null;
-        audio.pause();
-        audio.currentTime = 0;
-        audio.src = '';
-      } catch (_) {}
-    }
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      try {
-        window.speechSynthesis.cancel();
-      } catch (_) {}
-    }
-    setIsAiSpeaking(false);
-    isAiSpeakingRef.current = false;
-  }, []);
-
-  // 2. Universal Speech Synthesis with Turn-Taking Transition
-  const speakText = useCallback(
-    (text: string, lang: string = selectedLanguageRef.current, isWrapup: boolean = false) => {
-      // If call is already ENDED and this is not the wrapup speech or a deliberate user replay, do not play
-      if (callStatusRef.current === 'ENDED' && !isWrapup) {
-        return;
-      }
-
-      // Immediately silence any previous ongoing audio playback
-      stopAllAudio();
-
-      // Mute microphone while Ava speaks to prevent self-echo
-      if (recognitionRef.current) {
-        const rec = recognitionRef.current;
-        recognitionRef.current = null;
-        rec.onresult = null;
-        rec.onend = null;
-        rec.onerror = null;
-        try {
-          rec.abort();
-        } catch (_) {}
-      }
-      setIsMicListening(false);
-      setIsAiSpeaking(true);
-      isAiSpeakingRef.current = true;
-
-      const handleSpeechEnded = () => {
-        setIsAiSpeaking(false);
-        isAiSpeakingRef.current = false;
-        audioRef.current = null;
-
-        // Release submit lock when Ava finishes her turn so prospect can speak
-        isSubmittingSpeechRef.current = false;
-
-        // Turn-Taking: Microphone automatically re-opens for prospect when Ava finishes speaking!
-        if (
-          isOpenRef.current &&
-          callStatusRef.current === 'CONNECTED' &&
-          !isLimitHandledRef.current &&
-          !isMutedRef.current &&
-          inputModeRef.current === 'mic'
-        ) {
-          setTimeout(() => {
-            if (
-              isOpenRef.current &&
-              callStatusRef.current === 'CONNECTED' &&
-              !isLimitHandledRef.current &&
-              !isAiSpeakingRef.current &&
-              !isAiThinkingRef.current &&
-              !isMutedRef.current &&
-              inputModeRef.current === 'mic'
-            ) {
-              startListeningRef.current();
-            }
-          }, 400);
-        }
-      };
-
-      try {
-        const audioUrl = `/api/voice/tts?lang=${encodeURIComponent(lang)}&text=${encodeURIComponent(text)}`;
-        const audio = new Audio();
-        audio.preload = 'auto';
-        audio.src = audioUrl;
-        audioRef.current = audio;
-
-        audio.onplay = () => {
-          setIsAiSpeaking(true);
-          isAiSpeakingRef.current = true;
-        };
-        audio.onended = () => {
-          if (callStatusRef.current === 'ENDED' && !isWrapup) return;
-          handleSpeechEnded();
-        };
-        audio.onerror = (err) => {
-          // If audio src was cleared or call was ended without wrapup, do not trigger fallback
-          if (!audio.src || audio.src === window.location.href || (callStatusRef.current === 'ENDED' && !isWrapup)) {
-            return;
-          }
-          console.warn('Neural audio error, fallback to browser speech:', err);
-          fallbackBrowserSpeak(text, lang, handleSpeechEnded, isWrapup);
-        };
-
-        audio.load();
-        const playPromise = audio.play();
-        if (playPromise !== undefined) {
-          playPromise.catch((err: any) => {
-            if (err?.name === 'AbortError' || !audio.src || (callStatusRef.current === 'ENDED' && !isWrapup)) {
-              return;
-            }
-            console.warn('Autoplay blocked, fallback to browser speech:', err);
-            fallbackBrowserSpeak(text, lang, handleSpeechEnded, isWrapup);
-          });
-        }
-      } catch (err) {
-        console.warn('Audio object error, fallback to browser speech:', err);
-        fallbackBrowserSpeak(text, lang, handleSpeechEnded, isWrapup);
-      }
-    },
-    [stopAllAudio]
-  );
-
-  speakTextRef.current = speakText;
-
-  const fallbackBrowserSpeak = (
-    text: string,
-    lang: string,
-    onEndCallback?: () => void,
-    isWrapup: boolean = false
-  ) => {
-    if (callStatusRef.current === 'ENDED' && !isWrapup) {
-      if (onEndCallback) onEndCallback();
-      return;
-    }
-
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      try {
-        window.speechSynthesis.cancel();
-      } catch (_) {}
-
-      const utterance = new SpeechSynthesisUtterance(text);
-      const targetLocale = getLocaleForVoice(lang);
-      utterance.lang = targetLocale;
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-
-      const voices = window.speechSynthesis.getVoices();
-      if (voices && voices.length > 0) {
-        const langPrefix = targetLocale.split('-')[0].toLowerCase();
-        const matchedVoice = voices.find(
-          (v) =>
-            v.lang.toLowerCase() === targetLocale.toLowerCase() ||
-            v.lang.toLowerCase().startsWith(langPrefix)
-        );
-        if (matchedVoice) {
-          utterance.voice = matchedVoice;
-        }
-      }
-
-      utterance.onstart = () => {
-        setIsAiSpeaking(true);
-        isAiSpeakingRef.current = true;
-      };
-      utterance.onend = () => {
-        setIsAiSpeaking(false);
-        isAiSpeakingRef.current = false;
-        isSubmittingSpeechRef.current = false;
-        if (onEndCallback) onEndCallback();
-      };
-      utterance.onerror = (e: any) => {
-        if (e?.error === 'canceled' || e?.error === 'interrupted') {
-          return;
-        }
-        setIsAiSpeaking(false);
-        isAiSpeakingRef.current = false;
-        isSubmittingSpeechRef.current = false;
-        if (onEndCallback) onEndCallback();
-      };
-      window.speechSynthesis.speak(utterance);
-    } else {
-      setIsAiSpeaking(false);
-      isAiSpeakingRef.current = false;
-      isSubmittingSpeechRef.current = false;
-      if (onEndCallback) onEndCallback();
-    }
-  };
-
-  // 3-Minute Limit Wrapup: Cleanly terminates ongoing response and speaks only final wrapup message
-  const triggerCallLimitWrapup = useCallback(() => {
-    // Strictly execute only once per call session
-    if (isLimitHandledRef.current) return;
-    isLimitHandledRef.current = true;
-
-    // 1. Terminate timer immediately
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-
-    // 2. Abort any in-flight /api/voice/call request
-    if (callAbortControllerRef.current) {
-      try {
-        callAbortControllerRef.current.abort();
-      } catch (_) {}
-      callAbortControllerRef.current = null;
-    }
-
-    // 3. Immediately hard-stop and silence any ongoing agent voice (ElevenLabs or SpeechSynthesis)
-    stopAllAudio();
-
-    // 4. Cancel active microphone listening, clear silence timers, and lock submission
-    if (silenceTimeoutRef.current) {
-      clearTimeout(silenceTimeoutRef.current);
-      silenceTimeoutRef.current = null;
-    }
-    if (recognitionRef.current) {
-      const rec = recognitionRef.current;
-      recognitionRef.current = null;
-      rec.onresult = null;
-      rec.onend = null;
-      rec.onerror = null;
-      try {
-        rec.abort();
-      } catch (_) {}
-    }
-    setIsMicListening(false);
-    latestTranscriptRef.current = '';
-    setSpeechTranscript('');
-    isSubmittingSpeechRef.current = true; // Permanently prevent user mic auto-opening
-    setIsAiThinking(false);
-    isAiThinkingRef.current = false;
-
-    // 5. Update call status and limit reached states
-    setCallStatus('ENDED');
-    callStatusRef.current = 'ENDED';
-    setIsLimitReached(true);
-
-    // 6. Append wrapup message EXACTLY ONCE to messages
-    const currentLang = selectedLanguageRef.current;
-    const wrapupText = getCallLimitWrapupSpeech(currentLang);
-    const wrapupMsg: Message = {
-      speaker: 'agent',
-      text: wrapupText,
-      timestamp: formatTime(CALL_LIMIT_SECONDS),
-    };
-
-    const updated = [...messagesRef.current, wrapupMsg];
-    messagesRef.current = updated;
-    setMessages(updated);
-
-    // 7. Small buffer before speaking wrapup to ensure previous audio buffer is flushed
-    setTimeout(() => {
-      if (!isOpenRef.current) return;
-      speakTextRef.current(wrapupText, currentLang, true);
-    }, 60);
-  }, [stopAllAudio]);
-
-  // 3. Spoken Language Detection & Permanent Lock
-  const handleSelectCallLanguage = useCallback((lang: SupportedLanguage, spokenText?: string) => {
-    if (isLanguageSelectedRef.current || callStatusRef.current !== 'CONNECTED') {
-      isSubmittingSpeechRef.current = false;
-      return;
-    }
-
-    // Immediately lock language synchronously in refs and state
-    isLanguageSelectedRef.current = true;
-    selectedLanguageRef.current = lang;
-    setIsLanguageSelected(true);
-    setSelectedLanguage(lang);
-
-    const currentLead = leadRef.current;
-    if (!currentLead) return;
-
-    const firstName = currentLead.name ? currentLead.name.split(' ')[0] : 'there';
-
-    // Fully localized topic phrase so no English string gets spliced in
-    let requirementTopic = 'your public requirement';
-    if (currentLead.companyName) {
-      switch (lang) {
-        case 'हिन्दी':
-          requirementTopic = `${currentLead.companyName} में आपकी सक्रिय व्यावसायिक आवश्यकता`;
-          break;
-        case 'Español':
-          requirementTopic = `su requerimiento activo en ${currentLead.companyName}`;
-          break;
-        case 'Français':
-          requirementTopic = `votre besoin chez ${currentLead.companyName}`;
-          break;
-        case 'Deutsch':
-          requirementTopic = `Ihre geschäftliche Anforderung bei ${currentLead.companyName}`;
-          break;
-        case 'العربية':
-          requirementTopic = `متطلباتكم في ${currentLead.companyName}`;
-          break;
-        case 'English':
-        default:
-          requirementTopic = `your active requirement at ${currentLead.companyName}`;
-          break;
-      }
-    }
-
-    // 1. Prospect's recognized response
-    const userChoiceMessage: Message = {
-      speaker: 'prospect',
-      text: spokenText || (lang === 'हिन्दी'
-        ? 'मैं हिन्दी में बात करना पसंद करूँगा।'
-        : lang === 'Español'
-        ? 'Prefiero hablar en español.'
-        : lang === 'Français'
-        ? 'Je préfère parler en français.'
-        : lang === 'Deutsch'
-        ? 'Ich spreche lieber auf Deutsch.'
-        : lang === 'العربية'
-        ? 'أفضل التحدث باللغة العربية.'
-        : "I'd prefer to speak in English."),
-      timestamp: formatTime(durationRef.current),
-    };
-
-    // 2. Ava confirms in selected language and transitions to sales pitch
-    const confirmationSpeech = getLanguageConfirmationSpeech(
-      lang,
-      firstName,
-      currentLead.companyName,
-      requirementTopic
-    );
-
-    const agentConfirmMessage: Message = {
-      speaker: 'agent',
-      text: confirmationSpeech,
-      timestamp: formatTime(durationRef.current + 1),
-    };
-
-    const updatedMessages = [...messagesRef.current, userChoiceMessage, agentConfirmMessage];
-    messagesRef.current = updatedMessages;
-    setMessages(updatedMessages);
-
-    // Keep submit lock active while Ava speaks the confirmation
-    isSubmittingSpeechRef.current = true;
-    speakTextRef.current(confirmationSpeech, lang);
-  }, []);
-
-  // 4. Send Message to AI Agent (Auto-called by voice or keyboard)
-  const handleSendProspectMessage = useCallback(async (textToSend: string) => {
-    const trimmed = textToSend.trim();
-    if (
-      !trimmed ||
-      callStatusRef.current !== 'CONNECTED' ||
-      isAiThinkingRef.current ||
-      isLimitHandledRef.current
-    ) {
-      isSubmittingSpeechRef.current = false;
-      return;
-    }
-
-    // Ensure submit lock is active
-    isSubmittingSpeechRef.current = true;
-
-    // STEP 1: If language has not been selected yet, detect from prospect's speech!
-    if (!isLanguageSelectedRef.current) {
-      const lower = trimmed.toLowerCase();
-      let matchedLang: SupportedLanguage = 'English';
-
-      if (
-        /[\u0900-\u097F]/.test(trimmed) ||
-        /\b(hindi|हिन्दी|हिंदी|hind|hnd|india|namaste|theek|haan)\b/i.test(lower) ||
-        lower.includes('hindi') ||
-        lower.includes('हिंदी') ||
-        lower.includes('हिन्दी')
-      ) {
-        matchedLang = 'हिन्दी';
-      } else if (
-        /\b(spanish|español|espanol|hablo|hola|si)\b/i.test(lower) ||
-        lower.includes('spanish') ||
-        lower.includes('español')
-      ) {
-        matchedLang = 'Español';
-      } else if (
-        /\b(french|français|francais|bonjour|oui)\b/i.test(lower) ||
-        lower.includes('french') ||
-        lower.includes('français')
-      ) {
-        matchedLang = 'Français';
-      } else if (
-        /\b(german|deutsch|hallo|ja)\b/i.test(lower) ||
-        lower.includes('german') ||
-        lower.includes('deutsch')
-      ) {
-        matchedLang = 'Deutsch';
-      } else if (
-        /[\u0600-\u06FF]/.test(trimmed) ||
-        /\b(arabic|arabi|marhaba|naam)\b/i.test(lower) ||
-        lower.includes('arabic') ||
-        lower.includes('عربي')
-      ) {
-        matchedLang = 'العربية';
-      } else if (lower.includes('english') || lower.includes('angrezi')) {
-        matchedLang = 'English';
-      }
-
-      handleSelectCallLanguage(matchedLang, trimmed);
-      return;
-    }
-
-    const userMsg: Message = {
-      speaker: 'prospect',
-      text: trimmed,
-      timestamp: formatTime(durationRef.current),
-    };
-
-    const newHistory = [...messagesRef.current, userMsg];
-    messagesRef.current = newHistory;
-    setMessages(newHistory);
-    setInputText('');
-    setIsAiThinking(true);
-    isAiThinkingRef.current = true;
-    setErrorMessage(null);
-
-    // Track request via AbortController so it can be terminated immediately on 3-minute limit
-    const abortController = new AbortController();
-    callAbortControllerRef.current = abortController;
-
-    try {
-      const currentLead = leadRef.current;
-      const res = await fetch('/api/voice/call', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: abortController.signal,
-        body: JSON.stringify({
-          leadId: currentLead?.id,
-          messages: newHistory.map((m) => ({
-            role: m.speaker === 'agent' ? 'assistant' : 'user',
-            content: m.text,
-          })),
-          prospectSpeech: trimmed,
-          language: selectedLanguageRef.current, // Locked language strictly enforced
-        }),
-      });
-
-      // If call limit was reached or call ended while waiting for network, drop response immediately
-      if (
-        isLimitHandledRef.current ||
-        callStatusRef.current !== 'CONNECTED' ||
-        !isOpenRef.current
-      ) {
-        isSubmittingSpeechRef.current = false;
-        return;
-      }
-
-      const data = await res.json();
-
-      // Guard check again after JSON parsing
-      if (
-        isLimitHandledRef.current ||
-        callStatusRef.current !== 'CONNECTED' ||
-        !isOpenRef.current
-      ) {
-        isSubmittingSpeechRef.current = false;
-        return;
-      }
-
-      if (res.ok && data.success && data.reply) {
-        const agentReply: Message = {
-          speaker: 'agent',
-          text: data.reply,
-          timestamp: formatTime(durationRef.current + 2),
-        };
-        const updatedWithAgent = [...messagesRef.current, agentReply];
-        messagesRef.current = updatedWithAgent;
-        setMessages(updatedWithAgent);
-        speakTextRef.current(agentReply.text, selectedLanguageRef.current);
-
-        if (data.meetingBooked) {
-          setIsMeetingBooked(true);
-          setCallSummary(
-            data.summary ||
-              `Qualified: requirement verified. Budget approved, ${currentLead?.jobTitle || 'Decision maker'} confirmed.`
-          );
-          setNextBestAction(data.nextBestAction || 'Send case study, confirm Thursday 3 PM demo.');
-          onMeetingBookedSuccess?.();
-        }
-      } else {
-        setErrorMessage(data?.error || 'Voice response could not be generated. Please retry.');
-        isSubmittingSpeechRef.current = false;
-      }
-    } catch (err: any) {
-      if (err?.name === 'AbortError') {
-        // Aborted intentionally when 3:00 limit was reached or user hung up
-        return;
-      }
-      setErrorMessage(err?.message || 'Network error communicating with AI voice agent.');
-      isSubmittingSpeechRef.current = false;
-    } finally {
-      setIsAiThinking(false);
-      isAiThinkingRef.current = false;
-    }
-  }, [handleSelectCallLanguage, onMeetingBookedSuccess]);
-
-  handleSendProspectMessageRef.current = handleSendProspectMessage;
-
-  // 5. Initial Call Lifecycle: Rings 1.8s then Ava asks for language by VOICE ONLY
+  // Auto-scroll transcript
   useEffect(() => {
-    if (isOpen && lead) {
-      if (!isOpenRef.current || currentLeadIdRef.current !== lead.id) {
-        isOpenRef.current = true;
-        currentLeadIdRef.current = lead.id;
-        isLimitHandledRef.current = false;
-        if (callAbortControllerRef.current) {
-          try {
-            callAbortControllerRef.current.abort();
-          } catch (_) {}
-          callAbortControllerRef.current = null;
-        }
-        stopAllAudio();
-        const initialLang = (defaultLanguage as SupportedLanguage) || 'English';
-        setSelectedLanguage(initialLang);
-        setIsLanguageSelected(false);
-        setIsLimitReached(false);
-        setCallStatus('RINGING');
-        setDuration(0);
-        setIsMeetingBooked(false);
-        setErrorMessage(null);
-        setIsMuted(false);
-        setInputMode('mic');
-        setCallSummary('Evaluating requirement fit, timeline, and decision maker authority...');
-        setNextBestAction('Qualify company rollout scale and propose solutions demo.');
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isAiThinking]);
 
-        // Ring for 1.8 seconds then connect
-        const ringTimer = setTimeout(() => {
-          setCallStatus('CONNECTED');
-          callStatusRef.current = 'CONNECTED';
-
-          // REAL CALL: Ava asks by VOICE ONLY. No buttons shown to user.
-          const chooseLangPrompt =
-            "Hello! Before we begin our conversation, which language are you most comfortable with for today's call? You can say Hindi, English, Spanish, or whichever you prefer.";
-
-          const initialAiQuestion: Message = {
-            speaker: 'agent',
-            text: chooseLangPrompt,
-            timestamp: '00:02',
-          };
-          messagesRef.current = [initialAiQuestion];
-          setMessages([initialAiQuestion]);
-          speakTextRef.current(chooseLangPrompt, 'English');
-        }, 1800);
-
-        return () => clearTimeout(ringTimer);
-      }
-    } else if (!isOpen) {
-      isOpenRef.current = false;
-      currentLeadIdRef.current = null;
-      isLimitHandledRef.current = false;
-      if (callAbortControllerRef.current) {
-        try {
-          callAbortControllerRef.current.abort();
-        } catch (_) {}
-        callAbortControllerRef.current = null;
-      }
-      setMessages([]);
-      messagesRef.current = [];
-      setIsLanguageSelected(false);
-      isLanguageSelectedRef.current = false;
-      setIsLimitReached(false);
-      setCallStatus('RINGING');
-      callStatusRef.current = 'RINGING';
-      setDuration(0);
-      durationRef.current = 0;
-      setErrorMessage(null);
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-      if (silenceTimeoutRef.current) {
-        clearTimeout(silenceTimeoutRef.current);
-        silenceTimeoutRef.current = null;
-      }
-      stopAllAudio();
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.abort();
-        } catch (_) {}
-        recognitionRef.current = null;
-      }
-      setIsMicListening(false);
-      latestTranscriptRef.current = '';
-      setSpeechTranscript('');
-      isSubmittingSpeechRef.current = false;
-    }
-  }, [isOpen, lead?.id, defaultLanguage, speakText, stopAllAudio]);
-
-  // Duration Timer & Call Limit Enforcement (3:00 Max)
+  // Duration timer when connected
   useEffect(() => {
     if (callStatus === 'CONNECTED') {
       timerRef.current = setInterval(() => {
-        if (callStatusRef.current !== 'CONNECTED' || isLimitHandledRef.current) {
-          if (timerRef.current) {
-            clearInterval(timerRef.current);
-            timerRef.current = null;
-          }
-          return;
-        }
-
-        const next = durationRef.current + 1;
-        durationRef.current = next;
-        setDuration(next);
-
-        if (next >= CALL_LIMIT_SECONDS) {
-          if (timerRef.current) {
-            clearInterval(timerRef.current);
-            timerRef.current = null;
-          }
-          triggerCallLimitWrapup();
-        }
+        setDuration((prev) => prev + 1);
       }, 1000);
     } else {
       if (timerRef.current) {
@@ -988,75 +157,491 @@ export default function LiveCallSimulatorModal({
       }
     }
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [callStatus]);
+
+  // Stop any ongoing SpeechSynthesis
+  const stopSpeech = useCallback(() => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (_) {}
+    }
+    setIsAiSpeaking(false);
+  }, []);
+
+  // Text-To-Speech function using Web Speech API with language locale
+  const speakText = useCallback(
+    (text: string, onEnd?: () => void) => {
+      if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+        if (onEnd) onEnd();
+        return;
+      }
+
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        const targetLocale = getLocaleForVoice(selectedLanguage);
+        utterance.lang = targetLocale;
+        utterance.rate = 1.05;
+        utterance.pitch = 1.0;
+
+        const voices = window.speechSynthesis.getVoices();
+        if (voices && voices.length > 0) {
+          const langPrefix = targetLocale.split('-')[0].toLowerCase();
+          const matchedVoice = voices.find(
+            (v) =>
+              v.lang.toLowerCase() === targetLocale.toLowerCase() ||
+              v.lang.toLowerCase().startsWith(langPrefix)
+          );
+          if (matchedVoice) {
+            utterance.voice = matchedVoice;
+          }
+        }
+
+        utterance.onstart = () => setIsAiSpeaking(true);
+        utterance.onend = () => {
+          setIsAiSpeaking(false);
+          if (onEnd) onEnd();
+        };
+        utterance.onerror = () => {
+          setIsAiSpeaking(false);
+          if (onEnd) onEnd();
+        };
+
+        window.speechSynthesis.speak(utterance);
+      } catch (err) {
+        console.warn('SpeechSynthesis error:', err);
+        setIsAiSpeaking(false);
+        if (onEnd) onEnd();
+      }
+    },
+    [selectedLanguage]
+  );
+
+  // Initialize Speech Recognition for Hands-Free Microphone
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = getLocaleForVoice(selectedLanguage);
+
+      recognition.onstart = () => {
+        setIsMicListening(true);
+        setSpeechTranscript('');
+      };
+
+      recognition.onresult = (event: any) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        setSpeechTranscript(transcript);
+        if (event.results[0].isFinal) {
+          handleSendMessage(transcript);
+          setSpeechTranscript('');
+        }
+      };
+
+      recognition.onerror = () => {
+        setIsMicListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsMicListening(false);
+      };
+
+      recognitionRef.current = recognition;
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch (_) {}
       }
     };
-  }, [callStatus, triggerCallLimitWrapup]);
+  }, [selectedLanguage]);
 
-  // Auto-scroll chat transcript
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isAiSpeaking, isAiThinking]);
-
-  // End Call & Mute Handlers
-  const handleEndCall = () => {
-    isLimitHandledRef.current = true;
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
+  const toggleMic = () => {
+    if (!recognitionRef.current) {
+      alert('Speech recognition is not supported in this browser. Please type or use quick chips.');
+      return;
     }
-    if (callAbortControllerRef.current) {
+    if (isMicListening) {
+      recognitionRef.current.stop();
+      setIsMicListening(false);
+    } else {
+      stopSpeech();
       try {
-        callAbortControllerRef.current.abort();
+        recognitionRef.current.lang = getLocaleForVoice(selectedLanguage);
+        recognitionRef.current.start();
       } catch (_) {}
-      callAbortControllerRef.current = null;
     }
-    setCallStatus('ENDED');
-    callStatusRef.current = 'ENDED';
-    stopAllAudio();
-    if (silenceTimeoutRef.current) {
-      clearTimeout(silenceTimeoutRef.current);
-      silenceTimeoutRef.current = null;
-    }
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.abort();
-      } catch (_) {}
-      recognitionRef.current = null;
-    }
-    setIsMicListening(false);
-    latestTranscriptRef.current = '';
-    setSpeechTranscript('');
-    setIsAiSpeaking(false);
-    isAiSpeakingRef.current = false;
-    isSubmittingSpeechRef.current = false;
   };
 
-  const toggleMute = () => {
-    if (!isMuted) {
-      setIsMuted(true);
-      isMutedRef.current = true;
-      cancelListening();
-    } else {
-      setIsMuted(false);
-      isMutedRef.current = false;
-      if (!isAiSpeakingRef.current && !isAiThinkingRef.current && callStatusRef.current === 'CONNECTED') {
-        startListeningRef.current();
+  // Check Twilio diagnostics
+  const checkDiagnostics = async (target: string) => {
+    setIsCheckingDiagnostics(true);
+    try {
+      const res = await fetch(`/api/voice/twilio/diagnostics?targetPhone=${encodeURIComponent(target)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setDiagnostics(data);
+        if (data.ownedNumbers && data.ownedNumbers.length > 0 && !data.isEnvPhoneOwned) {
+          setNewTwilioNumberInput(data.ownedNumbers[0].phoneNumber);
+        }
       }
+    } catch (err) {
+      console.warn('Diagnostics check error:', err);
+    } finally {
+      setIsCheckingDiagnostics(false);
+    }
+  };
+
+  // Reset & load on modal open
+  useEffect(() => {
+    if (isOpen && lead) {
+      const initialTarget = lead.phone || '+91 9737362307';
+      setPhoneNumber(initialTarget);
+      setDuration(0);
+      setMessages([]);
+      setErrorMessage(null);
+      setTrialNotice(null);
+      setIsMeetingBooked(false);
+      setIsNegativeDnd(false);
+      setIsHumanHandoff(false);
+      setIsCallbackScheduled(false);
+      setCallSummary('Evaluating requirement fit, timeline, and decision maker authority...');
+      setNextBestAction('Qualify company rollout scale and propose solutions demo.');
+      setTelephonyMode('BROWSER_SIM');
+
+      // Detect language from lead
+      let detectedLang: SupportedLanguage = 'English';
+      if (lead.preferredLanguage) {
+        const p = lead.preferredLanguage.toLowerCase();
+        if (p.includes('deutsch') || p.includes('german')) detectedLang = 'Deutsch';
+        else if (p.includes('español') || p.includes('spanish')) detectedLang = 'Español';
+        else if (p.includes('français') || p.includes('french')) detectedLang = 'Français';
+        else if (p.includes('हिन्दी') || p.includes('hindi')) detectedLang = 'हिन्दी';
+        else if (p.includes('ગુજરાતી') || p.includes('gujarati')) detectedLang = 'ગુજરાતી';
+        else if (p.includes('العربية') || p.includes('arabic')) detectedLang = 'العربية';
+      }
+      setSelectedLanguage(detectedLang);
+
+      // Start Browser Call Simulation immediately
+      startBrowserCallSimulation(detectedLang);
+
+      // Check Twilio diagnostics in background
+      checkDiagnostics(initialTarget);
+    } else {
+      stopSpeech();
+      setCallStatus('IDLE');
+    }
+    return () => {
+      stopSpeech();
+    };
+  }, [isOpen, lead?.id]);
+
+  // Start in-browser simulated call
+  const startBrowserCallSimulation = (lang: SupportedLanguage) => {
+    if (!lead) return;
+    setCallStatus('DIALING');
+    setMessages([
+      {
+        speaker: 'system',
+        text: `Initiating autonomous AI outbound call to ${lead.name} (${lead.companyName})...`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+    ]);
+
+    setTimeout(() => {
+      setCallStatus('RINGING');
+      setMessages((prev) => [
+        ...prev,
+        {
+          speaker: 'system',
+          text: `Ringing prospect line (${lead.phone || '+91 9737362307'})...`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
+
+      setTimeout(() => {
+        setCallStatus('CONNECTED');
+        const firstName = lead.name.split(' ')[0] || 'there';
+        const requirement = lead.originalPostSnippet
+          ? lead.originalPostSnippet.substring(0, 45) + '...'
+          : 'your Microsoft 365 & SharePoint requirements';
+
+        const greeting = getAiGreeting(lang, firstName, lead.companyName, requirement);
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            speaker: 'system',
+            text: `Call Connected • Two-Way Live Audio Active (${lang})`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+          {
+            speaker: 'agent',
+            text: greeting,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+
+        speakText(greeting);
+      }, 1200);
+    }, 800);
+  };
+
+  // Poll Twilio call status if using Twilio mode
+  useEffect(() => {
+    if (!isOpen || telephonyMode !== 'TWILIO_PSTN' || !twilioSid || callStatus === 'ENDED') return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/voice/twilio/status?callSid=${encodeURIComponent(twilioSid)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            if (data.status === 'in-progress' || data.status === 'answered' || data.status === 'CONNECTED') {
+              setCallStatus('CONNECTED');
+            } else if (data.status === 'ringing') {
+              setCallStatus('RINGING');
+            } else if (data.status === 'completed' || data.status === 'failed' || data.status === 'canceled') {
+              setCallStatus('ENDED');
+            }
+
+            if (typeof data.durationSeconds === 'number' && data.durationSeconds > 0) {
+              setDuration(data.durationSeconds);
+            }
+
+            if (data.sentiment) setCurrentSentiment(data.sentiment);
+            if (data.callSummary) setCallSummary(data.callSummary);
+            if (data.nextBestAction) setNextBestAction(data.nextBestAction);
+
+            if (data.transcript && Array.isArray(data.transcript) && data.transcript.length > 0) {
+              setMessages(data.transcript);
+            }
+
+            if (data.outcome === 'MEETING_BOOKED') {
+              setIsMeetingBooked(true);
+              onMeetingBookedSuccess?.();
+            } else if (data.outcome === 'DO_NOT_CALL') {
+              setIsNegativeDnd(true);
+            }
+          }
+        }
+      } catch (_) {}
+    }, 1500);
+
+    return () => clearInterval(pollInterval);
+  }, [isOpen, telephonyMode, twilioSid, callStatus, onMeetingBookedSuccess]);
+
+  // Handle Prospect Speech / User Message in Browser Simulator
+  const handleSendMessage = async (textToSend?: string) => {
+    const text = (textToSend || inputText).trim();
+    if (!text || isAiThinking) return;
+
+    stopSpeech();
+    setInputText('');
+
+    const prospectMsg: Message = {
+      speaker: 'prospect',
+      text,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    const nextMessages = [...messagesRef.current, prospectMsg];
+    setMessages(nextMessages);
+    setIsAiThinking(true);
+
+    try {
+      const historyPayload = nextMessages
+        .filter((m) => m.speaker === 'agent' || m.speaker === 'prospect')
+        .map((m) => ({
+          role: m.speaker === 'agent' ? 'assistant' : 'user',
+          content: m.text,
+        }));
+
+      const res = await fetch('/api/voice/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadId: lead?.id,
+          prospectSpeech: text,
+          messages: historyPayload,
+          language: selectedLanguage,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.reply) {
+        const agentMsg: Message = {
+          speaker: 'agent',
+          text: data.reply,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        setMessages((prev) => [...prev, agentMsg]);
+
+        if (data.sentiment) setCurrentSentiment(data.sentiment);
+        if (data.summary) setCallSummary(data.summary);
+        if (data.nextBestAction) setNextBestAction(data.nextBestAction);
+
+        if (data.meetingBooked) {
+          setIsMeetingBooked(true);
+          onMeetingBookedSuccess?.();
+        }
+        if (data.isNegativeDnd) {
+          setIsNegativeDnd(true);
+        }
+        if (data.isHumanHandoff) {
+          setIsHumanHandoff(true);
+        }
+        if (data.isCallbackRequested) {
+          setIsCallbackScheduled(true);
+        }
+
+        speakText(data.reply);
+      }
+    } catch (err) {
+      console.error('Call dialogue turn error:', err);
+    } finally {
+      setIsAiThinking(false);
+    }
+  };
+
+  // Handle Hanging Up
+  const handleHangup = async () => {
+    stopSpeech();
+    if (telephonyMode === 'TWILIO_PSTN' && twilioSid) {
+      try {
+        await fetch('/api/voice/twilio/hangup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callSid: twilioSid }),
+        });
+      } catch (_) {}
+    }
+
+    setCallStatus('ENDED');
+    setMessages((prev) => [
+      ...prev,
+      {
+        speaker: 'system',
+        text: `Call ended. Final duration: ${formatTime(duration)}. Insights & meeting records saved.`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+    ]);
+  };
+
+  // Re-start / Re-dial in Browser
+  const handleRestartCall = () => {
+    stopSpeech();
+    setDuration(0);
+    setMessages([]);
+    setIsMeetingBooked(false);
+    setIsNegativeDnd(false);
+    setIsHumanHandoff(false);
+    setIsCallbackScheduled(false);
+    startBrowserCallSimulation(selectedLanguage);
+  };
+
+  // Start Real Twilio PSTN Phone Call
+  const handleStartRealCall = async () => {
+    if (!phoneNumber.trim()) return;
+    stopSpeech();
+    setIsDialingTwilio(true);
+    setCallStatus('DIALING');
+    setErrorMessage(null);
+    setTrialNotice(null);
+    setMessages([
+      {
+        speaker: 'system',
+        text: `Initiating real Twilio PSTN carrier call to ${phoneNumber}...`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+    ]);
+
+    try {
+      const res = await fetch('/api/voice/twilio/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadId: lead?.id,
+          phoneNumber,
+          language: selectedLanguage,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.call) {
+        setTwilioSid(data.call.callSid);
+        setCallStatus('RINGING');
+        setMessages((prev) => [
+          ...prev,
+          {
+            speaker: 'system',
+            text: `Ringing on dedicated carrier line ${phoneNumber}. Pick up your physical phone to speak with Ava AI!`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+      } else {
+        setCallStatus('ENDED');
+        setErrorMessage(data.error || 'Twilio rejected the call request.');
+        if (data.trialNotice) {
+          setTrialNotice(data.trialNotice);
+        }
+        checkDiagnostics(phoneNumber);
+      }
+    } catch (err: any) {
+      setCallStatus('ENDED');
+      setErrorMessage(err.message || 'Network error while contacting Twilio API.');
+    } finally {
+      setIsDialingTwilio(false);
+    }
+  };
+
+  const handleSaveTwilioNumber = async () => {
+    if (!newTwilioNumberInput.trim()) return;
+    setIsSavingTwilioNumber(true);
+    try {
+      const res = await fetch('/api/voice/twilio/diagnostics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          updateTwilioPhone: newTwilioNumberInput.trim(),
+          targetPhone: phoneNumber,
+        }),
+      });
+      if (res.ok) {
+        await checkDiagnostics(phoneNumber);
+      }
+    } catch (_) {}
+    finally {
+      setIsSavingTwilioNumber(false);
     }
   };
 
   if (!isOpen || !lead) return null;
 
-  const progressPercent = Math.min(100, (duration / CALL_LIMIT_SECONDS) * 100);
+  const formatTime = (secs: number) => {
+    const mins = Math.floor(secs / 60);
+    const remaining = secs % 60;
+    return `${mins.toString().padStart(2, '0')}:${remaining.toString().padStart(2, '0')}`;
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-4 overflow-y-auto">
-      <div className="w-full max-w-4xl glass-card border-indigo-500/30 bg-[#090d22] shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
-        {/* Top Call Header */}
-        <div className="p-4 border-b border-white/[0.08] bg-gradient-to-r from-blue-950/70 via-indigo-950/70 to-purple-950/70 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-2 sm:p-4 overflow-y-auto">
+      <div className="w-full max-w-5xl glass-card border-indigo-500/30 bg-[#070b1e] shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+        {/* Top Header & Telephony Mode Switcher */}
+        <div className="p-4 border-b border-white/[0.08] bg-gradient-to-r from-slate-950 via-indigo-950/80 to-slate-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="relative">
               <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/30">
@@ -1065,513 +650,524 @@ export default function LiveCallSimulatorModal({
               {callStatus === 'CONNECTED' && (
                 <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-[#090d22]"></span>
+                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-[#070b1e]"></span>
                 </span>
               )}
             </div>
 
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-base font-bold text-white flex items-center gap-1.5">
-                  {t.voiceSimulatorTitle}
+                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                  <span>AI Voice Calling Agent</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full font-mono font-medium bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                    Groq LLaMA 3.3 70B &bull; &lt;150ms
+                  </span>
                 </h2>
 
                 {callStatus === 'CONNECTED' && (
-                  <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                    {t.connectedStatus.toUpperCase()} • {formatTime(duration)}
+                  <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                    LIVE CALL &bull; {formatTime(duration)}
                   </span>
                 )}
 
                 {callStatus === 'RINGING' && (
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse">
-                    {t.ringingStatus}
+                  <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
+                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                    RINGING...
+                  </span>
+                )}
+
+                {callStatus === 'DIALING' && (
+                  <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40 animate-pulse">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    DIALING...
                   </span>
                 )}
 
                 {callStatus === 'ENDED' && (
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                      isLimitReached
-                        ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
-                        : 'bg-slate-500/20 text-slate-300 border-slate-500/30'
-                    }`}
-                  >
-                    {isLimitReached ? t.callLimitReached : 'CALL ENDED'}
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-500/20 text-slate-300 border border-slate-500/30">
+                    CALL ENDED
                   </span>
                 )}
 
-                {/* Call Limit Display Badge */}
-                <div
-                  className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border transition-all ${
-                    isApproachingLimit
-                      ? 'bg-amber-500/25 text-amber-300 border-amber-500/40 animate-pulse'
-                      : isLimitReached
+                {/* Sentiment Badge */}
+                <span
+                  className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                    currentSentiment === 'POSITIVE'
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                      : currentSentiment === 'HESITANT'
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                      : currentSentiment === 'OBJECTION'
+                      ? 'bg-orange-500/20 text-orange-300 border-orange-500/30'
+                      : currentSentiment === 'NEGATIVE'
                       ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
-                      : 'bg-blue-500/15 text-blue-300 border-blue-500/30'
+                      : 'bg-blue-500/20 text-blue-300 border-blue-500/30'
                   }`}
                 >
-                  <Timer className="w-3 h-3" />
+                  <span>Sentiment:</span>
                   <span>
-                    {isLimitReached
-                      ? 'Limit 3:00 Reached'
-                      : `${t.timeLeftLabel}: ${formatTime(remainingSeconds)} / 03:00`}
+                    {currentSentiment === 'POSITIVE' && '😊 High Intent'}
+                    {currentSentiment === 'NEUTRAL' && '😐 Inquiring'}
+                    {currentSentiment === 'HESITANT' && '🤔 Hesitant / Busy'}
+                    {currentSentiment === 'OBJECTION' && '⚠️ Objection Handled'}
+                    {currentSentiment === 'NEGATIVE' && '🛑 DND Opt-Out'}
                   </span>
-                </div>
-
-                {/* Locked Language Status */}
-                {isLanguageSelected && (
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-500/15 text-purple-300 border border-purple-500/30">
-                    <Lock className="w-2.5 h-2.5" />
-                    <span>{selectedLanguage} (Locked)</span>
-                  </span>
-                )}
+                </span>
               </div>
 
-              <p className="text-[11px] text-slate-300">
-                {t.outboundCallTo} <span className="font-semibold text-white">{lead.name}</span> ({lead.jobTitle} at {lead.companyName}) • {lead.phone}
+              <p className="text-xs text-slate-300 flex items-center gap-2 mt-1">
+                <span>
+                  Calling <span className="font-semibold text-white">{lead.name}</span> ({lead.jobTitle} at {lead.companyName})
+                </span>
+                <span className="text-slate-400">&bull; {lead.location || lead.country || 'Global'}</span>
               </p>
             </div>
           </div>
 
+          {/* Mode Switcher Tabs + Close */}
           <div className="flex items-center gap-2">
-            {callStatus === 'CONNECTED' && (
-              <>
-                <button
-                  onClick={toggleMute}
-                  title={isMuted ? 'Unmute microphone' : 'Mute microphone'}
-                  className={`p-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
-                    isMuted
-                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                      : 'bg-white/[0.08] hover:bg-white/[0.15] text-slate-300 border-white/10'
-                  }`}
-                >
-                  {isMuted ? <MicOff className="w-4 h-4 text-amber-400" /> : <Mic className="w-4 h-4 text-emerald-400" />}
-                </button>
+            <div className="p-0.5 rounded-xl bg-black/60 border border-white/10 flex items-center text-xs">
+              <button
+                type="button"
+                onClick={() => setTelephonyMode('BROWSER_SIM')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  telephonyMode === 'BROWSER_SIM'
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Instant Browser Voice Call Demo with Web Speech Audio & Mic"
+              >
+                <Volume2 className="w-3.5 h-3.5" />
+                <span>Live Audio Demo</span>
+              </button>
 
-                <button
-                  onClick={handleEndCall}
-                  className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-rose-600/30 cursor-pointer"
-                >
-                  <PhoneOff className="w-3.5 h-3.5" /> {t.endCallBtn}
-                </button>
-              </>
-            )}
+              <button
+                type="button"
+                onClick={() => setTelephonyMode('TWILIO_PSTN')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  telephonyMode === 'TWILIO_PSTN'
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Real PSTN Carrier Calling to Mobile Phones via Twilio"
+              >
+                <PhoneCall className="w-3.5 h-3.5" />
+                <span>Twilio Mobile PSTN</span>
+              </button>
+            </div>
+
+            {callStatus === 'CONNECTED' || callStatus === 'RINGING' ? (
+              <button
+                type="button"
+                onClick={handleHangup}
+                className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-lg shadow-rose-600/30 cursor-pointer active:scale-95"
+              >
+                <PhoneOff className="w-3.5 h-3.5" />
+                <span>End Call</span>
+              </button>
+            ) : callStatus === 'ENDED' ? (
+              <button
+                type="button"
+                onClick={handleRestartCall}
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-lg shadow-emerald-600/30 cursor-pointer active:scale-95"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Re-dial</span>
+              </button>
+            ) : null}
+
             <button
-              onClick={onClose}
-              aria-label="Close Live Call dialog"
-              className="p-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white transition-all cursor-pointer"
+              onClick={() => {
+                stopSpeech();
+                onClose();
+              }}
+              aria-label="Close dialog"
+              className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white transition-all cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Call Limit Progress Bar */}
-        <div className="w-full bg-white/[0.05] h-1.5 relative overflow-hidden">
-          <div
-            className={`h-full transition-all duration-1000 ${
-              isLimitReached
-                ? 'bg-rose-500'
-                : isApproachingLimit
-                ? 'bg-amber-400'
-                : 'bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-400'
-            }`}
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
-
-        {/* Modal Body: 2 Columns */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-hidden">
-          {/* Left Column: Real-Time Phone Call Stream */}
-          <div className="lg:col-span-7 p-4 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-white/[0.08] bg-[#070b1e]">
-            {/* Live Call Header Bar */}
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] mb-3 text-xs">
-              <span className="font-semibold text-white flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                Live Call • {lead.companyName}
-              </span>
+        {/* Twilio Diagnostic banner (Only visible in Twilio mode when setup needed) */}
+        {telephonyMode === 'TWILIO_PSTN' && diagnostics && (!diagnostics.isReady || trialNotice) && (
+          <div className="p-3 bg-gradient-to-r from-amber-950/90 via-[#1f1609] to-amber-950/90 border-b border-amber-500/30 text-amber-200 text-xs">
+            <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 flex items-center gap-1">
-                  {isLanguageSelected && <Lock className="w-2.5 h-2.5 text-amber-400" />}
-                  {isLanguageSelected ? selectedLanguage : 'Detecting Language...'}
-                </span>
-                <span className="text-emerald-400 text-[11px] font-bold uppercase tracking-wider bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                  {callStatus === 'CONNECTED' ? t.connectedStatus : callStatus === 'ENDED' ? 'ENDED' : t.ringingStatus}
+                <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>
+                  Twilio PSTN Carrier Active. For instant audio demonstration without carrier setup, switch to{' '}
+                  <button
+                    onClick={() => setTelephonyMode('BROWSER_SIM')}
+                    className="font-bold underline text-emerald-300 hover:text-white"
+                  >
+                    Live Audio Demo
+                  </button>
+                  .
                 </span>
               </div>
+              <button
+                type="button"
+                onClick={() => checkDiagnostics(phoneNumber)}
+                className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold flex items-center gap-1 shrink-0 cursor-pointer"
+              >
+                <RefreshCw className={`w-3 h-3 ${isCheckingDiagnostics ? 'animate-spin' : ''}`} />
+                <span>Check PSTN</span>
+              </button>
             </div>
+          </div>
+        )}
 
-            {/* Scrolling Transcript Area */}
-            <div className="flex-1 overflow-y-auto space-y-3 pr-2 min-h-[280px] max-h-[350px]">
-              {messages.map((msg, idx) => {
-                const isAgent = msg.speaker === 'agent';
-                return (
-                  <div
-                    key={idx}
-                    className={`flex items-start gap-2.5 ${
-                      isAgent ? 'justify-start' : 'justify-end'
-                    }`}
+        {/* Main Body */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-hidden">
+          {/* Left Panel: Call Controls, Waveforms & Live Transcript */}
+          <div className="lg:col-span-8 p-4 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-white/[0.08] bg-[#050818] overflow-y-auto">
+            {/* Top Dialing & Language Selection Bar */}
+            <div className="p-3 rounded-2xl bg-gradient-to-r from-[#0d1633] via-[#09112a] to-[#0d1633] border border-indigo-500/30 shadow-lg mb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <Globe2 className="w-4 h-4 text-indigo-400" />
+                  <span className="font-semibold text-slate-300">Call Language:</span>
+                  <select
+                    value={selectedLanguage}
+                    onChange={(e) => setSelectedLanguage(e.target.value as SupportedLanguage)}
+                    className="bg-black/70 border border-white/20 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-indigo-400 cursor-pointer font-semibold"
                   >
-                    {isAgent && (
-                      <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white shrink-0 text-xs font-bold shadow-md shadow-indigo-600/30">
-                        AI
-                      </div>
-                    )}
-                    <div
-                      className={`max-w-[84%] p-3 rounded-2xl text-xs leading-relaxed ${
-                        isAgent
-                          ? 'bg-[#141b3c] border border-indigo-500/30 text-slate-100 rounded-tl-none shadow-md'
-                          : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-tr-none shadow-md'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-3 text-[10px] opacity-75 mb-1 font-semibold">
-                        <span>{isAgent ? t.aiSalesAgentLabel : lead.name}</span>
-                        <div className="flex items-center gap-1.5">
-                          <span>{msg.timestamp}</span>
-                          {isAgent && (
-                            <button
-                              type="button"
-                              onClick={() => speakText(msg.text, selectedLanguage, true)}
-                              title="Listen / Replay Voice (आवाज़ दोबारा सुनें)"
-                              className="p-1 rounded hover:bg-white/10 text-indigo-300 hover:text-white transition-all cursor-pointer flex items-center gap-0.5"
-                            >
-                              <Volume2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      <p>{msg.text}</p>
-                    </div>
-                    {!isAgent && (
-                      <div className="w-7 h-7 rounded-lg bg-slate-700 flex items-center justify-center text-white shrink-0 text-xs font-bold">
-                        <User className="w-3.5 h-3.5" />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-
-              {/* Approaching Limit Notification in Transcript */}
-              {isApproachingLimit && (
-                <div className="p-2 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-200 text-xs flex items-center gap-2 animate-pulse">
-                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span>{t.approachingLimitWarning} ({remainingSeconds}s remaining). Wrapping up qualification...</span>
+                    <option value="English">English (US/UK/Global)</option>
+                    <option value="हिन्दी">हिन्दी (Hindi - India)</option>
+                    <option value="ગુજરાતી">ગુજરાતી (Gujarati - Regional)</option>
+                    <option value="Español">Español (Spanish)</option>
+                    <option value="Français">Français (French)</option>
+                    <option value="Deutsch">Deutsch (German)</option>
+                    <option value="العربية">العربية (Arabic)</option>
+                  </select>
                 </div>
-              )}
 
-              {/* Call Limit Reached Notification */}
-              {isLimitReached && (
-                <div className="p-2.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-200 text-xs flex items-center justify-between gap-2">
+                {telephonyMode === 'TWILIO_PSTN' ? (
                   <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-rose-400 shrink-0" />
-                    <span>{t.callLimitReached}. Follow-up invitation emailed to prospect.</span>
-                  </div>
-                  <span className="text-[10px] font-bold uppercase bg-rose-500/30 px-2 py-0.5 rounded border border-rose-500/50">
-                    Max 3:00
-                  </span>
-                </div>
-              )}
-
-              {errorMessage && (
-                <div className="p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between gap-2 animate-in fade-in">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
-                    <span>{errorMessage}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setErrorMessage(null)}
-                    className="text-[11px] text-rose-400 hover:text-white underline cursor-pointer shrink-0"
-                  >
-                    Dismiss
-                  </button>
-                </div>
-              )}
-              <div ref={chatEndRef} />
-            </div>
-
-            {/* 100% Hands-Free Live Phone Call Status Console */}
-            <div className="pt-3 border-t border-white/[0.06] mt-2 space-y-2.5">
-              {/* Dynamic Conversational State Banner */}
-              {isAiSpeaking ? (
-                <div className="p-3 rounded-2xl bg-indigo-950/60 border border-indigo-500/40 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/40">
-                      <Volume2 className="w-4 h-4 animate-bounce" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-white">Ava is speaking...</div>
-                      <div className="text-[11px] text-indigo-300">
-                        Listening in {selectedLanguage} (Microphone will automatically open when Ava finishes)
-                      </div>
-                    </div>
-                  </div>
-                  {/* Glowing Soundwave Bars */}
-                  <div className="flex items-center gap-1 pr-2">
-                    <span className="w-1 h-3.5 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1 h-6 bg-indigo-300 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1 h-4 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
-                    <span className="w-1 h-7 bg-indigo-200 rounded-full animate-pulse" style={{ animationDelay: '450ms' }} />
-                    <span className="w-1 h-3 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '600ms' }} />
-                  </div>
-                </div>
-              ) : isAiThinking ? (
-                <div className="p-3 rounded-2xl bg-blue-950/60 border border-blue-500/40 flex items-center gap-3">
-                  <Loader2 className="w-5 h-5 animate-spin text-blue-400" />
-                  <div>
-                    <div className="text-xs font-bold text-white">Ava is formulating response...</div>
-                    <div className="text-[11px] text-blue-300">Analyzing requirement and preparing reply in {selectedLanguage}</div>
-                  </div>
-                </div>
-              ) : callStatus === 'CONNECTED' ? (
-                /* Prospect's Turn: Live Microphone is Open */
-                <div className="p-3 rounded-2xl bg-gradient-to-r from-emerald-950/70 via-[#0a1f18] to-teal-950/70 border border-emerald-500/40 space-y-2 animate-in fade-in">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-emerald-300 font-semibold text-xs">
-                      <span className="relative flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                      </span>
-                      <span>
-                        {!isLanguageSelected
-                          ? 'Microphone Live • Speak your preferred language (e.g. "Hindi", "English")'
-                          : `Microphone Live • Speak naturally in ${selectedLanguage}`}
-                      </span>
-                    </div>
-
-                    {/* Active Voice Waveform */}
-                    <div className="flex items-center gap-1">
-                      <span className="w-1 h-2.5 bg-emerald-400 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
-                      <span className="w-1 h-4 bg-emerald-400 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
-                      <span className="w-1 h-2 bg-emerald-400 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
-                      <span className="w-1 h-3.5 bg-emerald-400 rounded-full animate-pulse" style={{ animationDelay: '450ms' }} />
-                    </div>
-                  </div>
-
-                  {/* Real-Time Live Speech Preview */}
-                  <div className="bg-[#060a17] p-2.5 rounded-xl border border-white/10 text-xs min-h-[46px] text-white flex items-center justify-between gap-3">
-                    <span className={speechTranscript ? 'text-emerald-300 font-semibold text-xs tracking-wide' : 'text-slate-400 italic text-xs'}>
-                      {speechTranscript
-                        ? `"${speechTranscript}"`
-                        : !isLanguageSelected
-                        ? 'Ava is listening... Speak your preferred language (e.g. "Hindi", "English")'
-                        : `Ava is listening... Speak your thought naturally (Ava waits for complete sentence)`}
-                    </span>
-                    {speechTranscript ? (
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                          Listening...
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => stopListeningAndSend(speechTranscript)}
-                          className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-[11px] flex items-center gap-1 shadow-sm transition-all cursor-pointer"
-                          title="Send immediately without waiting for pause"
-                        >
-                          <span>Send Now</span>
-                          <Send className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1 shrink-0">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        Patient Listening Active
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ) : null}
-
-              {/* Auxiliary Controls (Keyboard toggle & Quick Suggestions if needed) */}
-              <div className="flex items-center justify-between pt-1">
-                {isLanguageSelected && (
-                  <div className="flex flex-wrap gap-1.5">
+                    <input
+                      type="tel"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      placeholder="+91 9737362307"
+                      disabled={callStatus === 'CONNECTED' || callStatus === 'RINGING' || isDialingTwilio}
+                      className="px-2.5 py-1 rounded-lg bg-black/70 border border-white/20 text-white font-mono text-xs focus:outline-none focus:border-emerald-400"
+                    />
                     <button
                       type="button"
-                      onClick={() => handleSendProspectMessage(quickReplies.reply1)}
-                      disabled={isAiThinking || callStatus !== 'CONNECTED'}
-                      className="px-2.5 py-1 rounded-lg text-[10px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/[0.08] transition-all cursor-pointer disabled:opacity-40"
+                      onClick={handleStartRealCall}
+                      disabled={isDialingTwilio || callStatus === 'CONNECTED' || callStatus === 'RINGING'}
+                      className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 cursor-pointer disabled:opacity-40"
                     >
-                      &quot;{quickReplies.reply1}&quot;
+                      <PhoneCall className="w-3 h-3" />
+                      <span>Dial</span>
                     </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      Browser Web Speech Audio Active
+                    </span>
                     <button
                       type="button"
-                      onClick={() => handleSendProspectMessage(quickReplies.reply2)}
-                      disabled={isAiThinking || callStatus !== 'CONNECTED'}
-                      className="px-2.5 py-1 rounded-lg text-[10px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/[0.08] transition-all cursor-pointer disabled:opacity-40"
+                      onClick={handleRestartCall}
+                      className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1 cursor-pointer"
                     >
-                      &quot;{quickReplies.reply2}&quot;
+                      <RefreshCw className="w-3 h-3" />
+                      <span>Restart Call</span>
                     </button>
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Live Audio Waveform Animation Banner */}
+            {callStatus === 'CONNECTED' && (
+              <div className="mb-3 p-3 rounded-xl bg-gradient-to-r from-indigo-950/60 via-slate-900 to-indigo-950/60 border border-indigo-500/30 flex items-center justify-between animate-in fade-in">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <div className="w-3 h-3 rounded-full bg-emerald-400 animate-ping absolute" />
+                    <div className="w-3 h-3 rounded-full bg-emerald-500 relative" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white flex items-center gap-2">
+                      <span>{isAiSpeaking ? 'Ava AI is speaking...' : isMicListening ? 'Listening to your voice...' : 'Live Audio Active'}</span>
+                      <span className="text-[10px] font-mono text-emerald-400">({formatTime(duration)})</span>
+                    </div>
+                    <div className="text-[11px] text-slate-300">
+                      {isAiSpeaking ? 'Audio output playing through speakers' : 'Speak into microphone or select an evaluation chip below'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Animated Audio Equalizer Bars */}
+                <div className="flex items-center gap-1 pr-2">
+                  <span className={`w-1 rounded-full bg-emerald-400 transition-all ${isAiSpeaking || isMicListening ? 'h-5 animate-pulse' : 'h-2'}`} style={{ animationDelay: '0ms' }} />
+                  <span className={`w-1 rounded-full bg-indigo-400 transition-all ${isAiSpeaking || isMicListening ? 'h-7 animate-pulse' : 'h-3'}`} style={{ animationDelay: '150ms' }} />
+                  <span className={`w-1 rounded-full bg-teal-400 transition-all ${isAiSpeaking || isMicListening ? 'h-4 animate-pulse' : 'h-2'}`} style={{ animationDelay: '300ms' }} />
+                  <span className={`w-1 rounded-full bg-emerald-300 transition-all ${isAiSpeaking || isMicListening ? 'h-6 animate-pulse' : 'h-3'}`} style={{ animationDelay: '450ms' }} />
+                  <span className={`w-1 rounded-full bg-indigo-300 transition-all ${isAiSpeaking || isMicListening ? 'h-3 animate-pulse' : 'h-1.5'}`} style={{ animationDelay: '200ms' }} />
+                </div>
+              </div>
+            )}
+
+            {/* Live Call Transcript Scroll Area */}
+            <div className="flex-1 min-h-[220px] max-h-[300px] overflow-y-auto space-y-3 p-3 rounded-2xl bg-[#030612] border border-white/[0.06]">
+              {messages.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400 space-y-2">
+                  <Bot className="w-8 h-8 text-indigo-400/50 mb-1" />
+                  <div className="text-sm font-semibold text-slate-300">Connecting Call Console...</div>
+                  <p className="text-xs text-slate-400 max-w-md">
+                    Ava AI is initiating the multilingual voice qualification call. The live transcript will stream here in real time.
+                  </p>
+                </div>
+              ) : (
+                messages.map((msg, idx) => {
+                  const isAgent = msg.speaker === 'agent';
+                  const isSystem = msg.speaker === 'system';
+
+                  if (isSystem) {
+                    return (
+                      <div key={idx} className="flex justify-center my-1.5">
+                        <span className="text-[11px] text-slate-400 bg-white/[0.05] border border-white/10 px-3 py-1 rounded-full flex items-center gap-1.5 font-mono">
+                          <Clock className="w-3 h-3 text-slate-400" />
+                          {msg.text}
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={idx}
+                      className={`flex items-start gap-2.5 ${isAgent ? 'justify-start' : 'justify-end'}`}
+                    >
+                      {isAgent && (
+                        <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white shrink-0 text-xs font-bold shadow-md shadow-indigo-600/30">
+                          AI
+                        </div>
+                      )}
+
+                      <div
+                        className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed ${
+                          isAgent
+                            ? 'bg-[#121838] border border-indigo-500/30 text-slate-100 rounded-tl-none shadow-md'
+                            : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-tr-none shadow-md'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-3 text-[10px] opacity-75 mb-1 font-semibold">
+                          <span>{isAgent ? 'Ava (AI Sales Executive)' : `${lead.name} (Prospect)`}</span>
+                          <span>{msg.timestamp}</span>
+                        </div>
+                        <p>{msg.text}</p>
+                      </div>
+
+                      {!isAgent && (
+                        <div className="w-7 h-7 rounded-lg bg-slate-700 flex items-center justify-center text-white shrink-0 text-xs font-bold">
+                          <User className="w-3.5 h-3.5" />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+
+              {isAiThinking && (
+                <div className="flex items-center gap-2 text-xs text-indigo-400 p-2">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Ava is analyzing requirement &amp; synthesizing spoken response (&lt;150ms)...</span>
+                </div>
+              )}
+
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* Quick Demo Scenario Evaluation Chips (Essential for Presentations!) */}
+            <div className="mt-3 space-y-1.5">
+              <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold px-1">
+                <span>1-Click Test Scenarios for Evaluation:</span>
+                <span className="text-indigo-400 text-[10px]">Natural Voice &bull; Objection &bull; Negative Call &bull; Handoff</span>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleSendMessage('Yes, we are actively looking for a partner for 150 users. What is your pricing and implementation timeline?')}
+                  disabled={callStatus !== 'CONNECTED' || isAiThinking}
+                  className="px-2.5 py-1 rounded-lg bg-blue-600/15 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40"
+                >
+                  <Zap className="w-3 h-3 text-blue-400" />
+                  <span>Inquire / Objection (Pricing)</span>
+                </button>
 
                 <button
                   type="button"
-                  onClick={() => setInputMode(inputMode === 'mic' ? 'keyboard' : 'mic')}
-                  className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1 ml-auto cursor-pointer"
+                  onClick={() => handleSendMessage('Please stop calling me! Remove my phone number and take me off your list right now.')}
+                  disabled={callStatus !== 'CONNECTED' || isAiThinking}
+                  className="px-2.5 py-1 rounded-lg bg-rose-600/15 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40"
                 >
-                  <Keyboard className="w-3.5 h-3.5" />
-                  <span>{inputMode === 'mic' ? 'Keyboard' : 'Hands-free Voice'}</span>
+                  <PhoneMissed className="w-3 h-3 text-rose-400" />
+                  <span>Negative Call &bull; DND Opt-Out</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSendMessage('Can I speak to a real person? Please transfer me to your senior technical lead or account manager.')}
+                  disabled={callStatus !== 'CONNECTED' || isAiThinking}
+                  className="px-2.5 py-1 rounded-lg bg-purple-600/15 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40"
+                >
+                  <UserCheck className="w-3 h-3 text-purple-400" />
+                  <span>Human Handoff Request</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSendMessage("I'm in an important client meeting right now, please call me back tomorrow morning at 10:30 AM.")}
+                  disabled={callStatus !== 'CONNECTED' || isAiThinking}
+                  className="px-2.5 py-1 rounded-lg bg-amber-600/15 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40"
+                >
+                  <Clock className="w-3 h-3 text-amber-400" />
+                  <span>Busy &bull; Callback Retry</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSendMessage('Sounds fantastic! Let us book the calendar demo for Thursday at 3 PM.')}
+                  disabled={callStatus !== 'CONNECTED' || isAiThinking}
+                  className="px-2.5 py-1 rounded-lg bg-emerald-600/15 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40"
+                >
+                  <Calendar className="w-3 h-3 text-emerald-400" />
+                  <span>Confirm Meeting Booking</span>
                 </button>
               </div>
+            </div>
 
-              {/* Collapsed Keyboard Mode (Only shown if user clicked Keyboard) */}
-              {inputMode === 'keyboard' && (
-                <div className="flex items-center gap-2 pt-1 animate-in fade-in">
-                  <input
-                    type="text"
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSendProspectMessage(inputText)}
-                    placeholder={t.typeSpokenWords}
-                    disabled={isAiThinking || callStatus !== 'CONNECTED'}
-                    className="flex-1 px-3 py-2 rounded-xl bg-[#090d1f] border border-white/[0.1] text-xs text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 disabled:opacity-50"
-                  />
-                  <button
-                    onClick={() => handleSendProspectMessage(inputText)}
-                    disabled={!inputText.trim() || isAiThinking || callStatus !== 'CONNECTED'}
-                    className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 transition-all cursor-pointer flex items-center justify-center"
-                  >
-                    {isAiThinking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  </button>
-                </div>
-              )}
+            {/* Input Bar: Hands-Free Microphone + Text Typing */}
+            <div className="mt-3 pt-2 border-t border-white/[0.08] flex items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleMic}
+                disabled={callStatus !== 'CONNECTED'}
+                className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
+                  isMicListening
+                    ? 'bg-rose-600 text-white border-rose-500 shadow-lg shadow-rose-600/40 animate-pulse'
+                    : 'bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 border-white/10'
+                } disabled:opacity-40`}
+                title={isMicListening ? 'Stop listening' : 'Start speaking with microphone'}
+              >
+                {isMicListening ? <Mic className="w-4 h-4 text-white" /> : <MicOff className="w-4 h-4" />}
+              </button>
+
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                  placeholder={
+                    isMicListening
+                      ? 'Listening to your speech...'
+                      : callStatus === 'CONNECTED'
+                      ? 'Speak into mic or type prospect reply here (Enter to send)...'
+                      : 'Call must be connected to speak...'
+                  }
+                  disabled={callStatus !== 'CONNECTED' || isAiThinking}
+                  className="w-full px-3 py-2 rounded-xl bg-black/60 border border-white/15 text-white text-xs focus:outline-none focus:border-indigo-400 disabled:opacity-50"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleSendMessage()}
+                disabled={callStatus !== 'CONNECTED' || !inputText.trim() || isAiThinking}
+                className="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-all cursor-pointer disabled:opacity-40 active:scale-95"
+              >
+                <Send className="w-4 h-4" />
+              </button>
             </div>
           </div>
 
-          {/* Right Column: Call Summary & Next Best Action */}
-          <div className="lg:col-span-5 p-4 bg-[#0a0e28] flex flex-col justify-between space-y-4">
+          {/* Right Panel: CRM Dossier, Sentiment & Real-Time Intelligence */}
+          <div className="lg:col-span-4 p-4 bg-[#080d24] flex flex-col justify-between space-y-4 overflow-y-auto">
             <div className="space-y-4">
-              {/* Call Limit Metric Box */}
-              <div className="p-3.5 rounded-xl bg-[#060918] border border-white/[0.08] space-y-2">
-                <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-300">
-                  <span className="flex items-center gap-1.5">
-                    <Timer className="w-3.5 h-3.5 text-indigo-400" />
-                    {t.callLimitLabel}
-                  </span>
-                  <span
-                    className={`font-mono text-xs ${
-                      isApproachingLimit
-                        ? 'text-amber-400 font-bold animate-pulse'
-                        : isLimitReached
-                        ? 'text-rose-400 font-bold'
-                        : 'text-indigo-300'
-                    }`}
-                  >
-                    {formatTime(remainingSeconds)} left
+              {/* Lead Intelligence Card */}
+              <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.08] space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">Prospect Profile</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                    Intent: {lead.intentScore}%
                   </span>
                 </div>
-                <div className="w-full bg-white/[0.08] h-2 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-1000 ${
-                      isLimitReached
-                        ? 'bg-rose-500'
-                        : isApproachingLimit
-                        ? 'bg-amber-400'
-                        : 'bg-indigo-500'
-                    }`}
-                    style={{ width: `${progressPercent}%` }}
-                  />
+
+                <div className="space-y-1 text-xs">
+                  <div className="font-semibold text-white text-sm">{lead.name}</div>
+                  <div className="text-slate-300">{lead.jobTitle} &bull; {lead.companyName}</div>
+                  <div className="text-slate-400 text-[11px]">{lead.location || lead.country || 'Global'}</div>
                 </div>
-                <p className="text-[10px] text-slate-400">
-                  Standard telecom limit enforced for initial autonomous outreach. Call cleanly wraps up at 3:00.
-                </p>
+
+                <div className="p-2 rounded-lg bg-black/40 border border-white/[0.06] text-[11px] text-slate-300">
+                  <span className="text-indigo-400 font-semibold block mb-0.5">Detected Public RFP / Requirement:</span>
+                  <p className="line-clamp-3">{lead.originalPostSnippet || 'Cloud migration & Microsoft 365 license optimization.'}</p>
+                </div>
               </div>
 
-              {/* Call Summary Card */}
-              <div className="p-3.5 rounded-xl bg-[#060918] border border-white/[0.08]">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-400" /> {t.callSummaryTitle}
-                </div>
-                <p className="text-xs text-slate-200 leading-relaxed bg-white/[0.02] p-2.5 rounded-lg border border-white/[0.04]">
+              {/* Real-Time Call Summary */}
+              <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.08] space-y-2">
+                <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                  Live Qualification Summary
+                </span>
+                <p className="text-xs text-slate-300 leading-relaxed bg-black/40 p-2.5 rounded-lg border border-white/[0.06]">
                   {callSummary}
                 </p>
               </div>
 
-              {/* Next Best Action Card */}
-              <div className="p-3.5 rounded-xl bg-[#060918] border border-white/[0.08]">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1 flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-emerald-400" /> {t.nextBestActionTitle}
-                </div>
-                <p className="text-xs text-emerald-300 leading-relaxed bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20 font-medium">
+              {/* Next Best Action */}
+              <div className="p-3.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 space-y-2">
+                <span className="text-xs font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <ArrowRight className="w-3.5 h-3.5 text-emerald-400" />
+                  Next Best Action
+                </span>
+                <p className="text-xs text-emerald-200/90 leading-relaxed bg-black/40 p-2.5 rounded-lg border border-emerald-500/20">
                   {nextBestAction}
                 </p>
               </div>
 
-              {/* Outcomes Handled Automatically Badges */}
-              <div>
-                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-2">
-                  {t.outcomesHandledTitle}
-                </div>
-                <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                  <span
-                    className={`p-2 rounded-lg border text-center font-semibold transition-all ${
-                      isMeetingBooked
-                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm'
-                        : 'bg-white/[0.02] text-slate-400 border-white/[0.05]'
-                    }`}
-                  >
-                    {t.interestedBadge}
-                  </span>
-
-                  <span
-                    className={`p-2 rounded-lg border text-center font-semibold transition-all ${
-                      isMeetingBooked
-                        ? 'bg-gradient-to-r from-emerald-600/30 to-teal-600/30 text-emerald-300 border-emerald-500/50 shadow-md animate-pulse'
-                        : 'bg-white/[0.02] text-slate-400 border-white/[0.05]'
-                    }`}
-                  >
-                    {t.meetingBookedBadge}
-                  </span>
-
-                  <span className="p-2 rounded-lg bg-white/[0.02] text-slate-400 border border-white/[0.05] text-center">
-                    {t.voicemailBadge}
-                  </span>
-
-                  <span className="p-2 rounded-lg bg-white/[0.02] text-slate-400 border border-white/[0.05] text-center">
-                    {t.retryBadge}
-                  </span>
+              {/* Automated Outcomes Handled */}
+              <div className="space-y-2">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Outcomes Handled Automatically</span>
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <div className={`p-2 rounded-lg border text-center font-semibold transition-all ${isMeetingBooked ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm' : 'bg-white/[0.03] text-slate-400 border-white/[0.06]'}`}>
+                    {isMeetingBooked ? '✓ Meeting Booked' : 'Meeting Booking'}
+                  </div>
+                  <div className={`p-2 rounded-lg border text-center font-semibold transition-all ${isNegativeDnd ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 shadow-sm' : 'bg-white/[0.03] text-slate-400 border-white/[0.06]'}`}>
+                    {isNegativeDnd ? '🛑 DND Opt-Out' : 'DND Compliance'}
+                  </div>
+                  <div className={`p-2 rounded-lg border text-center font-semibold transition-all ${isHumanHandoff ? 'bg-purple-500/20 text-purple-300 border-purple-500/40 shadow-sm' : 'bg-white/[0.03] text-slate-400 border-white/[0.06]'}`}>
+                    {isHumanHandoff ? '✓ Human Handoff' : 'Human Handoff'}
+                  </div>
+                  <div className={`p-2 rounded-lg border text-center font-semibold transition-all ${isCallbackScheduled ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm' : 'bg-white/[0.03] text-slate-400 border-white/[0.06]'}`}>
+                    {isCallbackScheduled ? '✓ Retry Scheduled' : 'Retry / Callback'}
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Language Lock Strip (No buttons - purely status-driven) */}
-            <div className="pt-3 border-t border-white/[0.08]">
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-amber-400" />
-                  <span>{t.languageLockedBadge}:</span>
-                </div>
-                {isLanguageSelected ? (
-                  <span className="text-[10px] text-amber-300 font-semibold bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30 flex items-center gap-1">
-                    <Lock className="w-2.5 h-2.5" /> Locked
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-blue-300 font-semibold bg-blue-500/20 px-1.5 py-0.5 rounded border border-blue-500/30 animate-pulse">
-                    Spoken Detection...
-                  </span>
-                )}
-              </div>
-
-              {isLanguageSelected ? (
-                <div className="p-2 rounded-lg bg-white/[0.03] border border-amber-500/20 text-slate-300 text-[11px] flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>Session Language: <strong className="text-white">{selectedLanguage}</strong></span>
-                  </div>
-                  <span className="text-[10px] text-slate-400 font-medium">Locked for Call</span>
-                </div>
-              ) : (
-                <div className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.08] text-slate-300 text-[11px] flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-                    <span>Speak your language into the mic to lock it</span>
-                  </div>
-                  <span className="text-[10px] text-slate-400">Zero buttons</span>
-                </div>
-              )}
+            {/* Bottom Actions */}
+            <div className="pt-3 border-t border-white/[0.08] flex items-center justify-between">
+              <span className="text-[10px] text-slate-400 font-mono">SQLite CallLog Active</span>
+              <button
+                type="button"
+                onClick={() => {
+                  stopSpeech();
+                  onClose();
+                }}
+                className="px-4 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-white text-xs font-semibold transition-all cursor-pointer"
+              >
+                Close Console
+              </button>
             </div>
           </div>
         </div>

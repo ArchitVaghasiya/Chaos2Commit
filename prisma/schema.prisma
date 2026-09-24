@@ -49,7 +49,21 @@ model Lead {
   activeRequirement   Boolean    @default(true)
   
   // Lifecycle status
-  status              String     @default("DISCOVERED") // DISCOVERED, ENRICHED, READY_TO_ENGAGE, CALL_SCHEDULED, CONTACTED, INTERESTED, MEETING_BOOKED
+  status              String     @default("DISCOVERED") // DISCOVERED, ENRICHED, READY_TO_ENGAGE, CALL_SCHEDULED, CONTACTED, INTERESTED, MEETING_BOOKED, CALLBACK_SCHEDULED, DND
+  
+  // Location & Regional Multilingual Intelligence
+  location            String?    @default("Global")
+  country             String?    @default("United States")
+  timezone            String?    @default("America/New_York")
+  preferredLanguage   String?    @default("English")
+  
+  // Workflow Selection: Calling Only vs Leads + Calling
+  workflowType        String?    @default("LEADS_AND_CALLING") // CALLING_ONLY, LEADS_AND_CALLING
+  
+  // Retry / Callback automation & Compliance
+  retryCount          Int?       @default(0)
+  scheduledCallbackAt DateTime?
+  dndStatus           Boolean?   @default(false)
   
   campaignId          String?
   campaign            Campaign?  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
@@ -72,6 +86,16 @@ model Campaign {
   interestedCount    Int       @default(0)
   meetingsBooked     Int       @default(0)
   
+  // Custom lead criteria & workflow
+  workflowType       String?   @default("LEADS_AND_CALLING") // CALLING_ONLY, LEADS_AND_CALLING
+  targetLanguage     String?   @default("Auto (Lead Location)")
+  minIntentScore     Int?      @default(75)
+  decisionMakerOnly  Boolean?  @default(false)
+  scheduleType       String?   @default("Daily (9 AM - 5 PM Local)")
+  timezone           String?   @default("Auto (Prospect Local)")
+  repeatCadence      String?   @default("Daily")
+  dailyLimit         Int?      @default(150)
+  
   leads              Lead[]
   calls              CallLog[]
 
@@ -86,17 +110,22 @@ model CallLog {
   campaignId         String?
   campaign           Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   
-  status             String    @default("CONNECTED") // CONNECTED, VOICEMAIL, RETRY_SCHEDULED, FAILED
-  outcome            String    @default("INTERESTED") // INTERESTED, MEETING_BOOKED, VOICEMAIL_LEFT, RETRY_SCHEDULED, NOT_INTERESTED
+  status             String    @default("CONNECTED") // DIALING, RINGING, CONNECTED, VOICEMAIL, RETRY_SCHEDULED, FAILED, HUMAN_HANDOFF, DND_REQUESTED
+  outcome            String    @default("INTERESTED") // INTERESTED, MEETING_BOOKED, VOICEMAIL_LEFT, RETRY_SCHEDULED, NOT_INTERESTED, DND, HUMAN_HANDOFF
   durationSeconds    Int       @default(145)
   language           String    @default("en")
+  telephonyProvider  String?   @default("STUDIO_WEB") // STUDIO_WEB, TWILIO_VOICE
   
-  // Call artifacts
+  // Call artifacts & Sentiment
   callSummary        String?
   nextBestAction     String?
-  transcriptJson     String?   // JSON array of { speaker: "agent"|"prospect", text: string, timestamp: string }
+  transcriptJson     String?   // JSON array of { speaker: "agent"|"prospect", text: string, timestamp: string, sentiment?: string }
+  sentiment          String?   @default("POSITIVE") // POSITIVE, NEUTRAL, HESITANT, OBJECTION, NEGATIVE
   meetingScheduledAt DateTime?
+  callbackScheduledAt DateTime?
   recordingUrl       String?
+  handoffNotes       String?
+  twilioCallSid      String?
 
   createdAt          DateTime  @default(now())
 }

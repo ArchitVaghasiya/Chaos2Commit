@@ -18,6 +18,8 @@ import CapabilitiesFooter from '@/components/layout/CapabilitiesFooter';
 import IntentScoreModal from '@/components/discovery/IntentScoreModal';
 import LiveCallSimulatorModal from '@/components/voice/LiveCallSimulatorModal';
 import UpdateProfileModal from '@/components/profile/UpdateProfileModal';
+import DeviceModeSwitcher from '@/components/dashboard/DeviceModeSwitcher';
+import UspInnovationBanner from '@/components/dashboard/UspInnovationBanner';
 
 // Dedicated Hubs for all 11 Core Modules
 import CampaignsHub from '@/components/campaigns/CampaignsHub';
@@ -86,6 +88,8 @@ export default function HomePage() {
     router.replace('/sign-in');
   };
 
+  const [deviceMode, setDeviceMode] = useState<'desktop' | 'mobile'>('desktop');
+  const [mobilePlatform, setMobilePlatform] = useState<'android' | 'ios'>('ios');
   const [currentLanguage, setCurrentLanguage] = useState('English');
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -332,23 +336,96 @@ export default function HomePage() {
       <div className="hidden lg:flex min-h-screen text-slate-900 dark:text-slate-100 p-3 sm:p-5 lg:p-6 max-w-[1720px] mx-auto flex-col justify-between">
         <div>
           <HeaderBanner
-          currentLanguage={currentLanguage}
-          onLanguageChange={setCurrentLanguage}
-          onOpenCsvImport={() => setActiveTab('leads')}
-          onOpenNewCampaign={() => setActiveTab('campaigns')}
-          currentUser={currentUser}
-          onSignOut={handleSignOut}
-          onOpenProfile={() => setIsProfileModalOpen(true)}
-        />
+            currentLanguage={currentLanguage}
+            onLanguageChange={setCurrentLanguage}
+            onOpenCsvImport={() => setActiveTab('leads')}
+            onOpenNewCampaign={() => setActiveTab('campaigns')}
+            currentUser={currentUser}
+            onSignOut={handleSignOut}
+            onOpenProfile={() => setIsProfileModalOpen(true)}
+          />
 
-        {/* Main Two-Column Layout (Sidebar + Content Workspace) */}
-        <div className="flex flex-col lg:flex-row gap-5 items-start">
-          {/* Left Navigation Sidebar */}
-          <Sidebar
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            voiceMinutesUsed={12450}
-            voiceMinutesLimit={20000}
+          {/* Top Control Bar: Device Mode Switcher + Live Engine Status */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4 mt-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                Experience View:
+              </span>
+              <DeviceModeSwitcher
+                deviceMode={deviceMode}
+                setDeviceMode={setDeviceMode}
+                mobilePlatform={mobilePlatform}
+                setMobilePlatform={setMobilePlatform}
+              />
+            </div>
+            <div className="text-xs text-slate-500 flex items-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="font-semibold text-emerald-500 dark:text-emerald-400">Chaos2Commit v2.4 Live Engine</span>
+            </div>
+          </div>
+
+          {/* USP & Innovation Banner */}
+          <UspInnovationBanner />
+
+          {deviceMode === 'mobile' ? (
+            <div className="flex flex-col items-center justify-center py-6 mb-12 animate-in fade-in zoom-in-95 duration-200">
+              <div className="text-center mb-6">
+                <span className="text-xs uppercase tracking-widest font-bold px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  {mobilePlatform === 'ios' ? ' iOS Interactive App Shell' : '🤖 Android Interactive App Shell'}
+                </span>
+                <p className="text-xs text-slate-500 mt-2">
+                  Demonstrating full mobile client responsiveness, touch navigation, and live calling on {mobilePlatform === 'ios' ? 'iOS (iPhone 16 Pro)' : 'Android (Pixel 9 Pro)'}.
+                </p>
+              </div>
+
+              {/* Realistic Smartphone Chassis */}
+              <div className={`w-[410px] h-[840px] rounded-[52px] p-3 shadow-2xl relative border-4 transition-all duration-300 ${
+                mobilePlatform === 'ios'
+                  ? 'bg-gradient-to-b from-slate-700 via-slate-800 to-slate-900 border-slate-600 shadow-indigo-500/20'
+                  : 'bg-gradient-to-b from-zinc-800 via-zinc-900 to-black border-zinc-700 shadow-emerald-500/20'
+              }`}>
+                {/* Screen Bezel */}
+                <div className="w-full h-full rounded-[42px] overflow-hidden bg-slate-950 relative border border-white/10 flex flex-col shadow-inner">
+                  {/* Status Bar / Dynamic Island or Punch Hole */}
+                  <div className="h-10 w-full flex items-center justify-between px-6 pt-2 select-none relative z-30 bg-slate-950/80 backdrop-blur-sm">
+                    <span className="text-xs font-bold text-white">9:41</span>
+                    {mobilePlatform === 'ios' ? (
+                      <div className="w-24 h-5 bg-black rounded-full border border-white/10 flex items-center justify-center gap-1.5 px-2">
+                        <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className="text-[9px] text-white/70 font-mono">Live Call</span>
+                      </div>
+                    ) : (
+                      <div className="w-3.5 h-3.5 rounded-full bg-black border border-white/20" />
+                    )}
+                    <div className="flex items-center gap-1.5 text-white/80 text-[10px]">
+                      <span>5G</span>
+                      <div className="w-4 h-2 rounded-sm border border-white/60 flex items-center p-0.5">
+                        <div className="w-full h-full bg-emerald-400 rounded-2xs" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Inner Screen Content */}
+                  <div className="flex-1 overflow-y-auto custom-scrollbar">
+                    <MobileDashboard />
+                  </div>
+
+                  {/* Bottom Navigation / Home Bar */}
+                  <div className="h-6 w-full flex items-center justify-center bg-slate-950/80 pb-1">
+                    <div className="w-32 h-1 bg-white/40 rounded-full" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Main Two-Column Layout (Sidebar + Content Workspace) */
+            <div className="flex flex-col lg:flex-row gap-5 items-start">
+              {/* Left Navigation Sidebar */}
+              <Sidebar
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                voiceMinutesUsed={12450}
+                voiceMinutesLimit={20000}
             currentLanguage={currentLanguage}
             currentUser={currentUser}
             onOpenProfile={() => setIsProfileModalOpen(true)}
@@ -651,6 +728,7 @@ export default function HomePage() {
             {activeTab === 'admin' && <AdminAuditHub />}
           </main>
         </div>
+      )}
       </div>
 
       {/* Master 6-Pillar Capabilities Footer (from PNG) */}

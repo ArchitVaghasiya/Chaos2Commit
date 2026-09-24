@@ -8,7 +8,6 @@ import {
   Search, 
   ShieldCheck, 
   Headphones, 
-  ArrowLeft,
   Languages,
   ChevronDown,
   Check
@@ -78,14 +77,6 @@ function AuthLayoutInner({ children }: { children: React.ReactNode }) {
 
         {/* Right Header Controls */}
         <div className="flex items-center gap-3">
-          <Link
-            href="/"
-            className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 px-3 py-1.5 rounded-lg hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-all"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            {t.backToDashboard}
-          </Link>
-
           {/* Language Switcher */}
           <div className="relative">
             <button

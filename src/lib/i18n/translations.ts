@@ -1,4 +1,4 @@
-export type SupportedLanguage = 'English' | 'Español' | 'हिन्दी' | 'Français' | 'Deutsch' | 'العربية';
+export type SupportedLanguage = 'English' | 'Español' | 'हिन्दी' | 'ગુજરાતી' | 'Français' | 'Deutsch' | 'العربية';
 
 export interface TranslationDictionary {
   // Brand & Header
@@ -436,6 +436,113 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     switchToMic: "माइक्रोफ़ोन मोड पर स्विच करें",
   },
 
+  'ગુજરાતી': {
+    platformTitle: 'AI સેલ્સ એજન્ટ પ્લેટફોર્મ',
+    autonomousBadge: 'ઓટોનોમસ v2.4',
+    tagline: 'શોધો. યોગ્ય બનાવો. વાતચીત કરો. ગ્રાહક બનાવો — બધું AI દ્વારા.',
+    onePlatformSubtitle: 'એક જ પ્લેટફોર્મ. સંપૂર્ણ ઓટોનોમસ સેલ્સ વર્કફ્લો.',
+    moreConversations: 'વધુ વાતચીત. વધુ મીટિંગ્સ.',
+    closeDeals: 'AI સંભાવિત ગ્રાહકો શોધશે, તમે ડીલ ક્લોઝ કરવા પર ધ્યાન આપો.',
+    newCampaign: 'નવું કેમ્પેન',
+    importCsv: 'CSV ઇમ્પોર્ટ',
+
+    discoveryPillar: 'AI લીડ ડિસ્કવરી',
+    discoveryDesc: 'જાહેર પ્લેટફોર્મ્સ પરથી ઉચ્ચ ઇરાદાવાળા ગ્રાહકો શોધો',
+    voicePillar: 'AI વૉઇસ એજન્ટ્સ',
+    voiceDesc: 'બહુભાષી કૉલ્સ જે ક્વોલિફાય કરે છે અને મીટિંગ્સ બુક કરે છે',
+    enrichmentPillar: 'સ્માર્ટ એનરિચમેન્ટ',
+    enrichmentDesc: 'વેરિફાઇડ સંપર્કો અને કંપની ઇન્ટેલિજન્સ',
+    insightsPillar: 'કાર્યક્ષમ ઇનસાઇટ્સ',
+    insightsDesc: 'રીઅલ-ટાઇમ પાઇપલાઇન ROI અને કૉલ મેટ્રિક્સ',
+
+    navDashboard: 'ડેશબોર્ડ',
+    navLeadDiscovery: 'લીડ ડિસ્કવરી',
+    navLeads: 'લીડ્સ મેનેજમેન્ટ',
+    navCampaigns: 'કેમ્પેન્સ',
+    navVoiceAgent: 'AI વૉઇસ એજન્ટ',
+    navConversations: 'વાતચીત અને ટ્રાન્સક્રિપ્ટ',
+    navAnalytics: 'એનાલિટિક્સ',
+    navMarketIntelligence: 'માર્કેટ ઇન્ટેલિજન્સ',
+    navIntegrations: 'ઇન્ટિગ્રેશન્સ',
+    navBilling: 'બિલિંગ અને પ્લાન્સ',
+    navSettings: 'સેટિંગ્સ',
+    navAdmin: 'એડમિન અને ઓડિટ',
+    voiceQuota: 'વૉઇસ મિનિટ્સ ક્વોટા',
+    voiceMinutesUsed: 'મિનિટ વપરાયેલ',
+
+    kpiOverviewTitle: 'ડેશબોર્ડ ઓવરવ્યૂ',
+    kpiLeadsDiscovered: 'શોધાયેલ લીડ્સ',
+    kpiLeadsEnriched: 'એનરિચ્ડ લીડ્સ',
+    kpiCallsMade: 'AI દ્વારા થયેલા કૉલ્સ',
+    kpiMeetingsBooked: 'બુક થયેલી મીટિંગ્સ',
+
+    searchPlaceholder: 'જરૂરિયાત શોધો જેમ કે SharePoint, Cloud Migration, CRM...',
+    searchBtn: 'શોધો',
+    discoveringBtn: 'શોધ ચાલુ છે...',
+    allSources: 'બધા સ્ત્રોતો',
+    allIndustries: 'બધા ઉદ્યોગો',
+    benchmarkBadge: 'બેન્ચમાર્ક ઉદાહરણ',
+    benchmarkDesc: '"SharePoint Implementation Partner" માટે નમૂના ડેટા પ્રદર્શિત થઈ રહ્યો છે.',
+    typeCustomQuery: 'લાઇવ શોધ કરવા માટે ઉપર કોઈપણ ક્વેરી દાખલ કરો →',
+
+    highIntentOpp: 'ઉચ્ચ ઇરાદાવાળી તક',
+    intentScoreLabel: 'ઇન્ટેન્ટ સ્કોર',
+    launchAiCall: 'AI કૉલ શરૂ કરો',
+    connectOnPlatform: 'પર કનેક્ટ કરો',
+    leadEnrichedDetails: 'લીડ વિગતો',
+    discoveredOn: 'શોધાયેલ તારીખ',
+    contactName: 'નામ',
+    contactEmail: 'ઇમેઇલ',
+    contactPhone: 'ફોન',
+    companyLabel: 'કંપની',
+    websiteLabel: 'વેબસાઇટ',
+    jobTitleLabel: 'હોદ્દો',
+    industrySizeLabel: 'ઉદ્યોગ અને કદ',
+    originalPostUrlLabel: 'મૂળ પોસ્ટ લિંક',
+    verifiedBadge: 'વેરિફાઇડ',
+    notDisclosedBadge: 'જાહેરમાં ઉપલબ્ધ નથી',
+    activeRequirementBadge: 'સક્રિય જરૂરિયાત',
+    aiLogicTitle: 'AI શોધ અને ક્વોલિફિકેશન તર્ક',
+    showLogicDetails: 'તર્ક વિગતો જુઓ',
+    hideLogicDetails: 'તર્ક વિગતો છુપાવો',
+    fitScoreLabel: 'ફિટ સ્કોર',
+    semanticMatchTitle: 'સિમેન્ટીક અને કીવર્ડ મેચિંગ',
+    matchedTags: 'મેચ થયેલા ટેગ્સ',
+    authorityCol: 'ઓથોરિટી',
+    budgetCol: 'બજેટ',
+    urgencyCol: 'અર્જન્સી',
+    fitCol: 'ફિટ',
+    recommendedPitchTitle: 'ભલામણ કરેલ સેલ્સ પિચ',
+
+    voiceSimulatorTitle: 'લાઇવ આઉટબાઉન્ડ AI કૉલ કન્સોલ',
+    outboundCallTo: 'આઉટબાઉન્ડ કૉલ સંપર્ક:',
+    connectedStatus: 'જોડાયેલ (લાઇવ કૉલ)',
+    ringingStatus: 'રિંગ વાગી રહી છે...',
+    endCallBtn: 'કૉલ સમાપ્ત કરો',
+    aiSalesAgentLabel: 'AI સેલ્સ એજન્ટ',
+    typeSpokenWords: 'અહીં ટાઇપ કરો અથવા માઇક્રોફોન વાપરો...',
+    callSummaryTitle: 'AI કૉલ સારાંશ',
+    nextBestActionTitle: 'આગળનું શ્રેષ્ઠ પગલું (Next-Best Action)',
+    outcomesHandledTitle: 'હેન્ડલ થયેલા પરિણામો',
+    interestedBadge: 'રસ ધરાવે છે (Interested)',
+    meetingBookedBadge: 'મીટિંગ બુક થઈ ગઈ (Booked)',
+    voicemailBadge: 'વૉઇસમેઇલ (Voicemail)',
+    retryBadge: 'રીટ્રાય શેડ્યૂલ (Retry)',
+    multilingualTitle: 'બહુભાષી વૉઇસ ક્ષમતા',
+    chooseLanguagePrompt: 'કૉલ ભાષા પસંદ કરો:',
+    languageLockedBadge: 'ભાષા સેટ',
+    callLimitLabel: 'કૉલ સમય મર્યાદા: 3:00 મહત્તમ',
+    timeLeftLabel: 'બાકી સમય',
+    callLimitReached: 'કૉલ મર્યાદા પહોંચી ગઈ (3:00 મહત્તમ)',
+    approachingLimitWarning: 'પ્રારંભિક કૉલ 20 સેકન્ડમાં પૂર્ણ થશે',
+    micClickToSpeak: 'બોલવા માટે ક્લિક કરો (માઇક ચાલુ)',
+    micListening: 'સાંભળી રહ્યા છીએ... બોલો',
+    micStopAndSend: 'અટકાવો અને મોકલો',
+    micNotSupported: 'આ બ્રાઉઝરમાં અવાજ ઓળખ સમર્થિત નથી. કૃપા કરીને ટાઇપ કરો.',
+    switchToKeyboard: 'કીબોર્ડ મોડ',
+    switchToMic: 'માઇક્રોફોન મોડ',
+  },
+
   Français: {
     platformTitle: "Plateforme d'Agents Commerciaux IA",
     autonomousBadge: 'Autonome v2.4',
@@ -767,6 +874,8 @@ export function getTranslation(language: string): TranslationDictionary {
 
 export function getLocaleForVoice(language: string): string {
   switch (language) {
+    case 'ગુજરાતી':
+      return 'gu-IN';
     case 'Español':
       return 'es-ES';
     case 'हिन्दी':
@@ -785,6 +894,8 @@ export function getLocaleForVoice(language: string): string {
 
 export function getAiGreeting(language: string, firstName: string, company: string, requirementTopic: string): string {
   switch (language) {
+    case 'ગુજરાતી':
+      return `નમસ્તે ${firstName}, હું TechNova Solutions તરફથી Ava બોલી રહી છું. હું ${requirementTopic} વિશે વાત કરવા માટે સંપર્ક કરી રહી છું.`;
     case 'Español':
       return `Hola ${firstName}, soy Ava de TechNova Solutions. Le llamo en referencia a ${requirementTopic}.`;
     case 'हिन्दी':
@@ -808,6 +919,8 @@ export function getLanguageConfirmationSpeech(
   requirementTopic: string
 ): string {
   switch (language) {
+    case 'ગુજરાતી':
+      return `આભાર! આપણે આ કૉલ ગુજરાતીમાં ચાલુ રાખીશું. નમસ્તે ${firstName}, હું TechNova Solutions તરફથી Ava બોલી રહી છું. હું ${requirementTopic} ના સંદર્ભમાં સંપર્ક કરી રહી છું. શું તમે આ અમલીકરણ માટે સક્રિયપણે પાર્ટનર શોધી રહ્યા છો?`;
     case 'हिन्दी':
       return `धन्यवाद! हम इस कॉल को हिंदी में जारी रखेंगे। नमस्ते ${firstName}, मैं TechNova Solutions से Ava बोल रही हूँ। मैं ${requirementTopic} के संबंध में संपर्क कर रही हूँ। क्या आप इसके लिए सही समाधान तलाश रहे हैं?`;
     case 'Español':
@@ -826,6 +939,8 @@ export function getLanguageConfirmationSpeech(
 
 export function getCallLimitWrapupSpeech(language: string): string {
   switch (language) {
+    case 'ગુજરાતી':
+      return `હું જોઈ શકું છું કે આપણે આજના 3 મિનિટના પ્રારંભિક કૉલની સમય મર્યાદા પર પહોંચી ગયા છીએ. મેં મીટિંગનું આમંત્રણ આપના ઇમેઇલ પર મોકલી આપ્યું છે. ગુરુવારે બપોરે 3 વાગ્યે મળીએ, આભાર!`;
     case 'हिन्दी':
       return `मैं देख रही हूँ कि हम आज की 3 मिनट की प्रारंभिक कॉल की समय सीमा पर पहुँच गए हैं। मैंने बैठक का विवरण आपके ईमेल पर भेज दिया है। गुरुवार दोपहर 3 बजे मिलते हैं, धन्यवाद!`;
     case 'Español':
@@ -844,6 +959,11 @@ export function getCallLimitWrapupSpeech(language: string): string {
 
 export function getQuickReplies(language: string): { reply1: string; reply2: string } {
   switch (language) {
+    case 'ગુજરાતી':
+      return {
+        reply1: 'હા, અમને આ પ્રોજેક્ટ માટે એક અનુભવી ટેકનિકલ પાર્ટનરની જરૂર છે...',
+        reply2: 'આવતા ક્વાર્ટરમાં લગભગ 150 યુઝર્સ માટે. શું આપણે આપની ટીમ સાથે મીટિંગ રાખી શકીએ?',
+      };
     case 'Español':
       return {
         reply1: 'Sí, necesitamos un socio certificado para esta implementación...',

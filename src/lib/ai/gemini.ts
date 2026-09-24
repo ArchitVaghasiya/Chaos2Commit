@@ -120,3 +120,50 @@ Return strictly the JSON array, no preamble or markdown code block.
     return null;
   }
 }
+
+/**
+ * Dynamic conversational AI voice turn with Gemini (sub-second multilingual generation)
+ * Serves as reliable fallback when Groq is unavailable or rate-limited.
+ */
+export async function generateVoiceTurnWithGemini(
+  messages: Array<{ role: string; content: string }>,
+  leadContext: { name: string; company: string; requirement: string },
+  language = 'English'
+): Promise<string | null> {
+  const model = getGeminiModel('gemini-3.6-flash');
+  if (!model) return null;
+
+  const systemPrompt = `You are Ava, an expert enterprise B2B sales development representative at TechNova Solutions.
+You are on a live phone call with ${leadContext.name} from ${leadContext.company}.
+Their active requirement is: "${leadContext.requirement}".
+
+CRITICAL MULTILINGUAL INSTRUCTION:
+The prospect is speaking in "${language}". You MUST respond strictly and fluently in spoken, natural, professional ${language} (using native script, e.g. Devanagari script for Hindi, Spanish for Español, French for Français, etc.). Never switch to English unless English was requested.
+
+Spoken Guidelines:
+1. Speak concisely in 1 to 2 natural, spoken sentences (never use bullet points, markdown asterisks, or long text).
+2. Acknowledge what they said, affirm our expertise, and qualify either their timeline or user/team headcount.
+3. If they confirm interest, ask for next steps, or request a call, propose meeting on "Thursday at 3 PM with our solutions lead" in ${language}.
+4. Tone: warm, authoritative, respectful, and consultative.`;
+
+  try {
+    const historyText = messages
+      .slice(-6)
+      .map((m) => `${m.role === 'assistant' ? 'Ava' : 'Prospect'}: ${m.content}`)
+      .join('\n');
+
+    const prompt = `${systemPrompt}\n\nRecent Conversation:\n${historyText}\n\nAva's immediate 1-2 sentence spoken reply in ${language}:`;
+
+    const result = await model.generateContent(prompt);
+    let reply = result.response.text().trim();
+    if (reply) {
+      reply = reply.replace(/^Ava:\s*/i, '').replace(/^"|"$/g, '').trim();
+      return reply;
+    }
+    return null;
+  } catch (error) {
+    console.warn('Gemini voice turn error:', error);
+    return null;
+  }
+}
+

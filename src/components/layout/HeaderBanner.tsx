@@ -46,8 +46,9 @@ export default function HeaderBanner({
 
   const languages = [
     { code: 'en', label: 'English' },
-    { code: 'es', label: 'Español' },
     { code: 'hi', label: 'हिन्दी' },
+    { code: 'gu', label: 'ગુજરાતી' },
+    { code: 'es', label: 'Español' },
     { code: 'fr', label: 'Français' },
     { code: 'de', label: 'Deutsch' },
     { code: 'ar', label: 'العربية' },
