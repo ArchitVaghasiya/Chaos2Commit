@@ -28,6 +28,7 @@ import {
   ShieldCheck,
   Radio,
   Zap,
+  Minimize2,
 } from 'lucide-react';
 import { LeadItem } from '../discovery/DiscoveredLeadCard';
 import {
@@ -71,6 +72,7 @@ interface LiveCallSimulatorModalProps {
   lead: LeadItem | null;
   isOpen: boolean;
   onClose: () => void;
+  onMinimize?: () => void;
   onMeetingBookedSuccess?: () => void;
   defaultLanguage?: string;
 }
@@ -79,6 +81,7 @@ export default function LiveCallSimulatorModal({
   lead,
   isOpen,
   onClose,
+  onMinimize,
   onMeetingBookedSuccess,
   defaultLanguage = 'English',
 }: LiveCallSimulatorModalProps) {
@@ -776,6 +779,18 @@ export default function LiveCallSimulatorModal({
                 <span>Re-dial</span>
               </button>
             ) : null}
+
+            {onMinimize && (
+              <button
+                type="button"
+                onClick={onMinimize}
+                aria-label="Minimize Call to Floating HUD"
+                title="Minimize call to floating widget (keep browsing)"
+                className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white border border-white/[0.06] transition-all cursor-pointer"
+              >
+                <Minimize2 className="w-4 h-4" />
+              </button>
+            )}
 
             <button
               onClick={() => {

@@ -180,10 +180,10 @@ export default function SignUpPage() {
 
         {/* Card Header */}
         <div className="mb-4 text-center sm:text-left relative z-10">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950 dark:text-white font-heading">
             {t.signUpTitle}
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-sm text-slate-700 dark:text-slate-300 font-medium mt-1">
             {t.signUpSubtitle}
           </p>
         </div>
@@ -216,54 +216,57 @@ export default function SignUpPage() {
           
           {/* Company Name */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-sm font-bold text-slate-850 dark:text-slate-100 mb-1">
               {t.companyNameLabel}
             </label>
             <div className="relative">
-              <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Building2 className="w-5 h-5 text-slate-500 dark:text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 placeholder={t.companyNamePlaceholder}
+                autoComplete="organization"
                 required
-                className="w-full pl-10 pr-4 py-2 rounded-xl bg-black/[0.03] dark:bg-black/30 border border-black/[0.1] dark:border-white/[0.1] text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
+                className="w-full pl-11 pr-4 py-3 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-300 dark:border-white/[0.12] text-base font-medium text-slate-950 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/25 transition-all shadow-sm"
               />
             </div>
           </div>
 
           {/* Contact Person Name */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-sm font-bold text-slate-850 dark:text-slate-100 mb-1">
               {t.contactPersonLabel}
             </label>
             <div className="relative">
-              <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <User className="w-5 h-5 text-slate-500 dark:text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 value={contactName}
                 onChange={(e) => setContactName(e.target.value)}
                 placeholder={t.contactPersonPlaceholder}
+                autoComplete="name"
                 required
-                className="w-full pl-10 pr-4 py-2 rounded-xl bg-black/[0.03] dark:bg-black/30 border border-black/[0.1] dark:border-white/[0.1] text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
+                className="w-full pl-11 pr-4 py-3 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-300 dark:border-white/[0.12] text-base font-medium text-slate-950 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/25 transition-all shadow-sm"
               />
             </div>
           </div>
 
           {/* Work Email */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-sm font-bold text-slate-850 dark:text-slate-100 mb-1">
               {t.workEmailLabel}
             </label>
             <div className="relative">
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Mail className="w-5 h-5 text-slate-500 dark:text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={t.workEmailPlaceholder}
+                autoComplete="email"
                 required
-                className="w-full pl-10 pr-4 py-2 rounded-xl bg-black/[0.03] dark:bg-black/30 border border-black/[0.1] dark:border-white/[0.1] text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
+                className="w-full pl-11 pr-4 py-3 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-300 dark:border-white/[0.12] text-base font-medium text-slate-950 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/25 transition-all shadow-sm"
               />
             </div>
           </div>
@@ -277,7 +280,7 @@ export default function SignUpPage() {
               <select
                 value={companySize}
                 onChange={(e) => setCompanySize(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-[#0c1430] border border-black/[0.1] dark:border-white/[0.1] text-xs text-slate-900 dark:text-white focus:outline-none focus:border-purple-500"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0c1430] border border-slate-200 dark:border-white/[0.1] text-xs text-slate-900 dark:text-white focus:outline-none focus:border-purple-500 cursor-pointer shadow-sm"
               >
                 <option value="1 - 10 employees">1 - 10 employees</option>
                 <option value="11 - 50 employees">11 - 50 employees</option>
@@ -294,7 +297,7 @@ export default function SignUpPage() {
               <select
                 value={industry}
                 onChange={(e) => setIndustry(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-[#0c1430] border border-black/[0.1] dark:border-white/[0.1] text-xs text-slate-900 dark:text-white focus:outline-none focus:border-purple-500"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0c1430] border border-slate-200 dark:border-white/[0.1] text-xs text-slate-900 dark:text-white focus:outline-none focus:border-purple-500 cursor-pointer shadow-sm"
               >
                 <option value="IT & Software Services">IT & Software Services</option>
                 <option value="Financial Services & Fintech">Financial Services</option>
@@ -325,25 +328,29 @@ export default function SignUpPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={t.passwordPlaceholder}
+                autoComplete="new-password"
                 required
-                className="w-full pl-10 pr-10 py-2 rounded-xl bg-black/[0.03] dark:bg-black/30 border border-black/[0.1] dark:border-white/[0.1] text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.1] text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all shadow-sm"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-1"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
 
-            {/* Password Strength Progress Bar */}
+            {/* Password Strength Bar */}
             {password && (
-              <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden mt-1.5">
-                <div 
-                  className={`h-full ${passwordStrength.color} transition-all duration-300`}
-                  style={{ width: `${passwordStrength.score}%` }}
-                />
+              <div className="mt-2 space-y-1">
+                <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 ${passwordStrength.color}`}
+                    style={{ width: `${passwordStrength.score}%` }}
+                  />
+                </div>
               </div>
             )}
           </div>

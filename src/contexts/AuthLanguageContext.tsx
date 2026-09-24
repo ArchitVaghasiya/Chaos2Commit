@@ -12,21 +12,24 @@ interface AuthLanguageContextType {
 const AuthLanguageContext = createContext<AuthLanguageContextType | undefined>(undefined);
 
 export function AuthLanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<AuthSupportedLanguage>('English');
-
-  useEffect(() => {
-    const saved = localStorage.getItem('chaos2commit_auth_lang') as AuthSupportedLanguage;
-    if (saved && ['English', 'Español', 'हिन्दी', 'Français', 'Deutsch', 'العربية'].includes(saved)) {
-      setLanguageState(saved);
+  const [language, setLanguageState] = useState<AuthSupportedLanguage>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('chaos2commit_auth_lang') as AuthSupportedLanguage;
+      if (saved && ['English', 'Español', 'हिन्दी', 'Français', 'Deutsch', 'العربية'].includes(saved)) {
+        return saved;
+      }
     }
-  }, []);
+    return 'English';
+  });
 
   const setLanguage = (lang: AuthSupportedLanguage) => {
     setLanguageState(lang);
-    localStorage.setItem('chaos2commit_auth_lang', lang);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('chaos2commit_auth_lang', lang);
+    }
   };
 
-  const t = getAuthTranslation(language);
+  const t = React.useMemo(() => getAuthTranslation(language), [language]);
 
   return (
     <AuthLanguageContext.Provider value={{ language, setLanguage, t }}>
