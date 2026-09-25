@@ -27,17 +27,30 @@ export interface TwilioCallResult {
  * Get configured Twilio client or null if credentials are unconfigured/placeholder
  */
 export function getTwilioClient(): twilio.Twilio | null {
-  const currentSid = process.env.TWILIO_ACCOUNT_SID;
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const apiKeySid = process.env.TWILIO_API_KEY_SID;
+  const apiKeySecret = process.env.TWILIO_API_KEY_SECRET;
   const currentToken = process.env.TWILIO_AUTH_TOKEN;
+
+  // 1. Preferred: Dedicated Twilio API Key & Secret
+  if (apiKeySid && apiKeySecret && accountSid && apiKeySid.startsWith('SK')) {
+    try {
+      return twilio(apiKeySid, apiKeySecret, { accountSid });
+    } catch (err) {
+      console.warn('Could not initialize Twilio client with API Key:', err);
+    }
+  }
+
+  // 2. Standard: Master Account SID & Auth Token
   if (
-    currentSid &&
+    accountSid &&
     currentToken &&
-    currentSid.startsWith('AC') &&
-    !currentSid.includes('your_') &&
+    accountSid.startsWith('AC') &&
+    !accountSid.includes('your_') &&
     currentToken.length >= 16
   ) {
     try {
-      return twilio(currentSid, currentToken);
+      return twilio(accountSid, currentToken);
     } catch (err) {
       console.warn('Could not initialize Twilio SDK client:', err);
       return null;
@@ -54,8 +67,15 @@ export async function placeOutboundCall(params: OutboundCallParams): Promise<Twi
   const client = getTwilioClient();
   const callerNumber = fromNumber || process.env.TWILIO_PHONE_NUMBER || '+17372508034';
 
-  // Clean phone number
-  const cleanedTo = to.replace(/[^\d+]/g, '');
+  // Clean phone number and ensure valid E.164 country code format
+  let cleanedTo = to.replace(/[^\d+]/g, '');
+  if (!cleanedTo.startsWith('+')) {
+    if (cleanedTo.length === 10) {
+      cleanedTo = `+91${cleanedTo}`;
+    } else {
+      cleanedTo = `+${cleanedTo}`;
+    }
+  }
 
   if (client) {
     try {
@@ -192,7 +212,10 @@ export function getPollyVoiceForLanguage(language: string = 'en'): { voice: stri
   let twilioLang = 'en-US';
 
   const lower = language.toLowerCase();
-  if (lower.includes('hindi') || lower.includes('हिन्दी') || lower === 'hi') {
+  if (lower.includes('gujarati') || lower.includes('ગુજરાતી') || lower === 'gu') {
+    voice = 'Polly.Aditi';
+    twilioLang = 'hi-IN';
+  } else if (lower.includes('hindi') || lower.includes('हिन्दी') || lower === 'hi') {
     voice = 'Polly.Aditi';
     twilioLang = 'hi-IN';
   } else if (lower.includes('spanish') || lower.includes('español') || lower === 'es') {

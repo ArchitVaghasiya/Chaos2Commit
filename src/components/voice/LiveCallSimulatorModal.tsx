@@ -145,6 +145,8 @@ export default function LiveCallSimulatorModal({
   const [isCheckingDiagnostics, setIsCheckingDiagnostics] = useState(false);
   const [newTwilioNumberInput, setNewTwilioNumberInput] = useState('');
   const [isSavingTwilioNumber, setIsSavingTwilioNumber] = useState(false);
+  const [verificationCode, setVerificationCode] = useState<string | null>(null);
+  const [isRequestingVerification, setIsRequestingVerification] = useState(false);
 
   // Refs for audio & speech recognition
   const chatEndRef = useRef<HTMLDivElement | null>(null);
@@ -801,6 +803,34 @@ export default function LiveCallSimulatorModal({
     }
   };
 
+  // Trigger 1-click Twilio phone verification call
+  const handleRequestVerification = async () => {
+    setIsRequestingVerification(true);
+    setErrorMessage(null);
+    setVerificationCode(null);
+    try {
+      const res = await fetch('/api/voice/twilio/diagnostics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'REQUEST_VERIFICATION',
+          phoneNumber,
+          name: lead?.name,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.validationCode) {
+        setVerificationCode(data.validationCode);
+      } else {
+        setErrorMessage(data.error || 'Failed to request Twilio phone verification.');
+      }
+    } catch (e: any) {
+      setErrorMessage(e.message || 'Error requesting verification.');
+    } finally {
+      setIsRequestingVerification(false);
+    }
+  };
+
   if (!isOpen || !lead) return null;
 
   const formatTime = (secs: number) => {
@@ -977,32 +1007,74 @@ export default function LiveCallSimulatorModal({
           </div>
         </div>
 
-        {/* Twilio Diagnostic banner (Only visible in Twilio mode when setup needed) */}
-        {telephonyMode === 'TWILIO_PSTN' && diagnostics && (!diagnostics.isReady || trialNotice) && (
-          <div className="p-3 bg-gradient-to-r from-amber-950/90 via-[#1f1609] to-amber-950/90 border-b border-amber-500/30 text-amber-200 text-xs">
-            <div className="flex items-center justify-between gap-3">
+        {/* Twilio Diagnostic & Carrier Status Banner */}
+        {telephonyMode === 'TWILIO_PSTN' && diagnostics && (
+          <div className="p-3 bg-gradient-to-r from-slate-950 via-[#101736] to-slate-950 border-b border-indigo-500/30 text-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
+                {diagnostics.isTargetVerified ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                ) : (
+                  <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
+                )}
                 <span>
-                  Twilio PSTN Carrier Active. For instant audio demonstration without carrier setup, switch to{' '}
-                  <button
-                    onClick={() => setTelephonyMode('BROWSER_SIM')}
-                    className="font-bold underline text-emerald-300 hover:text-white"
-                  >
-                    Live Audio Demo
-                  </button>
-                  .
+                  {diagnostics.isTargetVerified ? (
+                    <span className="text-emerald-300 font-semibold">
+                      ✓ Number {phoneNumber} is verified on Twilio. Ready for real phone call!
+                    </span>
+                  ) : (
+                    <span className="text-amber-200">
+                      Twilio Trial Policy: Number {phoneNumber} must be verified once before receiving real mobile calls. Or use{' '}
+                      <button
+                        onClick={() => setTelephonyMode('BROWSER_SIM')}
+                        className="font-bold underline text-emerald-300 hover:text-white"
+                      >
+                        Live Audio Demo
+                      </button>{' '}
+                      for instant computer mic/speaker call.
+                    </span>
+                  )}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => checkDiagnostics(phoneNumber)}
-                className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold flex items-center gap-1 shrink-0 cursor-pointer"
-              >
-                <RefreshCw className={`w-3 h-3 ${isCheckingDiagnostics ? 'animate-spin' : ''}`} />
-                <span>Check PSTN</span>
-              </button>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {!diagnostics.isTargetVerified && (
+                  <button
+                    type="button"
+                    onClick={handleRequestVerification}
+                    disabled={isRequestingVerification}
+                    className="px-2.5 py-1 rounded bg-amber-600 hover:bg-amber-500 text-white font-bold text-[11px] flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                  >
+                    <PhoneCall className="w-3 h-3" />
+                    <span>{isRequestingVerification ? 'Calling...' : 'Verify on Twilio (OTP Call)'}</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => checkDiagnostics(phoneNumber)}
+                  className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isCheckingDiagnostics ? 'animate-spin' : ''}`} />
+                  <span>Check PSTN</span>
+                </button>
+              </div>
             </div>
+
+            {verificationCode && (
+              <div className="mt-2.5 p-2.5 rounded-xl bg-emerald-950/70 border border-emerald-500/40 text-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <div className="font-bold text-white flex items-center gap-1.5">
+                    <PhoneCall className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                    <span>Twilio is calling {phoneNumber} right now!</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300">Answer your phone and enter this 6-digit code on the dialpad:</p>
+                </div>
+                <div className="text-lg font-mono font-bold tracking-widest text-emerald-300 bg-black/80 px-3 py-1 rounded-lg border border-emerald-500/40">
+                  {verificationCode}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

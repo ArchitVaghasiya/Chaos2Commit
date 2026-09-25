@@ -17,6 +17,34 @@ async function handleDiagnostics(request: Request) {
     if (request.method === 'POST') {
       try {
         const body = await request.json();
+        if (body.action === 'REQUEST_VERIFICATION' && body.phoneNumber) {
+          const client = getTwilioClient();
+          if (!client) {
+            return NextResponse.json({ success: false, error: 'Twilio client not configured' }, { status: 400 });
+          }
+          let cleanPhone = body.phoneNumber.replace(/[^\d+]/g, '');
+          if (!cleanPhone.startsWith('+')) {
+            cleanPhone = cleanPhone.length === 10 ? `+91${cleanPhone}` : `+${cleanPhone}`;
+          }
+          try {
+            const validation = await client.validationRequests.create({
+              phoneNumber: cleanPhone,
+              friendlyName: body.name || cleanPhone,
+            });
+            return NextResponse.json({
+              success: true,
+              validationCode: validation.validationCode,
+              phoneNumber: validation.phoneNumber,
+              message: `Twilio is placing an automated verification call to ${cleanPhone}. Answer the call and enter this validation code on your dialpad: ${validation.validationCode}`,
+            });
+          } catch (valErr: any) {
+            return NextResponse.json({
+              success: false,
+              error: valErr.message || 'Failed to request Twilio phone verification.',
+            }, { status: 400 });
+          }
+        }
+
         if (body.targetPhone) targetPhone = body.targetPhone;
         if (body.updateTwilioPhone) {
           const fs = await import('fs');

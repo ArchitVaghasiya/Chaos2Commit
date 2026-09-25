@@ -18,7 +18,9 @@ async function handleTwiml(request: Request) {
   let greeting = `Hello ${name}! This is Ava calling from TechNova Solutions regarding your public cloud requirement at ${company}. How can we assist you today?`;
 
   const langLower = language.toLowerCase();
-  if (langLower.includes('hindi') || langLower.includes('हिन्दी')) {
+  if (langLower.includes('gujarati') || langLower.includes('ગુજરાતી') || langLower === 'gu') {
+    greeting = `નમસ્તે ${name}! હું TechNova Solutions માંથી એવા બોલું છું. તમારી કંપની ${company} માટે ક્લાઉડ અને માઈક્રોસોફ્ટ 365 સોલ્યુશન્સ વિશે વાત કરવી હતી.`;
+  } else if (langLower.includes('hindi') || langLower.includes('हिन्दी') || langLower === 'hi') {
     greeting = `नमस्ते ${name}! मैं टेकनोवा सॉल्यूशंस से एवा बोल रही हूँ। आपकी कंपनी ${company} के क्लाउड प्रोजेक्ट के संबंध में बात करना चाहती हूँ।`;
   } else if (langLower.includes('spanish') || langLower.includes('español')) {
     greeting = `¡Hola ${name}! Le saluda Ava de TechNova Solutions respecto a su requerimiento de nube en ${company}. ¿Cómo podemos ayudarle hoy?`;
@@ -31,7 +33,8 @@ async function handleTwiml(request: Request) {
   }
 
   const leadId = url.searchParams.get('leadId') || '';
-  const gatherUrl = `${url.origin}/api/voice/twilio/gather?leadId=${encodeURIComponent(
+  const publicBase = process.env.PUBLIC_WEBHOOK_URL || url.origin;
+  const gatherUrl = `${publicBase}/api/voice/twilio/gather?leadId=${encodeURIComponent(
     leadId
   )}&name=${encodeURIComponent(name)}&company=${encodeURIComponent(company)}&lang=${encodeURIComponent(
     language
