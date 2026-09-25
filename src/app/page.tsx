@@ -23,6 +23,7 @@ import UspInnovationBanner from '@/components/dashboard/UspInnovationBanner';
 import GlobalCommandPalette from '@/components/ui/GlobalCommandPalette';
 import KeyboardShortcutsModal from '@/components/ui/KeyboardShortcutsModal';
 import FloatingAudioCallHUD from '@/components/voice/FloatingAudioCallHUD';
+import { GoogleCalendarModal } from '@/components/calendar/GoogleCalendarModal';
 import { useToast } from '@/components/ui/ToastProvider';
 
 // Dedicated Hubs for all 11 Core Modules
@@ -107,6 +108,7 @@ export default function HomePage() {
   const [selectedLead, setSelectedLead] = useState<LeadItem | null>(INITIAL_FALLBACK_LEADS[0]);
   const [isCallModalOpen, setIsCallModalOpen] = useState(false);
   const [isCallMinimized, setIsCallMinimized] = useState(false);
+  const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isScoreModalOpen, setIsScoreModalOpen] = useState(false);
@@ -392,6 +394,7 @@ export default function HomePage() {
             onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
             activeTab={activeTab}
             setActiveTab={setActiveTab}
+            onOpenCalendar={() => setIsCalendarModalOpen(true)}
           />
 
           {/* Top Control Bar: Device Mode Switcher + Live Engine Status */}
@@ -931,6 +934,11 @@ export default function HomePage() {
           handleProfileUpdated(updated);
           success('Profile Updated', 'Your profile details have been saved.');
         }}
+      />
+      <GoogleCalendarModal
+        isOpen={isCalendarModalOpen}
+        onClose={() => setIsCalendarModalOpen(false)}
+        initialLead={selectedLead}
       />
     </>
   );

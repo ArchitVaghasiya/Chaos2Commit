@@ -22,7 +22,10 @@ import {
   AlertTriangle,
   Volume2,
   VolumeX,
+  Calendar,
+  ExternalLink,
 } from 'lucide-react';
+import { GoogleCalendarModal } from '../calendar/GoogleCalendarModal';
 
 export interface CallRecord {
   id: string;
@@ -135,6 +138,7 @@ export default function ConversationsHub() {
   const [activeSpeechIdx, setActiveSpeechIdx] = useState<number | null>(null);
   const [outcomeFilter, setOutcomeFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
 
   // Audio Playback Ref
   const isPlayingRef = useRef(false);
@@ -483,6 +487,54 @@ export default function ConversationsHub() {
                     </p>
                   </div>
                 </div>
+
+                {/* Calendly & Google Calendar Tracking Bar */}
+                {((selectedCall.calendlyStatus && selectedCall.calendlyStatus !== 'NONE') || selectedCall.outcome === 'MEETING_BOOKED') && (
+                  <div className="mt-3 p-3 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      {selectedCall.calendlyStatus && selectedCall.calendlyStatus !== 'NONE' && (
+                        <span className={`px-2 py-0.5 rounded text-[11px] font-bold flex items-center gap-1.5 border ${
+                          selectedCall.calendlyStatus === 'BOOKED'
+                            ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/30'
+                            : selectedCall.calendlyStatus === 'NOT_BOOKED'
+                            ? 'bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30'
+                            : 'bg-blue-500/15 text-blue-600 dark:text-blue-300 border-blue-500/30'
+                        }`}>
+                          <Calendar className="w-3 h-3" />
+                          <span>Calendly SMS: {selectedCall.calendlyStatus === 'BOOKED' ? 'Booked ✓' : selectedCall.calendlyStatus === 'NOT_BOOKED' ? 'Not Booked (Re-Dial Due)' : 'Link Sent'}</span>
+                        </span>
+                      )}
+
+                      {selectedCall.outcome === 'MEETING_BOOKED' && (
+                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                          <span>Google Calendar Synced (API Key Configured)</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowCalendarModal(true)}
+                        className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-sm"
+                      >
+                        <Calendar className="w-3 h-3" />
+                        <span>View Google Calendar Schedule</span>
+                      </button>
+
+                      <a
+                        href="https://calendar.google.com/calendar/u/0/r"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1 rounded-lg bg-blue-600/15 hover:bg-blue-600/25 text-blue-600 dark:text-blue-300 border border-blue-500/30 text-[11px] font-semibold flex items-center gap-1 transition-all"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        <span>Open Google Cal</span>
+                      </a>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Full Interactive Transcript Log */}
@@ -546,6 +598,21 @@ export default function ConversationsHub() {
           )}
         </div>
       </div>
+
+      {/* Google Calendar Hub Modal */}
+      <GoogleCalendarModal
+        isOpen={showCalendarModal}
+        onClose={() => setShowCalendarModal(false)}
+        initialLead={
+          selectedCall
+            ? {
+                name: selectedCall.contactName,
+                companyName: selectedCall.companyName,
+                phone: selectedCall.phone,
+              }
+            : null
+        }
+      />
     </div>
   );
 }

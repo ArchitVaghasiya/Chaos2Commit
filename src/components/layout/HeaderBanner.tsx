@@ -27,7 +27,8 @@ import {
   Globe2,
   SlidersHorizontal,
   CreditCard,
-  Settings
+  Settings,
+  Calendar,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { getTranslation } from '@/lib/i18n/translations';
@@ -43,6 +44,7 @@ interface HeaderBannerProps {
   activeTab?: string;
   setActiveTab?: (tab: string) => void;
   onOpenCommandPalette?: () => void;
+  onOpenCalendar?: () => void;
 }
 
 export default function HeaderBanner({
@@ -56,6 +58,7 @@ export default function HeaderBanner({
   activeTab = 'dashboard',
   setActiveTab,
   onOpenCommandPalette,
+  onOpenCalendar,
 }: HeaderBannerProps) {
   const t = getTranslation(currentLanguage);
   const [isLangOpen, setIsLangOpen] = useState(false);
@@ -115,8 +118,8 @@ export default function HeaderBanner({
             </div>
           </div>
 
-          {/* Right: Actions, Language, Theme & Account - Single Line Flex Nowrap */}
-          <div className="flex items-center flex-nowrap gap-1.5 sm:gap-2 shrink-0 overflow-x-auto no-scrollbar">
+          {/* Right: Actions, Language, Calendar, Theme & Account */}
+          <div className="flex items-center flex-wrap sm:flex-nowrap gap-1.5 sm:gap-2 shrink-0 overflow-visible relative">
             {/* Value Proposition Badge on 2XL displays */}
             <div className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-gradient-to-r from-blue-600/10 via-indigo-600/10 to-purple-600/10 border border-indigo-500/20 text-indigo-800 dark:text-indigo-200 text-xs font-bold shrink-0 whitespace-nowrap">
               <Rocket className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
@@ -136,6 +139,19 @@ export default function HeaderBanner({
                 <kbd className="px-1.5 py-0.5 rounded-md bg-white dark:bg-black/60 border border-slate-300 dark:border-white/20 text-[10px] font-mono font-bold text-slate-800 dark:text-slate-200">
                   ⌘K
                 </kbd>
+              </button>
+            )}
+
+            {/* Google Calendar Hub Trigger */}
+            {onOpenCalendar && (
+              <button
+                type="button"
+                onClick={onOpenCalendar}
+                className="h-8 px-2.5 py-1 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 hover:dark:bg-blue-500/20 border border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 shadow-xs"
+                title="Google Calendar Schedule (API Key Synced)"
+              >
+                <Calendar className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <span className="hidden sm:inline">Calendar</span>
               </button>
             )}
 
@@ -160,37 +176,45 @@ export default function HeaderBanner({
               </button>
             )}
 
-            {/* Language Dropdown */}
-            <div className="relative shrink-0" ref={langRef}>
+            {/* Language Switcher Dropdown (Never Clipped, High z-index) */}
+            <div className="relative shrink-0 z-50" ref={langRef}>
               <button
+                type="button"
                 onClick={() => setIsLangOpen(!isLangOpen)}
-                className="h-8 px-2 rounded-xl bg-slate-100 dark:bg-[#080d20] border border-slate-200 dark:border-white/[0.1] flex items-center gap-1 transition-colors hover:bg-slate-200 dark:hover:bg-white/[0.05] cursor-pointer shrink-0"
-                title="Change Language"
+                className="h-8 px-2.5 rounded-xl bg-slate-100 dark:bg-[#080d20] border border-slate-200 dark:border-white/[0.1] flex items-center gap-1.5 transition-colors hover:bg-slate-200 dark:hover:bg-white/[0.08] cursor-pointer shrink-0 shadow-xs"
+                title="Change Platform Language"
               >
-                <Languages className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
-                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  {languages.find(l => l.label === currentLanguage)?.code.toUpperCase() || 'EN'}
+                <Languages className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  {languages.find((l) => l.label === currentLanguage)?.label || 'English'}
                 </span>
-                <ChevronDown className="w-3 h-3 text-slate-500" />
+                <ChevronDown className={`w-3 h-3 text-slate-500 transition-transform ${isLangOpen ? 'rotate-180' : ''}`} />
               </button>
               
               {isLangOpen && (
-                <div className="absolute top-full right-0 mt-1.5 w-32 bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-white/[0.1] shadow-2xl py-1 z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="absolute top-full right-0 mt-2 w-44 bg-white dark:bg-[#0c132a] rounded-2xl border border-slate-200 dark:border-white/[0.15] shadow-2xl py-1.5 z-[100] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-3 py-1 text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-white/[0.06] mb-1">
+                    Select Language
+                  </div>
                   {languages.map((lang) => (
                     <button
                       key={lang.code}
+                      type="button"
                       onClick={() => {
                         onLanguageChange?.(lang.label);
                         setIsLangOpen(false);
                       }}
                       className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center justify-between cursor-pointer ${
                         currentLanguage === lang.label 
-                          ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-semibold' 
-                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[0.05]'
+                          ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 font-bold' 
+                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06]'
                       }`}
                     >
-                      {lang.label}
-                      {currentLanguage === lang.label && <Check className="w-3.5 h-3.5" />}
+                      <span className="flex items-center gap-2">
+                        <span className="w-5 text-[10px] font-mono text-slate-400 uppercase font-semibold">{lang.code}</span>
+                        <span>{lang.label}</span>
+                      </span>
+                      {currentLanguage === lang.label && <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />}
                     </button>
                   ))}
                 </div>

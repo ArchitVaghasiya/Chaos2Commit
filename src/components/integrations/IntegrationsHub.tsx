@@ -14,9 +14,9 @@ import {
   Copy,
   Check,
   RefreshCw,
-  Sparkles,
-  ArrowRight
+  ArrowRight,
 } from 'lucide-react';
+import { GoogleCalendarModal } from '../calendar/GoogleCalendarModal';
 
 interface IntegrationService {
   id: string;
@@ -118,6 +118,7 @@ export default function IntegrationsHub() {
   const [webhookUrl, setWebhookUrl] = useState('https://api.technova.com/webhooks/ai-sales');
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+  const [isGCalModalOpen, setIsGCalModalOpen] = useState(false);
 
   const handleToggleConnect = (id: string) => {
     setIntegrations(prev =>
@@ -218,6 +219,18 @@ export default function IntegrationsHub() {
                   </button>
                 )}
 
+                {service.id === 'gcal' && (
+                  <button
+                    type="button"
+                    onClick={() => setIsGCalModalOpen(true)}
+                    className="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-600 dark:text-emerald-300 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-all border border-emerald-500/30"
+                    title="View and manage Google Calendar events"
+                  >
+                    <Calendar className="w-3 h-3" />
+                    <span>View Schedule</span>
+                  </button>
+                )}
+
                 <button
                   onClick={() => handleToggleConnect(service.id)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
@@ -285,6 +298,11 @@ export default function IntegrationsHub() {
           </div>
         </div>
       </div>
+
+      <GoogleCalendarModal
+        isOpen={isGCalModalOpen}
+        onClose={() => setIsGCalModalOpen(false)}
+      />
     </div>
   );
 }

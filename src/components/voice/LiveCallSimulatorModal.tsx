@@ -32,6 +32,7 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { CalendlyBookingModal } from './CalendlyBookingModal';
+import { GoogleCalendarModal } from '../calendar/GoogleCalendarModal';
 import { LeadItem } from '../discovery/DiscoveredLeadCard';
 import {
   SupportedLanguage,
@@ -136,6 +137,11 @@ export default function LiveCallSimulatorModal({
   const [showCalendlyModal, setShowCalendlyModal] = useState(false);
   const [isSendingCalendlySms, setIsSendingCalendlySms] = useState(false);
 
+  // Google Calendar Integration State (API Key: AIzaSyAD33SpN0e9bvky9WKYJ44SmFR0HkazY-o)
+  const [googleCalendarUrl, setGoogleCalendarUrl] = useState<string | null>(null);
+  const [meetingDisplayStr, setMeetingDisplayStr] = useState<string | null>(null);
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
+
   // Twilio Specific State
   const [twilioSid, setTwilioSid] = useState<string | null>(null);
   const [isDialingTwilio, setIsDialingTwilio] = useState(false);
@@ -150,6 +156,7 @@ export default function LiveCallSimulatorModal({
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const recognitionRef = useRef<any>(null);
+  const handleSendMessageRef = useRef<((text?: string) => Promise<void>) | null>(null);
   const messagesRef = useRef<Message[]>([]);
   const callStatusRef = useRef(callStatus);
   const durationRef = useRef(duration);
@@ -261,7 +268,7 @@ export default function LiveCallSimulatorModal({
 
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
-      recognition.continuous = false;
+      recognition.continuous = true;
       recognition.interimResults = true;
       recognition.lang = getLocaleForVoice(selectedLanguage);
 
@@ -271,20 +278,35 @@ export default function LiveCallSimulatorModal({
       };
 
       recognition.onresult = (event: any) => {
-        let transcript = '';
+        let interim = '';
+        let finalPhrase = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalPhrase += event.results[i][0].transcript;
+          } else {
+            interim += event.results[i][0].transcript;
+          }
         }
-        setSpeechTranscript(transcript);
-        const lastResult = event.results[event.results.length - 1];
-        if (lastResult && lastResult.isFinal) {
-          handleSendMessage(transcript);
+        const spoken = (finalPhrase || interim).trim();
+        if (spoken) {
+          setSpeechTranscript(spoken);
+          setInputText(spoken);
+        }
+        if (finalPhrase.trim()) {
+          handleSendMessageRef.current?.(finalPhrase.trim());
           setSpeechTranscript('');
+          setInputText('');
         }
       };
 
-      recognition.onerror = () => {
-        setIsMicListening(false);
+      recognition.onerror = (e: any) => {
+        console.warn('Speech recognition error:', e?.error);
+        if (e?.error === 'not-allowed') {
+          setErrorMessage('Microphone access blocked. Please allow microphone permission in your browser address bar.');
+          setIsMicListening(false);
+        } else if (e?.error !== 'no-speech') {
+          setIsMicListening(false);
+        }
       };
 
       recognition.onend = () => {
@@ -303,20 +325,46 @@ export default function LiveCallSimulatorModal({
     };
   }, [selectedLanguage]);
 
-  const toggleMic = () => {
-    if (!recognitionRef.current) {
-      alert('Speech recognition is not supported in this browser. Please type or use quick chips.');
+  const toggleMic = async () => {
+    const SpeechRecognition =
+      typeof window !== 'undefined' &&
+      ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
+
+    if (!SpeechRecognition && !recognitionRef.current) {
+      alert('Speech recognition is not supported in this browser. Please use Chrome or Edge, or type your message below.');
       return;
     }
+
     if (isMicListening) {
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current?.stop();
+      } catch (_) {}
       setIsMicListening(false);
     } else {
       stopSpeech();
+      // Prompt for microphone permission if needed
       try {
-        recognitionRef.current.lang = getLocaleForVoice(selectedLanguage);
-        recognitionRef.current.start();
-      } catch (_) {}
+        if (navigator.mediaDevices?.getUserMedia) {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          stream.getTracks().forEach((track) => track.stop());
+        }
+      } catch (err) {
+        console.warn('Mic permission check warning:', err);
+      }
+
+      try {
+        if (recognitionRef.current) {
+          recognitionRef.current.lang = getLocaleForVoice(selectedLanguage);
+          recognitionRef.current.start();
+          setIsMicListening(true);
+        }
+      } catch (err) {
+        console.warn('Error starting speech recognition:', err);
+        try {
+          recognitionRef.current?.stop();
+        } catch (_) {}
+        setIsMicListening(false);
+      }
     }
   };
 
@@ -544,7 +592,20 @@ export default function LiveCallSimulatorModal({
 
         if (data.meetingBooked) {
           setIsMeetingBooked(true);
+          if (data.googleCalendarUrl) setGoogleCalendarUrl(data.googleCalendarUrl);
+          if (data.meetingDisplayStr) setMeetingDisplayStr(data.meetingDisplayStr);
           onMeetingBookedSuccess?.();
+          const gcalOffset = durationRef.current;
+          setMessages((prev) => [
+            ...prev,
+            {
+              speaker: 'system',
+              text: `📅 Google Calendar Event Synced: Meeting reserved for ${data.meetingDisplayStr || 'Thursday at 3:00 PM'} (Google API Key: AIzaSyAD33...kazY-o).`,
+              time: formatCallTime(gcalOffset),
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              offsetSeconds: gcalOffset,
+            },
+          ]);
         }
         if (data.isNegativeDnd) {
           setIsNegativeDnd(true);
@@ -578,6 +639,10 @@ export default function LiveCallSimulatorModal({
       setIsAiThinking(false);
     }
   };
+
+  useEffect(() => {
+    handleSendMessageRef.current = handleSendMessage;
+  });
 
   // Manual Dispatch of Calendly SMS
   const handleSendCalendlySmsManually = async () => {
@@ -1113,6 +1178,49 @@ export default function LiveCallSimulatorModal({
               </div>
             )}
 
+            {/* Google Calendar Meeting Scheduled Banner */}
+            {isMeetingBooked && (
+              <div className="mb-3 p-3 rounded-xl bg-gradient-to-r from-emerald-950/70 via-teal-950/60 to-emerald-950/70 border border-emerald-500/40 text-emerald-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 animate-in fade-in shadow-lg shadow-emerald-500/10">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center shrink-0 shadow-md shadow-emerald-600/30">
+                    <Calendar className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-white flex items-center gap-2">
+                      <span>Google Calendar Synced</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        {meetingDisplayStr || 'Thursday at 3:00 PM'}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-zinc-300">
+                      API Key Active &bull; Added to Google Calendar schedule
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {googleCalendarUrl && (
+                    <a
+                      href={googleCalendarUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold flex items-center gap-1.5 cursor-pointer transition-all shadow-md shadow-emerald-500/20"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Open in Google Cal</span>
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowCalendarModal(true)}
+                    className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[11px] font-semibold flex items-center gap-1.5 cursor-pointer transition-all border border-zinc-700"
+                  >
+                    <span>View Calendar Schedule</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Calendly SMS Sent Banner (Triggered during human handoff / text link request) */}
             {calendlyLinkSent && (
               <div className="mb-3 p-3 rounded-xl bg-gradient-to-r from-blue-950/70 via-indigo-950/60 to-blue-950/70 border border-blue-500/40 text-blue-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 animate-in fade-in shadow-lg shadow-blue-500/10">
@@ -1302,6 +1410,18 @@ export default function LiveCallSimulatorModal({
                 </button>
               </div>
             </div>
+
+            {/* Live Microphone Listening Indicator */}
+            {isMicListening && (
+              <div className="mt-3 px-3 py-1.5 rounded-xl bg-rose-950/70 border border-rose-500/50 text-rose-200 text-xs flex items-center justify-between animate-in fade-in shadow-lg shadow-rose-900/20">
+                <div className="flex items-center gap-2 truncate">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping shrink-0" />
+                  <span className="font-bold text-rose-300 shrink-0">Microphone Live:</span>
+                  <span className="italic truncate text-white">{speechTranscript || 'Listening... Speak now and text appears live'}</span>
+                </div>
+                <span className="text-[10px] text-rose-400 font-mono shrink-0 ml-2">Hands-Free Active</span>
+              </div>
+            )}
 
             {/* Input Bar: Hands-Free Microphone + Text Typing */}
             <div className="mt-3 pt-2 border-t border-white/[0.08] flex items-center gap-2">
@@ -1542,6 +1662,13 @@ export default function LiveCallSimulatorModal({
           }}
         />
       )}
+
+      {/* Google Calendar Hub Modal */}
+      <GoogleCalendarModal
+        isOpen={showCalendarModal}
+        onClose={() => setShowCalendarModal(false)}
+        initialLead={lead}
+      />
     </div>
   );
 }
