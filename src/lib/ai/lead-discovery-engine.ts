@@ -44,7 +44,41 @@ export interface DiscoveredLeadRaw {
 
 export const SEED_LEADS_CATALOG: DiscoveredLeadRaw[] = [
   // ==========================================
-  // 1. LINKEDIN (Monitored Posts)
+  // 1. PRIMARY ENTERPRISE DEMO (Gohel Infotech Solutions - Verified Device)
+  // ==========================================
+  {
+    id: 'cmuggx21h0000cgv9t02061ya',
+    name: 'Yash Gohel',
+    jobTitle: 'Founder & Chief Technology Officer (CTO)',
+    companyName: 'Gohel Infotech Solutions',
+    companyWebsite: 'www.gohelinfotech.com',
+    industry: 'IT Services',
+    companySize: '51 – 200 employees',
+    email: 'yash.gohel@gohelinfotech.com',
+    phone: '+91 9737362307',
+    linkedinProfile: 'https://linkedin.com/in/yash-gohel-tech',
+    location: 'Ahmedabad, Gujarat',
+    country: 'India',
+    timezone: 'Asia/Kolkata',
+    preferredLanguage: 'Gujarati',
+    sourcePlatform: 'LinkedIn',
+    originalPostUrl: 'https://linkedin.com/posts/yash-gohel-cloud-migration-2026',
+    originalPostSnippet: 'Urgent Requirement: Evaluating enterprise cloud architecture, Microsoft 365 migration for 250+ users, and autonomous AI sales voice agents for our regional clients. Looking for an enterprise demonstration this week.',
+    intentScore: 99,
+    budgetSignal: 'High ($50k - $100k allocated)',
+    urgencyLevel: 'Immediate (This Week)',
+    decisionMaker: true,
+    activeRequirement: true,
+    matchReasoning: 'Urgent verified enterprise RFP by Founder & CTO seeking Microsoft 365 migration for 250+ users and autonomous AI voice agents. Verified physical device +91 9737362307 ready for live demonstration.',
+    fitScore: 99,
+    keyMatches: ['Microsoft 365 Migration', '250+ Users Scale', 'AI Voice Telephony', 'SharePoint Architecture'],
+    recommendedPitch: 'Pitch certified enterprise migration framework, zero-downtime cutover guarantee, and launch direct live-call demonstration in Gujarati/Hindi/English to +91 9737362307.',
+    scoreBreakdown: { authority: 25, budget: 25, urgency: 25, fit: 24 },
+    isExample: true,
+    matchedQuery: 'Microsoft 365 & SharePoint Implementation Partner'
+  },
+  // ==========================================
+  // 2. LINKEDIN (Enterprise Benchmark)
   // ==========================================
   {
     id: 'lead-john-smith',
@@ -72,7 +106,7 @@ export const SEED_LEADS_CATALOG: DiscoveredLeadRaw[] = [
     matchReasoning: 'Direct public RFP on LinkedIn for a Microsoft 365 & SharePoint Implementation Partner; verified CTO decision-maker with high budget allocation and 30-day target rollout.',
     fitScore: 96,
     keyMatches: ['SharePoint Online', 'Microsoft 365 Migration', 'Workflow Automation', 'Document Management'],
-    recommendedPitch: 'Position TechNova\'s certified SharePoint migration accelerators and automated workflow connectors; offer a 15-minute architecture discovery call.',
+    recommendedPitch: 'Position certified SharePoint migration accelerators and automated workflow connectors; offer a 15-minute architecture discovery call.',
     scoreBreakdown: { authority: 25, budget: 25, urgency: 24, fit: 20 },
     isExample: true,
     matchedQuery: 'Microsoft 365 & SharePoint Implementation Partner'

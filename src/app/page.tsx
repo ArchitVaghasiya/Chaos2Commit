@@ -206,14 +206,14 @@ export default function HomePage() {
 
       if (leadsRes.status === 'fulfilled' && leadsRes.value.ok) {
         const data = await leadsRes.value.json();
-        // Keep clean benchmark example data on first load; only populate DB leads when not in example mode
-        if (data.leads && data.leads.length > 0 && !isExampleMode) {
-          setLeads(data.leads);
-          setSelectedLead((prev) => {
-            if (!prev) return data.leads[0];
-            const matching = data.leads.find((l: LeadItem) => l.id === prev.id);
-            return matching || data.leads[0];
-          });
+        if (data.leads && data.leads.length > 0) {
+          const yashLead = data.leads.find((l: any) =>
+            (l.phone && l.phone.includes('9737362307')) ||
+            (l.companyName && l.companyName.toLowerCase().includes('gohel'))
+          );
+          if (yashLead) {
+            setSelectedLead(yashLead);
+          }
         }
       }
 
