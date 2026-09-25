@@ -64,6 +64,15 @@ model Lead {
   retryCount          Int?       @default(0)
   scheduledCallbackAt DateTime?
   dndStatus           Boolean?   @default(false)
+
+  // Calendly Tracking & Human Handoff SMS
+  calendlyLinkSent    Boolean?   @default(false)
+  calendlyLinkSentAt  DateTime?
+  calendlyStatus      String?    @default("NONE") // NONE, LINK_SENT, BOOKED, NOT_BOOKED, REDIAL_TRIGGERED
+  calendlyEventUri    String?
+  calendlyBookedAt    DateTime?
+  redialScheduledAt   DateTime?
+  redialCount         Int?       @default(0)
   
   campaignId          String?
   campaign            Campaign?  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
@@ -126,6 +135,8 @@ model CallLog {
   recordingUrl       String?
   handoffNotes       String?
   twilioCallSid      String?
+  calendlyLinkSent   Boolean?  @default(false)
+  calendlyUrl        String?
 
   createdAt          DateTime  @default(now())
 }

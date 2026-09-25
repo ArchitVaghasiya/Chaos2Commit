@@ -29,7 +29,9 @@ import {
   Radio,
   Zap,
   Minimize2,
+  MessageSquare,
 } from 'lucide-react';
+import { CalendlyBookingModal } from './CalendlyBookingModal';
 import { LeadItem } from '../discovery/DiscoveredLeadCard';
 import {
   SupportedLanguage,
@@ -116,6 +118,15 @@ export default function LiveCallSimulatorModal({
   const [isNegativeDnd, setIsNegativeDnd] = useState(false);
   const [isHumanHandoff, setIsHumanHandoff] = useState(false);
   const [isCallbackScheduled, setIsCallbackScheduled] = useState(false);
+
+  // Calendly Tracking & Human Handoff SMS State
+  const [calendlyLinkSent, setCalendlyLinkSent] = useState((lead as any)?.calendlyLinkSent || false);
+  const [calendlyUrl, setCalendlyUrl] = useState<string | null>(null);
+  const [calendlyStatus, setCalendlyStatus] = useState<'NONE' | 'LINK_SENT' | 'BOOKED' | 'NOT_BOOKED'>(
+    (lead as any)?.calendlyStatus || 'NONE'
+  );
+  const [showCalendlyModal, setShowCalendlyModal] = useState(false);
+  const [isSendingCalendlySms, setIsSendingCalendlySms] = useState(false);
 
   // Twilio Specific State
   const [twilioSid, setTwilioSid] = useState<string | null>(null);
@@ -511,8 +522,19 @@ export default function LiveCallSimulatorModal({
         if (data.isNegativeDnd) {
           setIsNegativeDnd(true);
         }
-        if (data.isHumanHandoff) {
+        if (data.isHumanHandoff || data.calendlyLinkSent) {
           setIsHumanHandoff(true);
+          setCalendlyLinkSent(true);
+          if (data.calendlyUrl) setCalendlyUrl(data.calendlyUrl);
+          setCalendlyStatus('LINK_SENT');
+          setMessages((prev) => [
+            ...prev,
+            {
+              speaker: 'system',
+              text: `📱 SMS Dispatched: Calendly direct booking link sent to ${lead?.phone || phoneNumber}. Tracking appointment status...`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            },
+          ]);
         }
         if (data.isCallbackRequested) {
           setIsCallbackScheduled(true);
@@ -525,6 +547,62 @@ export default function LiveCallSimulatorModal({
     } finally {
       setIsAiThinking(false);
     }
+  };
+
+  // Manual Dispatch of Calendly SMS
+  const handleSendCalendlySmsManually = async () => {
+    if (!lead) return;
+    setIsSendingCalendlySms(true);
+    try {
+      const res = await fetch('/api/calendly/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'SEND_SMS',
+          leadId: lead.id,
+          phone: phoneNumber,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCalendlyLinkSent(true);
+        setCalendlyUrl(data.calendlyUrl);
+        setCalendlyStatus('LINK_SENT');
+        setMessages((prev) => [
+          ...prev,
+          {
+            speaker: 'system',
+            text: `📱 SMS Sent: Calendly meeting booking link dispatched to ${phoneNumber}. Tracking appointment status...`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+        speakText('I have just sent a text message with our Calendly booking link to your phone.');
+      }
+    } catch (e) {
+      console.error('Manual Calendly SMS failed:', e);
+    } finally {
+      setIsSendingCalendlySms(false);
+    }
+  };
+
+  // Trigger AI Re-Dial when Lead Has Not Booked via Calendly
+  const handleTriggerRedial = (script: string) => {
+    setCallStatus('CONNECTED');
+    setCalendlyStatus('NOT_BOOKED');
+    setMessages((prev) => [
+      ...prev,
+      {
+        speaker: 'system',
+        text: `🔄 Automated AI Re-Dial Initiated • Lead had not completed Calendly booking`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+      {
+        speaker: 'agent',
+        text: script,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+    ]);
+    speakText(script);
   };
 
   // Handle Hanging Up
@@ -935,6 +1013,60 @@ export default function LiveCallSimulatorModal({
               </div>
             )}
 
+            {/* Calendly SMS Sent Banner (Triggered during human handoff / text link request) */}
+            {calendlyLinkSent && (
+              <div className="mb-3 p-3 rounded-xl bg-gradient-to-r from-blue-950/70 via-indigo-950/60 to-blue-950/70 border border-blue-500/40 text-blue-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 animate-in fade-in shadow-lg shadow-blue-500/10">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0 shadow-md shadow-blue-600/30">
+                    <MessageSquare className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-white flex items-center gap-2">
+                      <span>SMS Sent with Calendly Link</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded font-semibold ${
+                        calendlyStatus === 'BOOKED'
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          : calendlyStatus === 'NOT_BOOKED'
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                          : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                      }`}>
+                        {calendlyStatus === 'BOOKED' ? '✓ Booked' : calendlyStatus === 'NOT_BOOKED' ? '⚠️ Not Booked (Re-Dial Due)' : 'Pending Booking'}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-zinc-300">
+                      Dispatched to {lead.phone || phoneNumber} &bull; Timeslots pre-loaded
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowCalendlyModal(true)}
+                    className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold flex items-center gap-1.5 cursor-pointer transition-all shadow-md shadow-blue-500/20"
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>Open Calendly View</span>
+                  </button>
+
+                  {calendlyStatus === 'NOT_BOOKED' && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleTriggerRedial(
+                          `Hi ${lead.name}, this is Ava from TechNova Solutions! I noticed you hadn't had a chance to pick a time slot on the Calendly booking link we sent earlier. I wanted to follow up directly to see if we can find a quick 10-minute window for a discussion or answer any questions?`
+                        )
+                      }
+                      className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white text-[11px] font-semibold flex items-center gap-1.5 cursor-pointer transition-all animate-pulse"
+                    >
+                      <PhoneCall className="w-3.5 h-3.5" />
+                      <span>Call Again Now</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Live Call Transcript Scroll Area */}
             <div className="flex-1 min-h-[220px] max-h-[300px] overflow-y-auto space-y-3 p-3 rounded-2xl bg-[#030612] border border-white/[0.06]">
               {messages.length === 0 ? (
@@ -1036,12 +1168,12 @@ export default function LiveCallSimulatorModal({
 
                 <button
                   type="button"
-                  onClick={() => handleSendMessage('Can I speak to a real person? Please transfer me to your senior technical lead or account manager.')}
+                  onClick={() => handleSendMessage('Can I speak with a human or team member? Please send me a text message with a link so I can book a call directly from your timeslots.')}
                   disabled={callStatus !== 'CONNECTED' || isAiThinking}
                   className="px-2.5 py-1 rounded-lg bg-purple-600/15 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40"
                 >
                   <UserCheck className="w-3 h-3 text-purple-400" />
-                  <span>Human Handoff Request</span>
+                  <span>Human Handoff &bull; Send Calendly Link</span>
                 </button>
 
                 <button
@@ -1175,6 +1307,68 @@ export default function LiveCallSimulatorModal({
                   </div>
                 </div>
               </div>
+
+              {/* Calendly Booking & Re-Dial Tracker Card */}
+              <div className="p-3.5 rounded-xl bg-blue-950/20 border border-blue-500/30 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-blue-400" />
+                    Calendly SMS &amp; Re-Dial Tracker
+                  </span>
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${
+                      calendlyStatus === 'BOOKED'
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                        : calendlyStatus === 'NOT_BOOKED'
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                        : calendlyLinkSent
+                        ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                        : 'bg-white/10 text-slate-400'
+                    }`}
+                  >
+                    {calendlyStatus === 'BOOKED'
+                      ? 'BOOKED'
+                      : calendlyStatus === 'NOT_BOOKED'
+                      ? 'RE-DIAL DUE'
+                      : calendlyLinkSent
+                      ? 'LINK SENT'
+                      : 'STANDBY'}
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-slate-300 leading-relaxed bg-black/40 p-2 rounded-lg border border-white/[0.06]">
+                  {calendlyStatus === 'BOOKED'
+                    ? 'Prospect booked a meeting via Calendly link. Auto-redial cancelled.'
+                    : calendlyStatus === 'NOT_BOOKED'
+                    ? 'Prospect did not book within timeframe. Automated re-dial queued.'
+                    : calendlyLinkSent
+                    ? 'SMS delivered with timeslot selector. Waiting for prospect booking.'
+                    : 'If prospect requests human handoff, AI sends an SMS with direct Calendly booking link.'}
+                </p>
+
+                <div className="flex flex-wrap gap-2">
+                  {!calendlyLinkSent ? (
+                    <button
+                      type="button"
+                      disabled={isSendingCalendlySms}
+                      onClick={handleSendCalendlySmsManually}
+                      className="w-full py-1.5 px-3 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/40 text-blue-200 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      <span>{isSendingCalendlySms ? 'Dispatching SMS...' : 'Send Calendly SMS Now'}</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowCalendlyModal(true)}
+                      className="w-full py-1.5 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-md shadow-indigo-500/20"
+                    >
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>Open Calendly Simulation</span>
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Bottom Actions */}
@@ -1210,6 +1404,24 @@ export default function LiveCallSimulatorModal({
           </div>
         </div>
       </div>
+
+      {/* Calendly Booking Simulation Drawer / Modal */}
+      {lead && (
+        <CalendlyBookingModal
+          isOpen={showCalendlyModal}
+          onClose={() => setShowCalendlyModal(false)}
+          lead={lead}
+          calendlyUrl={calendlyUrl}
+          onBookingConfirmed={() => {
+            setCalendlyStatus('BOOKED');
+            setIsMeetingBooked(true);
+            onMeetingBookedSuccess?.();
+          }}
+          onTriggerRedial={(script) => {
+            handleTriggerRedial(script);
+          }}
+        />
+      )}
     </div>
   );
 }

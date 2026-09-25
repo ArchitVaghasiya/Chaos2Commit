@@ -57,7 +57,7 @@ export default function LeadManagementHub({
   currentLanguage = 'English',
 }: LeadManagementHubProps) {
   const t = getHubsTranslation(currentLanguage).leads;
-  const [activeSegment, setActiveSegment] = useState<'ALL' | 'HOT' | 'WARM' | 'NURTURE' | 'BOOKED' | 'CALLING_ONLY'>('ALL');
+  const [activeSegment, setActiveSegment] = useState<'ALL' | 'HOT' | 'WARM' | 'NURTURE' | 'BOOKED' | 'CALLING_ONLY' | 'CALENDLY_QUEUE'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Enhanced Import Modal State
@@ -102,6 +102,15 @@ export default function LeadManagementHub({
     if (activeSegment === 'NURTURE') return lead.intentScore < 75;
     if (activeSegment === 'BOOKED') return lead.status === 'MEETING_BOOKED';
     if (activeSegment === 'CALLING_ONLY') return lead.workflowType === 'CALLING_ONLY';
+    if (activeSegment === 'CALENDLY_QUEUE') {
+      return (
+        (lead as any).calendlyLinkSent ||
+        (lead as any).calendlyStatus === 'LINK_SENT' ||
+        (lead as any).calendlyStatus === 'NOT_BOOKED' ||
+        (lead as any).calendlyStatus === 'BOOKED' ||
+        lead.status === 'CALLBACK_SCHEDULED'
+      );
+    }
 
     return true;
   });
@@ -446,6 +455,20 @@ export default function LeadManagementHub({
             >
               Meetings Booked ({leads.filter((l) => l.status === 'MEETING_BOOKED').length})
             </button>
+
+            <button
+              onClick={() => setActiveSegment('CALENDLY_QUEUE')}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeSegment === 'CALENDLY_QUEUE'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'bg-slate-100 dark:bg-white/[0.03] text-slate-600 hover:text-slate-900 dark:text-white'
+              }`}
+            >
+              <span>📅 Calendly &bull; Re-Dial Queue</span>
+              <span className="px-1.5 py-0.2 rounded-full bg-blue-500/20 text-[10px]">
+                {leads.filter((l) => (l as any).calendlyLinkSent || (l as any).calendlyStatus === 'NOT_BOOKED').length}
+              </span>
+            </button>
           </div>
 
           {/* Search Box */}
@@ -554,16 +577,46 @@ export default function LeadManagementHub({
                             Callback: Tomorrow
                           </span>
                         )}
+                        {(lead as any).calendlyLinkSent && (
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-semibold flex items-center gap-1 border ${
+                              (lead as any).calendlyStatus === 'BOOKED'
+                                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                : (lead as any).calendlyStatus === 'NOT_BOOKED'
+                                ? 'bg-rose-500/15 text-rose-400 border-rose-500/30 animate-pulse'
+                                : 'bg-blue-500/15 text-blue-400 border-blue-500/30'
+                            }`}
+                          >
+                            <span>📅 Calendly:</span>
+                            <span>
+                              {(lead as any).calendlyStatus === 'BOOKED'
+                                ? 'Booked ✓'
+                                : (lead as any).calendlyStatus === 'NOT_BOOKED'
+                                ? 'Unbooked (Call Again)'
+                                : 'Link Sent'}
+                            </span>
+                          </span>
+                        )}
                       </div>
                     </td>
 
                     <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => onOpenCallModal(lead)}
-                        className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-all shadow-sm flex items-center gap-1.5 ml-auto cursor-pointer"
-                      >
-                        <Headphones className="w-3.5 h-3.5" /> Call Lead
-                      </button>
+                      {(lead as any).calendlyStatus === 'NOT_BOOKED' ? (
+                        <button
+                          onClick={() => onOpenCallModal(lead)}
+                          className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-semibold text-xs transition-all shadow-md flex items-center gap-1.5 ml-auto cursor-pointer animate-pulse"
+                          title="Lead did not book via Calendly - call again"
+                        >
+                          <PhoneCall className="w-3.5 h-3.5" /> Call Again
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => onOpenCallModal(lead)}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-all shadow-sm flex items-center gap-1.5 ml-auto cursor-pointer"
+                        >
+                          <Headphones className="w-3.5 h-3.5" /> Call Lead
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))

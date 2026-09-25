@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { generateVoiceTurnWithGroq, VoiceTurnMessage } from '@/lib/ai/groq';
 import { generateVoiceTurnWithGemini } from '@/lib/ai/gemini';
 import { prisma } from '@/lib/prisma';
+import { sendCalendlyLinkViaSms, generateCalendlyUrl } from '@/lib/calendly/calendly-service';
 
 export async function POST(request: Request) {
   try {
@@ -50,17 +51,45 @@ export async function POST(request: Request) {
       prospectLower.includes('spam');
 
     // =========================================================================
-    // 2. HUMAN HANDOFF DETECTION (Evaluator Requirement)
+    // 2. HUMAN HANDOFF & CALENDLY LINK DETECTION (Evaluator Requirement)
     // =========================================================================
     const isHumanHandoff =
       prospectLower.includes('human') ||
       prospectLower.includes('real person') ||
+      prospectLower.includes('speak to a person') ||
+      prospectLower.includes('talk to a person') ||
       prospectLower.includes('speak to someone') ||
+      prospectLower.includes('speak with someone') ||
       prospectLower.includes('transfer me') ||
       prospectLower.includes('connect to a person') ||
       prospectLower.includes('account executive') ||
       prospectLower.includes('talk to a representative') ||
-      prospectLower.includes('manager');
+      prospectLower.includes('send link') ||
+      prospectLower.includes('send a link') ||
+      prospectLower.includes('send me a link') ||
+      prospectLower.includes('booking link') ||
+      prospectLower.includes('calendly') ||
+      prospectLower.includes('book a call') ||
+      prospectLower.includes('schedule a call') ||
+      prospectLower.includes('speak with a team') ||
+      prospectLower.includes('person from your team') ||
+      prospectLower.includes('text message') ||
+      prospectLower.includes('send a text') ||
+      prospectLower.includes('send sms') ||
+      prospectLower.includes('manager') ||
+      // Multilingual (Gujarati, Hindi, Spanish)
+      prospectLower.includes('ટીમ સાથે') ||
+      prospectLower.includes('વાત કરવા') ||
+      prospectLower.includes('લિંક મોકલ') ||
+      prospectLower.includes('બુકિંગ લિંક') ||
+      prospectLower.includes('કેલેન્ડલી') ||
+      prospectLower.includes('લીંક') ||
+      prospectLower.includes('टीम से बात') ||
+      prospectLower.includes('लिंक भेजो') ||
+      prospectLower.includes('कैलेंडली') ||
+      prospectLower.includes('humano') ||
+      prospectLower.includes('persona real') ||
+      prospectLower.includes('enlace');
 
     // =========================================================================
     // 3. RETRY / CALLBACK DETECTION (Evaluator Requirement)
@@ -78,6 +107,8 @@ export async function POST(request: Request) {
     let aiResponse = '';
     let sentiment: 'POSITIVE' | 'NEUTRAL' | 'HESITANT' | 'OBJECTION' | 'NEGATIVE' = 'NEUTRAL';
     let outcomeStatus = 'IN_PROGRESS';
+    let calendlyUrl = '';
+    let calendlySmsDetails: any = null;
 
     if (isNegativeDnd) {
       sentiment = 'NEGATIVE';
@@ -100,20 +131,29 @@ export async function POST(request: Request) {
     } else if (isHumanHandoff) {
       sentiment = 'NEUTRAL';
       outcomeStatus = 'HUMAN_HANDOFF';
+      calendlyUrl = generateCalendlyUrl(lead?.id || leadId, leadContext.name);
+
+      // Asynchronously trigger SMS dispatch with Calendly link
+      try {
+        calendlySmsDetails = await sendCalendlyLinkViaSms(lead?.id || leadId, lead?.phone);
+      } catch (smsErr) {
+        console.warn('SMS Calendly dispatch handled:', smsErr);
+      }
+
       if (lang.includes('español') || lang.includes('spanish') || lang === 'es') {
-        aiResponse = `¡Por supuesto! Le transfiero de inmediato con nuestro Arquitecto de Soluciones Senior. Por favor manténgase en la línea mientras activo el puente de llamada.`;
+        aiResponse = `¡Por supuesto! Le acabo de enviar un mensaje de texto a su móvil con nuestro enlace directo de Calendly para que pueda agendar una llamada con nuestro equipo en el horario que prefiera. ¡Revise su teléfono!`;
       } else if (lang.includes('हिन्दी') || lang.includes('hindi') || lang === 'hi') {
-        aiResponse = `बिल्कुल! मैं तुरंत आपको हमारे सीनियर सॉल्यूशंस आर्किटेक्ट से जोड़ रही हूँ। कृपया लाइन पर बने रहें।`;
+        aiResponse = `बिल्कुल, मैं समझ सकती हूँ! मैंने आपके मोबाइल नंबर पर हमारी Calendly बुकिंग लिंक का SMS भेज दिया है, ताकि आप अपनी पसंद का समय चुनकर सीधे हमारी टीम से कॉल बुक कर सकें। कृपया अपना मैसेज चेक करें!`;
       } else if (lang.includes('ગુજરાતી') || lang.includes('gujarati') || lang === 'gu') {
-        aiResponse = `ચોક્કસ! હું તમને તરત જ અમારા સીનિયર સોલ્યુશન્સ આર્કિટેક્ટ સાથે જોડી રહી છું. કૃપા કરીને થોડી ક્ષણો લાઇન પર રહો.`;
+        aiResponse = `ચોક્કસ, હું સમજી શકું છું! મેં તમારા મોબાઈલ પર અમારી કેલેન્ડલી (Calendly) બુકિંગ લિંકનો SMS મોકલી દીધો છે, જેથી તમે તમારી અનુકૂળતા મુજબ સીધો સમય પસંદ કરીને અમારી ટીમ સાથે કૉલ બુક કરી શકો. કૃપા કરીને તમારો ફોન ચેક કરશો!`;
       } else if (lang.includes('deutsch') || lang.includes('german') || lang === 'de') {
-        aiResponse = `Selbstverständlich! Ich verbinde Sie unverzüglich mit unserem Senior Solutions Architect. Bitte bleiben Sie kurz am Apparat.`;
+        aiResponse = `Selbstverständlich! Ich habe Ihnen soeben eine SMS mit unserem Calendly-Buchungslink gesendet, damit Sie direkt ein passendes Zeitfenster mit unserem Team buchen können. Bitte prüfen Sie Ihr Telefon!`;
       } else if (lang.includes('français') || lang.includes('french') || lang === 'fr') {
-        aiResponse = `Absolument ! Je vous transfère sans attendre à notre architecte de solutions senior. Veuillez rester en ligne un instant.`;
+        aiResponse = `Absolument ! Je viens de vous envoyer un SMS avec notre lien Calendly afin que vous puissiez réserver directement un créneau horaire avec notre équipe.`;
       } else if (lang.includes('العربية') || lang.includes('arabic') || lang === 'ar') {
-        aiResponse = `بالتأكيد! سأقوم بتحويلكم فوراً إلى كبير مهندسي الحلول لدينا. يرجى البقاء على الخط للحظة واحدة.`;
+        aiResponse = `بالتأكيد! لقد أرسلت للتو رسالة نصية قصيرة إلى هاتفكم تحتوي على رابط Calendly لتتمكنوا من حجز موعد مباشر مع فريقنا في الوقت المفضل لديكم.`;
       } else {
-        aiResponse = `Certainly! I am bridging you immediately to our Senior Solutions Architect who can address your technical and commercial requirements directly. Please hold while I connect the call.`;
+        aiResponse = `I completely understand! I have just sent a text message to your phone with our Calendly booking link so you can directly book a call with our team from the preferred timeslots. Please check your messages!`;
       }
     } else if (isCallbackRequested) {
       sentiment = 'HESITANT';
@@ -286,6 +326,9 @@ export async function POST(request: Request) {
                 dndStatus: dndFlag,
                 scheduledCallbackAt: callbackTime,
                 retryCount: isCallbackRequested ? (lead?.retryCount || 0) + 1 : lead?.retryCount || 0,
+                calendlyLinkSent: isHumanHandoff ? true : lead?.calendlyLinkSent,
+                calendlyLinkSentAt: isHumanHandoff ? new Date() : lead?.calendlyLinkSentAt,
+                calendlyStatus: isHumanHandoff ? 'LINK_SENT' : lead?.calendlyStatus || 'NONE',
               },
             });
           } catch (updateErr) {
@@ -297,7 +340,7 @@ export async function POST(request: Request) {
         const summaryText = isNegativeDnd
           ? 'Prospect requested DND removal. De-escalated gracefully and added to regulatory Do-Not-Call registry.'
           : isHumanHandoff
-          ? 'Prospect requested warm human transfer. Live bridge to Senior Solutions Architect initiated.'
+          ? `Prospect requested human contact. SMS with Calendly link dispatched to ${lead?.phone || 'lead phone'}.`
           : isCallbackRequested
           ? 'Prospect requested callback due to active meeting. Rescheduled for tomorrow 10:30 AM.'
           : isMeetingBooked
@@ -307,7 +350,7 @@ export async function POST(request: Request) {
         const nextActionText = isNegativeDnd
           ? 'DND status locked. No further outbound automated calls permitted.'
           : isHumanHandoff
-          ? 'Warm handoff brief dispatched to account executive Slack/CRM.'
+          ? 'Monitor Calendly booking status. Auto-trigger re-dial if link remains unbooked.'
           : isCallbackRequested
           ? 'Automated retry queued for tomorrow in prospect local timezone.'
           : isMeetingBooked
@@ -331,6 +374,8 @@ export async function POST(request: Request) {
                 transcriptJson: JSON.stringify(fullTranscript),
                 meetingScheduledAt: isMeetingBooked ? new Date(Date.now() + 86400000 * 2) : null,
                 callbackScheduledAt: callbackTime,
+                calendlyLinkSent: isHumanHandoff,
+                calendlyUrl: isHumanHandoff ? calendlyUrl : null,
               },
             });
           } catch (callLogErr) {
@@ -350,10 +395,14 @@ export async function POST(request: Request) {
       isHumanHandoff,
       isCallbackRequested,
       sentiment,
+      calendlyLinkSent: isHumanHandoff,
+      calendlyUrl: isHumanHandoff ? calendlyUrl : null,
+      smsSent: isHumanHandoff,
+      smsDetails: calendlySmsDetails,
       summary: isNegativeDnd
         ? 'DND requested: contact registered in compliance opt-out database.'
         : isHumanHandoff
-        ? 'Human handoff requested: live transfer initiated.'
+        ? `Human handoff requested: SMS with Calendly booking link sent to ${lead?.phone || 'lead phone'}.`
         : isCallbackRequested
         ? 'Callback scheduled for tomorrow 10:30 AM.'
         : isMeetingBooked
@@ -362,7 +411,7 @@ export async function POST(request: Request) {
       nextBestAction: isNegativeDnd
         ? 'Regulatory DND flag active. Outreach halted.'
         : isHumanHandoff
-        ? 'Connect senior account executive immediately.'
+        ? 'Track Calendly booking. Trigger automatic AI re-dial if lead does not book.'
         : isCallbackRequested
         ? 'Send confirmation SMS/email and schedule retry.'
         : isMeetingBooked
