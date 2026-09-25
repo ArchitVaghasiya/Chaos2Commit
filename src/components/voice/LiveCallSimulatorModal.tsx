@@ -965,10 +965,11 @@ export default function LiveCallSimulatorModal({
                     ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
                     : 'text-slate-400 hover:text-white'
                 }`}
-                title="Instant Browser Voice Call Demo with Web Speech Audio & Mic"
+                title="Direct Website Live AI Voice Call with Duplex Mic & Speaker (Works on all numbers)"
               >
                 <Volume2 className="w-3.5 h-3.5" />
-                <span>Live Audio Demo</span>
+                <span>Website Live AI Call</span>
+                <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] bg-emerald-400/20 text-emerald-300 font-medium">100% Numbers</span>
               </button>
 
               <button
@@ -979,10 +980,11 @@ export default function LiveCallSimulatorModal({
                     ? 'bg-indigo-600 text-white shadow-md'
                     : 'text-slate-400 hover:text-white'
                 }`}
-                title="Real PSTN Carrier Calling to Mobile Phones via Twilio"
+                title="Twilio Cloud Telephony Carrier Calling (75 Min Free Quota)"
               >
                 <PhoneCall className="w-3.5 h-3.5" />
                 <span>Twilio Mobile PSTN</span>
+                <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] bg-indigo-400/20 text-indigo-300 font-medium">75m Quota</span>
               </button>
             </div>
 
@@ -1047,18 +1049,18 @@ export default function LiveCallSimulatorModal({
                 <span>
                   {diagnostics.isTargetVerified ? (
                     <span className="text-emerald-300 font-semibold">
-                      ✓ Number {phoneNumber} is verified on Twilio. Ready for real phone call!
+                      ✓ Twilio 75m Quota Active: {phoneNumber} is verified. Ready to ring physical mobile phone!
                     </span>
                   ) : (
                     <span className="text-amber-200">
-                      Twilio Trial Policy: Number {phoneNumber} must be verified once before receiving real mobile calls. Or use{' '}
+                      Twilio 75m Trial Quota: Carrier dialing requires verification or account upgrade. Or use{' '}
                       <button
                         onClick={() => setTelephonyMode('BROWSER_SIM')}
                         className="font-bold underline text-emerald-300 hover:text-white"
                       >
-                        Live Audio Demo
+                        Website Live AI Call
                       </button>{' '}
-                      for instant computer mic/speaker call.
+                      to call any number directly through the website!
                     </span>
                   )}
                 </span>
@@ -1152,9 +1154,9 @@ export default function LiveCallSimulatorModal({
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
+                    <span className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1.5 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                      Browser Audio Active
+                      Website Voice Channel Active (Duplex AI)
                     </span>
 
                     {callStatus === 'CONNECTED' ? (
