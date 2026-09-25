@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import HeaderBanner from '@/components/layout/HeaderBanner';
 import Sidebar from '@/components/layout/Sidebar';
@@ -119,6 +119,29 @@ export default function HomePage() {
   const [searchEmptyMessage, setSearchEmptyMessage] = useState<string | null>(null);
 
   const { success, error: toastError, info, warning } = useToast();
+  const lastBookedLeadIdRef = useRef<string | null>(null);
+
+  const handleMeetingBookedSuccess = useCallback(() => {
+    if (selectedLead && lastBookedLeadIdRef.current === selectedLead.id) {
+      return; // Already notified once for this lead
+    }
+    if (selectedLead) {
+      lastBookedLeadIdRef.current = selectedLead.id;
+    }
+    success(
+      'Meeting Booked! 📅',
+      `Ava successfully secured a qualification demo with ${selectedLead?.name || 'prospect'}.`
+    );
+    if (selectedLead) {
+      setLeads((prev) =>
+        prev.map((l) => (l.id === selectedLead.id ? { ...l, status: 'MEETING_BOOKED' } : l))
+      );
+    }
+    fetch('/api/stats')
+      .then((r) => r.json())
+      .then((d) => d.stats && setStats(d.stats))
+      .catch(() => {});
+  }, [selectedLead, success]);
 
   // Global Keyboard Shortcuts (⌘K for Command Palette, ? for Shortcuts Cheatsheet)
   useEffect(() => {
@@ -886,20 +909,7 @@ export default function HomePage() {
           setIsCallMinimized(true);
           info('Call Minimized', 'Audio session docked to floating widget. You can freely browse.');
         }}
-        onMeetingBookedSuccess={() => {
-          success('Meeting Booked! 📅', `Ava successfully secured a qualification demo with ${selectedLead?.name || 'prospect'}.`);
-          if (selectedLead) {
-            setLeads((prev) =>
-              prev.map((l) =>
-                l.id === selectedLead.id ? { ...l, status: 'MEETING_BOOKED' } : l
-              )
-            );
-          }
-          fetch('/api/stats')
-            .then((r) => r.json())
-            .then((d) => d.stats && setStats(d.stats))
-            .catch(() => {});
-        }}
+        onMeetingBookedSuccess={handleMeetingBookedSuccess}
       />
 
       {/* Floating Multitasking Audio Call HUD */}

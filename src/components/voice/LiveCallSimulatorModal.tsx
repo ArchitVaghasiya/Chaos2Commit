@@ -215,6 +215,18 @@ export default function LiveCallSimulatorModal({
   const messagesRef = useRef<Message[]>([]);
   const callStatusRef = useRef(callStatus);
   const durationRef = useRef(duration);
+  const hasTriggeredMeetingSuccessRef = useRef(false);
+  const onMeetingBookedSuccessRef = useRef(onMeetingBookedSuccess);
+
+  useEffect(() => {
+    onMeetingBookedSuccessRef.current = onMeetingBookedSuccess;
+  }, [onMeetingBookedSuccess]);
+
+  useEffect(() => {
+    if (isOpen) {
+      hasTriggeredMeetingSuccessRef.current = false;
+    }
+  }, [isOpen, twilioSid]);
 
   useEffect(() => {
     durationRef.current = duration;
@@ -686,7 +698,10 @@ export default function LiveCallSimulatorModal({
 
             if (data.outcome === 'MEETING_BOOKED') {
               setIsMeetingBooked(true);
-              onMeetingBookedSuccess?.();
+              if (!hasTriggeredMeetingSuccessRef.current) {
+                hasTriggeredMeetingSuccessRef.current = true;
+                onMeetingBookedSuccessRef.current?.();
+              }
             } else if (data.outcome === 'DO_NOT_CALL') {
               setIsNegativeDnd(true);
             }
@@ -696,7 +711,7 @@ export default function LiveCallSimulatorModal({
     }, 1500);
 
     return () => clearInterval(pollInterval);
-  }, [isOpen, telephonyMode, twilioSid, callStatus, onMeetingBookedSuccess]);
+  }, [isOpen, telephonyMode, twilioSid, callStatus]);
 
   // Handle Prospect Speech / User Message directly in console & live call
   const handleSendMessage = async (textToSend?: string) => {
@@ -762,7 +777,10 @@ export default function LiveCallSimulatorModal({
           setIsMeetingBooked(true);
           if (data.googleCalendarUrl) setGoogleCalendarUrl(data.googleCalendarUrl);
           if (data.meetingDisplayStr) setMeetingDisplayStr(data.meetingDisplayStr);
-          onMeetingBookedSuccess?.();
+          if (!hasTriggeredMeetingSuccessRef.current) {
+            hasTriggeredMeetingSuccessRef.current = true;
+            onMeetingBookedSuccessRef.current?.();
+          }
           const gcalOffset = durationRef.current;
           setMessages((prev) => [
             ...prev,
@@ -1948,8 +1966,10 @@ export default function LiveCallSimulatorModal({
           calendlyUrl={calendlyUrl}
           onBookingConfirmed={() => {
             setCalendlyStatus('BOOKED');
-            setIsMeetingBooked(true);
-            onMeetingBookedSuccess?.();
+            if (!hasTriggeredMeetingSuccessRef.current) {
+              hasTriggeredMeetingSuccessRef.current = true;
+              onMeetingBookedSuccessRef.current?.();
+            }
           }}
           onTriggerRedial={(script) => {
             handleTriggerRedial(script);

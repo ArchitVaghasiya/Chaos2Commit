@@ -43,16 +43,24 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const toast = useCallback(
     ({ type, title, message, duration = 4000, action }: Omit<ToastItem, 'id'>) => {
-      const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-      const newToast: ToastItem = { id, type, title, message, duration, action };
+      setToasts((prev) => {
+        // Prevent duplicate toasts if identical title & message are already visible
+        const isDuplicate = prev.some((t) => t.title === title && t.message === message);
+        if (isDuplicate) return prev;
 
-      setToasts((prev) => [...prev, newToast]);
+        const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+        const newToast: ToastItem = { id, type, title, message, duration, action };
 
-      if (duration > 0) {
-        setTimeout(() => {
-          removeToast(id);
-        }, duration);
-      }
+        if (duration > 0) {
+          setTimeout(() => {
+            removeToast(id);
+          }, duration);
+        }
+
+        // Keep at most 3 active toasts at a time
+        const next = [...prev, newToast];
+        return next.slice(-3);
+      });
     },
     [removeToast]
   );
