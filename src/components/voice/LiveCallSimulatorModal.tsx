@@ -97,8 +97,8 @@ export default function LiveCallSimulatorModal({
   onMeetingBookedSuccess,
   defaultLanguage = 'English',
 }: LiveCallSimulatorModalProps) {
-  // Mode Selection: Browser Live AI Call (Demo) vs Real Twilio Mobile Call
-  const [telephonyMode, setTelephonyMode] = useState<'BROWSER_SIM' | 'TWILIO_PSTN'>('BROWSER_SIM');
+  // Mode Selection: Real Twilio Mobile Call (Default) vs Browser Live AI Call
+  const [telephonyMode, setTelephonyMode] = useState<'BROWSER_SIM' | 'TWILIO_PSTN'>('TWILIO_PSTN');
 
   // Shared Core State
   const [phoneNumber, setPhoneNumber] = useState(lead?.phone || '+91 9737362307');
@@ -394,6 +394,83 @@ export default function LiveCallSimulatorModal({
     }
   };
 
+  // Start Real Twilio PSTN Carrier Phone Call
+  const handleStartRealCall = async (targetOverride?: string, langOverride?: SupportedLanguage) => {
+    const rawTarget = targetOverride || phoneNumber || lead?.phone || '+91 9737362307';
+    let cleanTarget = rawTarget.replace(/[^\d+]/g, '');
+    if (!cleanTarget.startsWith('+')) {
+      if (cleanTarget.length === 10) cleanTarget = `+91${cleanTarget}`;
+      else cleanTarget = `+${cleanTarget}`;
+    }
+
+    const lang = langOverride || selectedLanguage || 'Gujarati';
+
+    stopSpeech();
+    setIsDialingTwilio(true);
+    setCallStatus('DIALING');
+    setErrorMessage(null);
+    setTrialNotice(null);
+    setTelephonyMode('TWILIO_PSTN');
+    setPhoneNumber(cleanTarget);
+    setMessages([
+      {
+        speaker: 'system',
+        text: `Initiating direct physical PSTN carrier call to ${cleanTarget}...`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+    ]);
+
+    try {
+      const res = await fetch('/api/voice/twilio/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadId: lead?.id,
+          phoneNumber: cleanTarget,
+          language: lang,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.call) {
+        setTwilioSid(data.call.callSid);
+        setCallStatus('RINGING');
+        setMessages((prev) => [
+          ...prev,
+          {
+            speaker: 'system',
+            text: `Ringing physical phone on carrier line ${cleanTarget}. Please answer your phone to speak with Ava AI!`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+      } else {
+        const isTrialPolicy =
+          data.error?.includes('573002') ||
+          data.error?.includes('21215') ||
+          data.error?.includes('21216') ||
+          data.error?.includes('verified') ||
+          data.trialNotice;
+
+        if (isTrialPolicy && !cleanTarget.includes('9737362307')) {
+          setTrialNotice(
+            `Twilio Free Sandbox Notice: Carrier dialing to ${cleanTarget} requires number verification in Twilio Console. Verified number +91 9737362307 is active and ready.`
+          );
+          setErrorMessage(data.error || 'Destination number not verified in Twilio trial account.');
+          setCallStatus('ENDED');
+        } else {
+          setCallStatus('ENDED');
+          setErrorMessage(data.error || 'Twilio rejected the call request.');
+          checkDiagnostics(cleanTarget);
+        }
+      }
+    } catch (err: any) {
+      setCallStatus('ENDED');
+      setErrorMessage(err.message || 'Network error while contacting Twilio API.');
+    } finally {
+      setIsDialingTwilio(false);
+    }
+  };
+
   // Reset & load on modal open
   useEffect(() => {
     if (isOpen && lead) {
@@ -409,7 +486,7 @@ export default function LiveCallSimulatorModal({
       setIsCallbackScheduled(false);
       setCallSummary('Evaluating requirement fit, timeline, and decision maker authority...');
       setNextBestAction('Qualify company rollout scale and propose solutions demo.');
-      setTelephonyMode('BROWSER_SIM');
+      setTelephonyMode('TWILIO_PSTN');
 
       // Detect language from lead
       let detectedLang: SupportedLanguage = 'English';
@@ -424,8 +501,8 @@ export default function LiveCallSimulatorModal({
       }
       setSelectedLanguage(detectedLang);
 
-      // Start Browser Call Simulation immediately
-      startBrowserCallSimulation(detectedLang);
+      // Directly place real physical PSTN carrier call (NO browser demo simulation)
+      handleStartRealCall(initialTarget, detectedLang);
 
       // Check Twilio diagnostics in background
       checkDiagnostics(initialTarget);
@@ -548,10 +625,14 @@ export default function LiveCallSimulatorModal({
     return () => clearInterval(pollInterval);
   }, [isOpen, telephonyMode, twilioSid, callStatus, onMeetingBookedSuccess]);
 
-  // Handle Prospect Speech / User Message in Browser Simulator
+  // Handle Prospect Speech / User Message directly in console & live call
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputText).trim();
     if (!text || isAiThinking) return;
+
+    if (callStatus !== 'CONNECTED') {
+      setCallStatus('CONNECTED');
+    }
 
     stopSpeech();
     setInputText('');
@@ -782,7 +863,7 @@ export default function LiveCallSimulatorModal({
     }
   };
 
-  // Re-start / Re-dial in Browser
+  // Re-start / Re-dial
   const handleRestartCall = () => {
     stopSpeech();
     setDuration(0);
@@ -791,76 +872,13 @@ export default function LiveCallSimulatorModal({
     setIsNegativeDnd(false);
     setIsHumanHandoff(false);
     setIsCallbackScheduled(false);
-    startBrowserCallSimulation(selectedLanguage);
-  };
-
-  // Start Real Twilio PSTN Phone Call
-  const handleStartRealCall = async () => {
-    if (!phoneNumber.trim()) return;
-    stopSpeech();
-    setIsDialingTwilio(true);
-    setCallStatus('DIALING');
-    setErrorMessage(null);
-    setTrialNotice(null);
-    setMessages([
-      {
-        speaker: 'system',
-        text: `Initiating real Twilio PSTN carrier call to ${phoneNumber}...`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      },
-    ]);
-
-    try {
-      const res = await fetch('/api/voice/twilio/call', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          leadId: lead?.id,
-          phoneNumber,
-          language: selectedLanguage,
-        }),
-      });
-
-      const data = await res.json();
-      if (data.success && data.call) {
-        setTwilioSid(data.call.callSid);
-        setCallStatus('RINGING');
-        setMessages((prev) => [
-          ...prev,
-          {
-            speaker: 'system',
-            text: `Ringing on dedicated carrier line ${phoneNumber}. Pick up your physical phone to speak with Ava AI!`,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          },
-        ]);
-      } else {
-        const isTrialPolicy =
-          data.error?.includes('573002') ||
-          data.error?.includes('21215') ||
-          data.error?.includes('21216') ||
-          data.error?.includes('verified') ||
-          data.error?.includes('trial') ||
-          data.trialNotice;
-
-        if (isTrialPolicy) {
-          setTrialNotice(
-            `Twilio Carrier Note: Carrier dialing to ${phoneNumber} requires Twilio account upgrade. Seamlessly connecting via Direct Live AI Voice Channel...`
-          );
-          setTelephonyMode('BROWSER_SIM');
-          startBrowserCallSimulation(selectedLanguage);
-        } else {
-          setCallStatus('ENDED');
-          setErrorMessage(data.error || 'Twilio rejected the call request.');
-          checkDiagnostics(phoneNumber);
-        }
-      }
-    } catch (err: any) {
-      setCallStatus('ENDED');
-      setErrorMessage(err.message || 'Network error while contacting Twilio API.');
-    } finally {
-      setIsDialingTwilio(false);
+    if (telephonyMode === 'TWILIO_PSTN') {
+      handleStartRealCall(phoneNumber, selectedLanguage);
+    } else {
+      startBrowserCallSimulation(selectedLanguage);
     }
   };
+
 
   const handleSaveTwilioNumber = async () => {
     if (!newTwilioNumberInput.trim()) return;
@@ -1281,15 +1299,26 @@ export default function LiveCallSimulatorModal({
                       disabled={callStatus === 'CONNECTED' || callStatus === 'RINGING' || isDialingTwilio}
                       className="px-2.5 py-1 rounded-lg bg-black/70 border border-white/20 text-white font-mono text-xs focus:outline-none focus:border-emerald-400"
                     />
-                    <button
-                      type="button"
-                      onClick={handleStartRealCall}
-                      disabled={isDialingTwilio || callStatus === 'CONNECTED' || callStatus === 'RINGING'}
-                      className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 cursor-pointer disabled:opacity-40"
-                    >
-                      <PhoneCall className="w-3 h-3" />
-                      <span>Dial</span>
-                    </button>
+                    {callStatus === 'CONNECTED' || callStatus === 'RINGING' ? (
+                      <button
+                        type="button"
+                        onClick={handleHangup}
+                        className="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1 cursor-pointer shadow-md shadow-rose-600/30 transition-all animate-pulse"
+                      >
+                        <PhoneOff className="w-3 h-3" />
+                        <span>Hang Up</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleStartRealCall()}
+                        disabled={isDialingTwilio}
+                        className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 cursor-pointer disabled:opacity-40"
+                      >
+                        {isDialingTwilio ? <Loader2 className="w-3 h-3 animate-spin" /> : <PhoneCall className="w-3 h-3" />}
+                        <span>{callStatus === 'ENDED' ? 'Re-dial PSTN' : 'Dial Physical Call'}</span>
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
@@ -1494,7 +1523,7 @@ export default function LiveCallSimulatorModal({
                 <button
                   type="button"
                   onClick={() => handleSendMessage('Yes, we are actively looking for a partner for 150 users. What is your pricing and implementation timeline?')}
-                  disabled={callStatus !== 'CONNECTED' || isAiThinking}
+                  disabled={callStatus === 'ENDED' || isAiThinking}
                   className="px-2.5 py-1 rounded-lg bg-blue-600/15 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40"
                 >
                   <Zap className="w-3 h-3 text-blue-400" />
@@ -1504,7 +1533,7 @@ export default function LiveCallSimulatorModal({
                 <button
                   type="button"
                   onClick={() => handleSendMessage('Please stop calling me! Remove my phone number and take me off your list right now.')}
-                  disabled={callStatus !== 'CONNECTED' || isAiThinking}
+                  disabled={callStatus === 'ENDED' || isAiThinking}
                   className="px-2.5 py-1 rounded-lg bg-rose-600/15 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40"
                 >
                   <PhoneMissed className="w-3 h-3 text-rose-400" />
@@ -1514,7 +1543,7 @@ export default function LiveCallSimulatorModal({
                 <button
                   type="button"
                   onClick={() => handleSendMessage('Can I speak with a human or team member? Please send me a text message with a link so I can book a call directly from your timeslots.')}
-                  disabled={callStatus !== 'CONNECTED' || isAiThinking}
+                  disabled={callStatus === 'ENDED' || isAiThinking}
                   className="px-2.5 py-1 rounded-lg bg-purple-600/15 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40"
                 >
                   <UserCheck className="w-3 h-3 text-purple-400" />
@@ -1524,7 +1553,7 @@ export default function LiveCallSimulatorModal({
                 <button
                   type="button"
                   onClick={() => handleSendMessage("I'm in an important client meeting right now, please call me back tomorrow morning at 10:30 AM.")}
-                  disabled={callStatus !== 'CONNECTED' || isAiThinking}
+                  disabled={callStatus === 'ENDED' || isAiThinking}
                   className="px-2.5 py-1 rounded-lg bg-amber-600/15 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40"
                 >
                   <Clock className="w-3 h-3 text-amber-400" />
@@ -1534,7 +1563,7 @@ export default function LiveCallSimulatorModal({
                 <button
                   type="button"
                   onClick={() => handleSendMessage('Sounds fantastic! Let us book the calendar demo for Thursday at 3 PM.')}
-                  disabled={callStatus !== 'CONNECTED' || isAiThinking}
+                  disabled={callStatus === 'ENDED' || isAiThinking}
                   className="px-2.5 py-1 rounded-lg bg-emerald-600/15 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40"
                 >
                   <Calendar className="w-3 h-3 text-emerald-400" />
@@ -1548,7 +1577,7 @@ export default function LiveCallSimulatorModal({
               <button
                 type="button"
                 onClick={toggleMic}
-                disabled={callStatus !== 'CONNECTED'}
+                disabled={callStatus === 'ENDED'}
                 className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
                   isMicListening
                     ? 'bg-rose-600 text-white border-rose-500 shadow-lg shadow-rose-600/40 animate-pulse'
@@ -1568,11 +1597,11 @@ export default function LiveCallSimulatorModal({
                   placeholder={
                     isMicListening
                       ? 'Listening to your speech...'
-                      : callStatus === 'CONNECTED'
-                      ? 'Speak into mic or type prospect reply here (Enter to send)...'
-                      : 'Call must be connected to speak...'
+                      : callStatus === 'ENDED'
+                      ? 'Call ended. Click Dial or Re-dial to call again.'
+                      : 'Speak into mic or type prospect reply here (Enter to send)...'
                   }
-                  disabled={callStatus !== 'CONNECTED' || isAiThinking}
+                  disabled={callStatus === 'ENDED' || isAiThinking}
                   className="w-full px-3 py-2 rounded-xl bg-black/60 border border-white/15 text-white text-xs focus:outline-none focus:border-indigo-400 disabled:opacity-50"
                 />
               </div>
@@ -1580,7 +1609,7 @@ export default function LiveCallSimulatorModal({
               <button
                 type="button"
                 onClick={() => handleSendMessage()}
-                disabled={callStatus !== 'CONNECTED' || !inputText.trim() || isAiThinking}
+                disabled={callStatus === 'ENDED' || !inputText.trim() || isAiThinking}
                 className="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-all cursor-pointer disabled:opacity-40 active:scale-95"
               >
                 <Send className="w-4 h-4" />

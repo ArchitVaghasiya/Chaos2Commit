@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { generateVoiceTurnWithGroq } from '@/lib/ai/groq';
 import { generateVoiceTurnWithGemini } from '@/lib/ai/gemini';
-import { getPollyVoiceForLanguage, sendOutboundSms } from '@/lib/telephony/twilio';
+import { getPollyVoiceForLanguage, sendOutboundSms, getDynamicWebhookBase } from '@/lib/telephony/twilio';
 
 export async function POST(request: Request) {
   return handleGather(request);
@@ -77,7 +77,7 @@ async function handleGather(request: Request) {
       });
     }
 
-    const publicBase = process.env.PUBLIC_WEBHOOK_URL || url.origin;
+    const publicBase = getDynamicWebhookBase() || process.env.PUBLIC_WEBHOOK_URL || url.origin;
 
     // =========================================================================
     // STEP 1: INTERACTIVE LANGUAGE SELECTION (DTMF 1/2/3 or Speech)

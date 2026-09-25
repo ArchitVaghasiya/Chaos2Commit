@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getDynamicWebhookBase } from '@/lib/telephony/twilio';
 
 export async function GET(request: Request) {
   return handleTwiml(request);
@@ -14,7 +15,7 @@ async function handleTwiml(request: Request) {
   const leadId = url.searchParams.get('leadId') || '';
   const name = url.searchParams.get('name') || 'there';
   const company = url.searchParams.get('company') || 'your company';
-  const publicBase = process.env.PUBLIC_WEBHOOK_URL || url.origin;
+  const publicBase = getDynamicWebhookBase() || process.env.PUBLIC_WEBHOOK_URL || url.origin;
 
   // Retrieve current organization settings for company name & solutions
   let orgName = 'CloudScale Solutions';

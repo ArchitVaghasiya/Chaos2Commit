@@ -300,7 +300,7 @@ export default function HomePage() {
     setSelectedLead(lead);
     setIsCallMinimized(false);
     setIsCallModalOpen(true);
-    info('Call Initializing', `Outbound voice simulation starting for ${lead.name}...`);
+    info('Live Carrier Call', `Dispatching direct physical call to ${lead.phone || '+91 9737362307'}...`);
   };
 
   const openScoreModalForLead = (lead: LeadItem) => {

@@ -1,4 +1,30 @@
 import twilio from 'twilio';
+import fs from 'fs';
+import path from 'path';
+
+export function getDynamicWebhookBase(hostUrl?: string): string {
+  try {
+    const envPath = path.join(process.cwd(), '.env');
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, 'utf8');
+      const match = content.match(/PUBLIC_WEBHOOK_URL="([^"]+)"/);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+  } catch (_) {}
+
+  if (process.env.PUBLIC_WEBHOOK_URL) {
+    return process.env.PUBLIC_WEBHOOK_URL;
+  }
+
+  if (hostUrl && !hostUrl.includes('localhost')) {
+    return hostUrl;
+  }
+
+  return '';
+}
+
 
 export interface OutboundCallParams {
   to: string;
@@ -78,23 +104,42 @@ export async function placeOutboundCall(params: OutboundCallParams): Promise<Twi
 
   if (client) {
     try {
-      // Determine public base for Twilio webhooks
-      const publicBase = process.env.PUBLIC_WEBHOOK_URL || (hostUrl.includes('localhost') ? undefined : hostUrl);
+      // Determine dynamic public base for Twilio webhooks
+      const publicBase = getDynamicWebhookBase(hostUrl);
 
-      const webhookUrl = publicBase
-        ? `${publicBase}/api/voice/twilio/twiml?leadId=${encodeURIComponent(leadId || '')}&name=${encodeURIComponent(
-            leadName || 'Prospect'
-          )}&company=${encodeURIComponent(companyName || 'Enterprise')}&lang=${encodeURIComponent(
-            language
-          )}`
-        : 'https://demo.twilio.com/docs/voice.xml';
+      const safeLeadId = encodeURIComponent(leadId || '');
+      const safeLeadName = encodeURIComponent(leadName || 'Prospect');
+      const safeCompany = encodeURIComponent(companyName || 'Gohel Infotech Solutions');
+
+      const gatherUrl = publicBase
+        ? `${publicBase}/api/voice/twilio/gather?step=language&leadId=${safeLeadId}&name=${safeLeadName}&company=${safeCompany}`
+        : '';
+      const fallbackUrl = publicBase
+        ? `${publicBase}/api/voice/twilio/gather?step=language&leadId=${safeLeadId}&name=${safeLeadName}&company=${safeCompany}&defaultLang=Gujarati`
+        : '';
+
+      const orgClean = (companyName || 'Gohel Infotech Solutions').replace(/&/g, 'and').replace(/[<>'"]/g, '');
+
+      // INLINE TWIML: Delivers zero-latency, fail-safe greeting directly inside the API payload!
+      // This completely eliminates any "there is no twiML url verify it" error from Twilio!
+      const inlineTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  ${
+    gatherUrl
+      ? `<Gather input="speech dtmf" numDigits="1" action="${gatherUrl.replace(/&/g, '&amp;')}" method="POST" speechTimeout="auto" timeout="6">
+    <Say voice="Polly.Aditi" language="hi-IN">Welcome to ${orgClean}! For Gujarati, press 1 or say Gujarati. हिन्दी के लिए 2 दबाएँ या हिन्दी बोलें। For English, press 3 or speak English.</Say>
+  </Gather>
+  <Redirect method="POST">${fallbackUrl.replace(/&/g, '&amp;')}</Redirect>`
+      : `<Say voice="Polly.Aditi" language="hi-IN">Welcome to ${orgClean}. Thank you for connecting with our automated AI assistant.</Say>`
+  }
+</Response>`;
 
       const statusCallbackUrl = publicBase ? `${publicBase}/api/voice/twilio/status` : undefined;
 
       const call = await client.calls.create({
         to: cleanedTo,
         from: callerNumber,
-        url: webhookUrl,
+        twiml: inlineTwiml,
         ...(statusCallbackUrl ? { statusCallback: statusCallbackUrl } : {}),
       });
 
