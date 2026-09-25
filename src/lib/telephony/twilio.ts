@@ -32,16 +32,7 @@ export function getTwilioClient(): twilio.Twilio | null {
   const apiKeySecret = process.env.TWILIO_API_KEY_SECRET;
   const currentToken = process.env.TWILIO_AUTH_TOKEN;
 
-  // 1. Preferred: Dedicated Twilio API Key & Secret
-  if (apiKeySid && apiKeySecret && accountSid && apiKeySid.startsWith('SK')) {
-    try {
-      return twilio(apiKeySid, apiKeySecret, { accountSid });
-    } catch (err) {
-      console.warn('Could not initialize Twilio client with API Key:', err);
-    }
-  }
-
-  // 2. Standard: Master Account SID & Auth Token
+  // 1. Primary: Master Account SID & Primary Auth Token
   if (
     accountSid &&
     currentToken &&
@@ -52,8 +43,16 @@ export function getTwilioClient(): twilio.Twilio | null {
     try {
       return twilio(accountSid, currentToken);
     } catch (err) {
-      console.warn('Could not initialize Twilio SDK client:', err);
-      return null;
+      console.warn('Could not initialize Twilio SDK client with Auth Token:', err);
+    }
+  }
+
+  // 2. Secondary fallback: Dedicated Twilio API Key & Secret
+  if (apiKeySid && apiKeySecret && accountSid && apiKeySid.startsWith('SK')) {
+    try {
+      return twilio(apiKeySid, apiKeySecret, { accountSid });
+    } catch (err) {
+      console.warn('Could not initialize Twilio client with API Key:', err);
     }
   }
   return null;
