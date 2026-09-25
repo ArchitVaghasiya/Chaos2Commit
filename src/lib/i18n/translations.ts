@@ -895,20 +895,20 @@ export function getLocaleForVoice(language: string): string {
 export function getAiGreeting(language: string, firstName: string, company: string, requirementTopic: string): string {
   switch (language) {
     case 'ગુજરાતી':
-      return `નમસ્તે ${firstName}, હું TechNova Solutions તરફથી Ava બોલી રહી છું. હું ${requirementTopic} વિશે વાત કરવા માટે સંપર્ક કરી રહી છું.`;
+      return `નમસ્તે ${firstName}, હું Techsolution તરફથી Ava બોલી રહી છું. હું ${requirementTopic} વિશે વાત કરવા માટે સંપર્ક કરી રહી છું.`;
     case 'Español':
-      return `Hola ${firstName}, soy Ava de TechNova Solutions. Le llamo en referencia a ${requirementTopic}.`;
+      return `Hola ${firstName}, soy Ava de Techsolution. Le llamo en referencia a ${requirementTopic}.`;
     case 'हिन्दी':
-      return `नमस्ते ${firstName}, मैं TechNova Solutions से Ava बोल रही हूँ। मैं ${requirementTopic} के संबंध में संपर्क कर रही हूँ।`;
+      return `नमस्ते ${firstName}, मैं Techsolution से Ava बोल रही हूँ। मैं ${requirementTopic} के संबंध में संपर्क कर रही हूँ।`;
     case 'Français':
-      return `Bonjour ${firstName}, je suis Ava de TechNova Solutions. Je vous appelle au sujet de ${requirementTopic}.`;
+      return `Bonjour ${firstName}, je suis Ava de Techsolution. Je vous appelle au sujet de ${requirementTopic}.`;
     case 'Deutsch':
-      return `Hallo ${firstName}, ich bin Ava von TechNova Solutions. Ich rufe bezüglich ${requirementTopic} an.`;
+      return `Hallo ${firstName}, ich bin Ava von Techsolution. Ich rufe bezüglich ${requirementTopic} an.`;
     case 'العربية':
-      return `مرحباً ${firstName}، أنا آفا من TechNova Solutions. أتصل بك بخصوص ${requirementTopic}.`;
+      return `مرحباً ${firstName}، أنا آفا من Techsolution. أتصل بك بخصوص ${requirementTopic}.`;
     case 'English':
     default:
-      return `Hello ${firstName}, I'm Ava from TechNova Solutions. I'm calling about ${requirementTopic}.`;
+      return `Hello ${firstName}, I'm Ava from Techsolution. I'm calling about ${requirementTopic}.`;
   }
 }
 
@@ -920,20 +920,20 @@ export function getLanguageConfirmationSpeech(
 ): string {
   switch (language) {
     case 'ગુજરાતી':
-      return `આભાર! આપણે આ કૉલ ગુજરાતીમાં ચાલુ રાખીશું. નમસ્તે ${firstName}, હું TechNova Solutions તરફથી Ava બોલી રહી છું. હું ${requirementTopic} ના સંદર્ભમાં સંપર્ક કરી રહી છું. શું તમે આ અમલીકરણ માટે સક્રિયપણે પાર્ટનર શોધી રહ્યા છો?`;
+      return `આભાર! આપણે આ કૉલ ગુજરાતીમાં ચાલુ રાખીશું. નમસ્તે ${firstName}, હું Techsolution તરફથી Ava બોલી રહી છું. હું ${requirementTopic} ના સંદર્ભમાં સંપર્ક કરી રહી છું. શું તમે આ અમલીકરણ માટે સક્રિયપણે પાર્ટનર શોધી રહ્યા છો?`;
     case 'हिन्दी':
-      return `धन्यवाद! हम इस कॉल को हिंदी में जारी रखेंगे। नमस्ते ${firstName}, मैं TechNova Solutions से Ava बोल रही हूँ। मैं ${requirementTopic} के संबंध में संपर्क कर रही हूँ। क्या आप इसके लिए सही समाधान तलाश रहे हैं?`;
+      return `धन्यवाद! हम इस कॉल को हिंदी में जारी रखेंगे। नमस्ते ${firstName}, मैं Techsolution से Ava बोल रही हूँ। मैं ${requirementTopic} के संबंध में संपर्क कर रही हूँ। क्या आप इसके लिए सही समाधान तलाश रहे हैं?`;
     case 'Español':
-      return `¡Muchas gracias! Continuaremos esta llamada en español. Hola ${firstName}, soy Ava de TechNova Solutions. Le llamo en referencia a ${requirementTopic}. ¿Están evaluando activamente socios para esta implementación?`;
+      return `¡Muchas gracias! Continuaremos esta llamada en español. Hola ${firstName}, soy Ava de Techsolution. Le llamo en referencia a ${requirementTopic}. ¿Están evaluando activamente socios para esta implementación?`;
     case 'Français':
-      return `Merci beaucoup ! Nous poursuivrons cet appel en français. Bonjour ${firstName}, je suis Ava de TechNova Solutions. Je vous appelle au sujet de ${requirementTopic}. Recherchez-vous actuellement un partenaire pour ce projet ?`;
+      return `Merci beaucoup ! Nous poursuivrons cet appel en français. Bonjour ${firstName}, je suis Ava de Techsolution. Je vous appelle au sujet de ${requirementTopic}. Recherchez-vous actuellement un partenaire pour ce projet ?`;
     case 'Deutsch':
-      return `Vielen Dank! Wir setzen dieses Gespräch auf Deutsch fort. Hallo ${firstName}, ich bin Ava von TechNova Solutions. Ich rufe bezüglich ${requirementTopic} an. Suchen Sie derzeit aktiv nach einem Implementierungspartner?`;
+      return `Vielen Dank! Wir setzen dieses Gespräch auf Deutsch fort. Hallo ${firstName}, ich bin Ava von Techsolution. Ich rufe bezüglich ${requirementTopic} an. Suchen Sie derzeit aktiv nach einem Implementierungspartner?`;
     case 'العربية':
-      return `شكراً جزيلاً! سنواصل هذه المكالمة باللغة العربية. مرحباً ${firstName}، أنا آفا من TechNova Solutions. أتصل بخصوص ${requirementTopic}. هل تبحثون عن شريك معتمد لهذا المشروع؟`;
+      return `شكراً جزيلاً! سنواصل هذه المكالمة باللغة العربية. مرحباً ${firstName}، أنا آفا من Techsolution. أتصل بخصوص ${requirementTopic}. هل تبحثون عن شريك معتمد لهذا المشروع؟`;
     case 'English':
     default:
-      return `Thank you! Continuing in English. Hello ${firstName}, I'm Ava from TechNova Solutions. I'm calling about ${requirementTopic}. Are you actively exploring implementation partners for this rollout?`;
+      return `Thank you! Continuing in English. Hello ${firstName}, I'm Ava from Techsolution. I'm calling about ${requirementTopic}. Are you actively exploring implementation partners for this rollout?`;
   }
 }
 

@@ -57,7 +57,7 @@ async function handleGather(request: Request) {
       orgSetting = await prisma.organizationSetting.findFirst();
     } catch (_) {}
 
-    const orgName = orgSetting?.companyName || 'CloudScale Solutions';
+    const orgName = 'Techsolution';
     const productsCatalog =
       orgSetting?.productsCatalog ||
       'Microsoft 365 Enterprise Migration, SharePoint Online Document Management, Zero-Downtime Cloud Cutover, Power Platform Automation';
@@ -89,27 +89,35 @@ async function handleGather(request: Request) {
       let detectedLang = 'Gujarati';
       if (
         digitsTrimmed === '1' ||
+        digitsTrimmed.includes('1') ||
         speechLower.includes('gujarat') ||
         speechLower.includes('ગુજરાત') ||
         speechLower.includes('gujarati') ||
         speechLower.includes('ગુજરાતી') ||
         speechLower.includes('ek') ||
-        speechLower.includes('એક')
+        speechLower.includes('એક') ||
+        speechLower.includes('one')
       ) {
         detectedLang = 'Gujarati';
       } else if (
         digitsTrimmed === '2' ||
+        digitsTrimmed.includes('2') ||
         speechLower.includes('hindi') ||
         speechLower.includes('हिन्दी') ||
         speechLower.includes('हिंदी') ||
-        speechLower.includes('दो')
+        speechLower.includes('दो') ||
+        speechLower.includes('do') ||
+        speechLower.includes('two')
       ) {
         detectedLang = 'Hindi';
       } else if (
         digitsTrimmed === '3' ||
+        digitsTrimmed.includes('3') ||
         speechLower.includes('english') ||
         speechLower.includes('inglis') ||
         speechLower.includes('angrezi') ||
+        speechLower.includes('teen') ||
+        speechLower.includes('tran') ||
         speechLower.includes('three')
       ) {
         detectedLang = 'English';
@@ -135,15 +143,16 @@ async function handleGather(request: Request) {
 
       // Configure Polly voice & native Twilio speech recognition language
       const { voice, sayLang, gatherLang } = getPollyVoiceForLanguage(detectedLang);
+      const firstName = (leadName || lead?.name || 'Yash').trim().split(' ')[0];
 
-      // Formulate opening solutions pitch in the selected language
+      // Formulate opening solutions pitch in the selected language without prospect company name in hello
       let openingPitch = '';
       if (detectedLang === 'Gujarati') {
-        openingPitch = `નમસ્તે ${leadName}! હું ${orgName} માંથી Ava બોલું છું. તમારી કંપની ${company} માટે Microsoft 365, SharePoint Migration અને Cloud Enterprise સોલ્યુશન્સ વિશે માહિતી આપવા કૉલ કર્યો છે. આપ આ પ્રોજેક્ટ વિશે શું પ્લાન કરી રહ્યા છો?`;
+        openingPitch = `આભાર! આપણે આ કૉલ ગુજરાતીમાં ચાલુ રાખીશું. નમસ્તે ${firstName}! હું ${orgName} તરફથી Ava બોલી રહી છું. હું Microsoft 365, SharePoint Migration અને Cloud Enterprise સોલ્યુશન્સ વિશે વાત કરવા કૉલ કરી રહી છું. આપ આ પ્રોજેક્ટ વિશે શું પ્લાન કરી રહ્યા છો?`;
       } else if (detectedLang === 'Hindi') {
-        openingPitch = `नमस्ते ${leadName}! मैं ${orgName} से Ava बोल रही हूँ। आपकी कंपनी ${company} के लिए Microsoft 365, SharePoint Migration और Cloud Enterprise Solutions के संबंध में कॉल किया है। आप इस प्रोजेक्ट को लेकर क्या योजना बना रहे हैं?`;
+        openingPitch = `धन्यवाद! हम इस कॉल को हिंदी में जारी रखेंगे। नमस्ते ${firstName}! मैं ${orgName} से Ava बोल रही हूँ। मैं Microsoft 365, SharePoint Migration और Cloud Enterprise Solutions के संबंध में बात करने के लिए कॉल कर रही हूँ। आप इस प्रोजेक्ट को लेकर क्या योजना बना रहे हैं?`;
       } else {
-        openingPitch = `Hello ${leadName}! This is Ava calling from ${orgName} regarding Microsoft 365, SharePoint Migration and Cloud Solutions for ${company}. Could you tell me a bit about your current requirements or timeline?`;
+        openingPitch = `Thank you! Continuing in English. Hello ${firstName}! I'm Ava from ${orgName}. I'm calling regarding Microsoft 365, SharePoint Migration, and Cloud Enterprise solutions. Could you tell me a bit about your current requirements or timeline?`;
       }
 
       // Record in CallLog transcript
@@ -158,7 +167,7 @@ async function handleGather(request: Request) {
           }
           transcript.push({
             speaker: 'system',
-            text: `Language selected: ${detectedLang} (Input: Digits "${digitsTrimmed || 'none'}", Speech "${speechResult || 'none'}")`,
+            text: `Language selected: ${detectedLang} (Keypad/Digits "${digitsTrimmed || 'none'}", Speech "${speechResult || 'none'}")`,
             timestamp,
           });
           transcript.push({
@@ -185,10 +194,11 @@ async function handleGather(request: Request) {
 
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Gather input="speech" action="${nextDialogueAction}" method="POST" speechTimeout="auto" timeout="5" language="${gatherLang}">
+  <Gather input="speech" action="${escapeXml(nextDialogueAction)}" method="POST" speechTimeout="auto" timeout="6" language="${gatherLang}">
     <Say voice="${voice}" language="${sayLang}">${escapeXml(openingPitch)}</Say>
   </Gather>
-  <Redirect method="POST">${nextDialogueAction}</Redirect>
+  <Say voice="${voice}" language="${sayLang}">Thank you for speaking with ${orgName}. Have a wonderful day!</Say>
+  <Hangup/>
 </Response>`;
 
       return new NextResponse(twiml, { headers: { 'Content-Type': 'text/xml' } });
@@ -223,7 +233,7 @@ async function handleGather(request: Request) {
 
       const silenceXml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Gather input="speech" action="${dialogueActionUrl}" method="POST" speechTimeout="auto" timeout="6" language="${gatherLang}">
+  <Gather input="speech" action="${escapeXml(dialogueActionUrl)}" method="POST" speechTimeout="auto" timeout="6" language="${gatherLang}">
     <Say voice="${voice}" language="${sayLang}">${escapeXml(promptSilence)}</Say>
   </Gather>
   <Say voice="${voice}" language="${sayLang}">Thank you for your time. Have a wonderful day!</Say>
@@ -506,7 +516,7 @@ async function handleGather(request: Request) {
     } else {
       responseXml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Gather input="speech" action="${dialogueActionUrl}" method="POST" speechTimeout="auto" timeout="5" language="${gatherLang}">
+  <Gather input="speech" action="${escapeXml(dialogueActionUrl)}" method="POST" speechTimeout="auto" timeout="6" language="${gatherLang}">
     <Say voice="${voice}" language="${sayLang}">${escapeXml(aiReply)}</Say>
   </Gather>
   <Say voice="${voice}" language="${sayLang}">Thank you for speaking with ${orgName}. Have a wonderful day!</Say>

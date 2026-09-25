@@ -435,11 +435,20 @@ export default function LiveCallSimulatorModal({
       if (data.success && data.call) {
         setTwilioSid(data.call.callSid);
         setCallStatus('RINGING');
+        const greetingText =
+          data.call.initialGreeting ||
+          `Welcome to Techsolution! For Gujarati, press 1 or say Gujarati. हिन्दी के लिए 2 दबाएँ या हिन्दी बोलें। For English, press 3 or speak English.`;
+
         setMessages((prev) => [
           ...prev,
           {
             speaker: 'system',
             text: `Ringing physical phone on carrier line ${cleanTarget}. Please answer your phone to speak with Ava AI!`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+          {
+            speaker: 'agent',
+            text: greetingText,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           },
         ]);
@@ -460,12 +469,28 @@ export default function LiveCallSimulatorModal({
         } else {
           setCallStatus('ENDED');
           setErrorMessage(data.error || 'Twilio rejected the call request.');
+          setMessages((prev) => [
+            ...prev,
+            {
+              speaker: 'system',
+              text: `⚠️ Call could not connect: ${data.error || 'Twilio rejected the call request.'}`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            },
+          ]);
           checkDiagnostics(cleanTarget);
         }
       }
     } catch (err: any) {
       setCallStatus('ENDED');
       setErrorMessage(err.message || 'Network error while contacting Twilio API.');
+      setMessages((prev) => [
+        ...prev,
+        {
+          speaker: 'system',
+          text: `⚠️ Network error: ${err.message || 'Failed to contact Twilio API.'}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
     } finally {
       setIsDialingTwilio(false);
     }

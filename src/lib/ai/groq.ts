@@ -34,7 +34,7 @@ export async function generateVoiceTurnWithGroq(
     return null; // Fallback to simulated voice turn
   }
 
-  const orgName = leadContext.orgCompanyName || 'CloudScale Solutions';
+  const orgName = leadContext.orgCompanyName || 'Techsolution';
   const persona = leadContext.aiPersonaName || 'Ava, senior consultative solutions lead';
   const solutions = leadContext.solutionsContext || 'Microsoft 365 Enterprise Migration, SharePoint Online Document Management, Zero-Downtime Cloud Cutover, Power Platform Automation';
 

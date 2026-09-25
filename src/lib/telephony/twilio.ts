@@ -35,6 +35,8 @@ export interface OutboundCallParams {
   requirement?: string;
   language?: string;
   hostUrl?: string;
+  callingOrg?: string;
+  aiPersona?: string;
 }
 
 export interface TwilioCallResult {
@@ -47,6 +49,16 @@ export interface TwilioCallResult {
   message?: string;
   error?: string;
   trialNotice?: string;
+  initialGreeting?: string;
+}
+
+function escapeXml(unsafe: string): string {
+  return unsafe
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 }
 
 /**
@@ -107,41 +119,78 @@ export async function placeOutboundCall(params: OutboundCallParams): Promise<Twi
       // Determine dynamic public base for Twilio webhooks
       const publicBase = getDynamicWebhookBase(hostUrl);
 
+      // Extract prospect first name and target company
+      const firstName = (leadName || 'Yash').trim().split(' ')[0];
+      const prospectCompany = (companyName || 'Gohel Infotech Solutions').replace(/&/g, 'and').replace(/[<>'"]/g, '');
+      const callingOrg = params.callingOrg || 'Techsolution';
+      const aiPersona = params.aiPersona || 'Ava';
+
       const safeLeadId = encodeURIComponent(leadId || '');
-      const safeLeadName = encodeURIComponent(leadName || 'Prospect');
-      const safeCompany = encodeURIComponent(companyName || 'Gohel Infotech Solutions');
+      const safeLeadName = encodeURIComponent(leadName || firstName);
+      const safeCompany = encodeURIComponent(prospectCompany);
+      const safeLang = encodeURIComponent(language || 'Gujarati');
 
-      const gatherUrl = publicBase
-        ? `${publicBase}/api/voice/twilio/gather?step=language&leadId=${safeLeadId}&name=${safeLeadName}&company=${safeCompany}`
+      const { voice, sayLang, gatherLang } = getPollyVoiceForLanguage(language);
+
+      // Formulate Ava's direct consultative greeting matching the web call
+      // Introducing from Techsolution directly, without stating prospect company name in hello
+      let avaGreeting = '';
+      const lowerLang = (language || '').toLowerCase();
+      if (lowerLang.includes('gujarati') || lowerLang.includes('ગુજરાતી') || lowerLang === 'gu') {
+        avaGreeting = `નમસ્તે ${firstName}! હું ${callingOrg} તરફથી ${aiPersona} બોલી રહી છું. હું Microsoft 365, SharePoint Migration અને Cloud Enterprise સોલ્યુશન્સ વિશે વાત કરવા કૉલ કરી રહી છું. આપ આ પ્રોજેક્ટ વિશે શું પ્લાન કરી રહ્યા છો?`;
+      } else if (lowerLang.includes('hindi') || lowerLang.includes('हिन्दी') || lowerLang === 'hi') {
+        avaGreeting = `नमस्ते ${firstName}! मैं ${callingOrg} से ${aiPersona} बोल रही हूँ। मैं Microsoft 365, SharePoint Migration और Cloud Enterprise Solutions के संबंध में बात करने के लिए कॉल कर रही हूँ। आप इस प्रोजेक्ट को लेकर क्या योजना बना रहे हैं?`;
+      } else if (lowerLang.includes('spanish') || lowerLang.includes('español')) {
+        avaGreeting = `Hola ${firstName}, soy ${aiPersona} de ${callingOrg}. Le llamo en referencia a las soluciones de nube y Microsoft 365. ¿Podría comentarme un poco sobre sus requerimientos actuales?`;
+      } else if (lowerLang.includes('french') || lowerLang.includes('français')) {
+        avaGreeting = `Bonjour ${firstName}, je suis ${aiPersona} de ${callingOrg}. Je vous appelle au sujet des solutions cloud et Microsoft 365. Pourriez-vous m'en dire plus sur vos besoins actuels ?`;
+      } else if (lowerLang.includes('german') || lowerLang.includes('deutsch')) {
+        avaGreeting = `Hallo ${firstName}, ich bin ${aiPersona} von ${callingOrg}. Ich rufe bezüglich Cloud-Lösungen und Microsoft 365 an. Könnten Sie mir kurz Ihre aktuellen Anforderungen schildern?`;
+      } else {
+        avaGreeting = `Hello ${firstName}! I'm ${aiPersona} from ${callingOrg}. I'm calling regarding Microsoft 365, SharePoint Migration, and Cloud Enterprise solutions. Could you tell me a bit about your current requirements or timeline?`;
+      }
+
+      // Step 1: Prompt prospect for language preference with dedicated keypad digits (1/2/3) or speech
+      const languageUrl = publicBase
+        ? `${publicBase}/api/voice/twilio/gather?step=language&leadId=${safeLeadId}&name=${safeLeadName}&company=${safeCompany}&lang=${safeLang}`
         : '';
-      const fallbackUrl = publicBase
-        ? `${publicBase}/api/voice/twilio/gather?step=language&leadId=${safeLeadId}&name=${safeLeadName}&company=${safeCompany}&defaultLang=Gujarati`
-        : '';
 
-      const orgClean = (companyName || 'Gohel Infotech Solutions').replace(/&/g, 'and').replace(/[<>'"]/g, '');
+      const languagePromptText = `Welcome to ${callingOrg}! For Gujarati, press 1 or say Gujarati. हिन्दी के लिए 2 दबाएँ या हिन्दी बोलें। For English, press 3 or speak English.`;
 
-      // INLINE TWIML: Delivers zero-latency, fail-safe greeting directly inside the API payload!
-      // This completely eliminates any "there is no twiML url verify it" error from Twilio!
+      // INLINE TWIML: Prompts for dedicated number (1=Gujarati, 2=Hindi, 3=English) or speech first!
       const inlineTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   ${
-    gatherUrl
-      ? `<Gather input="speech dtmf" numDigits="1" action="${gatherUrl.replace(/&/g, '&amp;')}" method="POST" speechTimeout="auto" timeout="6">
-    <Say voice="Polly.Aditi" language="hi-IN">Welcome to ${orgClean}! For Gujarati, press 1 or say Gujarati. हिन्दी के लिए 2 दबाएँ या हिन्दी बोलें। For English, press 3 or speak English.</Say>
+    languageUrl
+      ? `<Gather input="dtmf speech" numDigits="1" action="${languageUrl.replace(/&/g, '&amp;')}" method="POST" speechTimeout="auto" timeout="6">
+    <Say voice="Polly.Aditi" language="en-IN">Welcome to ${escapeXml(callingOrg)}! For Gujarati, press 1 or say Gujarati.</Say>
+    <Say voice="Polly.Aditi" language="hi-IN">हिन्दी के लिए 2 दबाएँ या हिन्दी बोलें।</Say>
+    <Say voice="Polly.Aditi" language="en-IN">For English, press 3 or speak English.</Say>
   </Gather>
-  <Redirect method="POST">${fallbackUrl.replace(/&/g, '&amp;')}</Redirect>`
-      : `<Say voice="Polly.Aditi" language="hi-IN">Welcome to ${orgClean}. Thank you for connecting with our automated AI assistant.</Say>`
+  <Redirect method="POST">${languageUrl.replace(/&/g, '&amp;')}&amp;defaultLang=Gujarati</Redirect>`
+      : `<Say voice="Polly.Aditi" language="en-IN">Welcome to ${escapeXml(callingOrg)}!</Say>
+  <Hangup/>`
   }
 </Response>`;
 
       const statusCallbackUrl = publicBase ? `${publicBase}/api/voice/twilio/status` : undefined;
 
-      const call = await client.calls.create({
+      const callOptions: any = {
         to: cleanedTo,
         from: callerNumber,
-        twiml: inlineTwiml,
-        ...(statusCallbackUrl ? { statusCallback: statusCallbackUrl } : {}),
-      });
+      };
+
+      if (publicBase) {
+        // Use webhook URL so Twilio trial accounts do not reject inline twiml parameter
+        callOptions.url = `${publicBase}/api/voice/twilio/twiml?leadId=${safeLeadId}&name=${safeLeadName}&company=${safeCompany}&lang=${safeLang}`;
+        if (statusCallbackUrl) {
+          callOptions.statusCallback = statusCallbackUrl;
+        }
+      } else {
+        callOptions.twiml = inlineTwiml;
+      }
+
+      const call = await client.calls.create(callOptions);
 
       return {
         success: true,
@@ -151,6 +200,7 @@ export async function placeOutboundCall(params: OutboundCallParams): Promise<Twi
         from: callerNumber,
         isSimulated: false,
         message: `Live Twilio outbound call dispatched to ${cleanedTo}`,
+        initialGreeting: languagePromptText,
       };
     } catch (err: any) {
       console.warn('Twilio API call attempt handled:', err?.message || err);
@@ -263,8 +313,8 @@ export function getPollyVoiceForLanguage(language: string = 'en'): {
 
   const lower = language.toLowerCase();
   if (lower.includes('gujarati') || lower.includes('ગુજરાતી') || lower === 'gu') {
-    voice = 'Polly.Aditi';
-    sayLang = 'hi-IN';
+    voice = 'Google.gu-IN-Standard-A';
+    sayLang = 'gu-IN';
     gatherLang = 'gu-IN';
   } else if (lower.includes('hindi') || lower.includes('हिन्दी') || lower === 'hi') {
     voice = 'Polly.Aditi';

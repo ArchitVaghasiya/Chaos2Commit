@@ -33,6 +33,15 @@ export async function POST(request: Request) {
       } catch (_) {}
     }
 
+    let orgSetting: any = null;
+    try {
+      orgSetting = await prisma.organizationSetting.findFirst();
+    } catch (_) {}
+    
+    const callingOrg = 'Techsolution';
+    const aiPersonaFullName = orgSetting?.aiPersonaName || 'Ava';
+    const aiPersona = aiPersonaFullName.split(' ')[0]; // Extract just "Ava"
+
     // Determine host URL for callbacks
     const host = request.headers.get('host') || 'localhost:3000';
     const protocol = host.includes('localhost') ? 'http' : 'https';
@@ -46,6 +55,8 @@ export async function POST(request: Request) {
       requirement: lead?.originalPostSnippet || 'Cloud & M365 Solutions',
       language: lead?.preferredLanguage || language,
       hostUrl,
+      callingOrg,
+      aiPersona,
     });
 
     if (!callResult.success) {
@@ -78,7 +89,12 @@ export async function POST(request: Request) {
             transcriptJson: JSON.stringify([
               {
                 speaker: 'system',
-                text: `Twilio Outbound call dispatched to ${phoneNumber} (SID: ${callResult.callSid}). Status: ${callResult.status}`,
+                text: `Twilio Outbound call dispatched to ${phoneNumber} (SID: ${callResult.callSid}). Ringing carrier line...`,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              },
+              {
+                speaker: 'agent',
+                text: callResult.initialGreeting || `Welcome to ${callingOrg}! (Press 1 for Gujarati, 2 for Hindi, 3 for English)`,
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               },
             ]),

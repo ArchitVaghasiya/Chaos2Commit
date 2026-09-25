@@ -140,7 +140,7 @@ export async function generateVoiceTurnWithGemini(
   const model = getGeminiModel('gemini-2.5-flash');
   if (!model) return null;
 
-  const orgName = leadContext.orgCompanyName || 'CloudScale Solutions';
+  const orgName = leadContext.orgCompanyName || 'Techsolution';
   const persona = leadContext.aiPersonaName || 'Ava, an expert enterprise B2B solutions specialist';
   const solutions = leadContext.solutionsContext || 'Microsoft 365 Enterprise Migration, SharePoint Online Document Management, Zero-Downtime Cloud Cutover, Power Platform Automation';
 
