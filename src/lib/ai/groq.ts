@@ -19,7 +19,14 @@ export interface VoiceTurnMessage {
  */
 export async function generateVoiceTurnWithGroq(
   messages: VoiceTurnMessage[],
-  leadContext: { name: string; company: string; requirement: string },
+  leadContext: {
+    name: string;
+    company: string;
+    requirement: string;
+    orgCompanyName?: string;
+    solutionsContext?: string;
+    aiPersonaName?: string;
+  },
   language = 'English'
 ) {
   const groq = getGroqClient();
@@ -27,17 +34,22 @@ export async function generateVoiceTurnWithGroq(
     return null; // Fallback to simulated voice turn
   }
 
-  const systemPrompt = `You are Ava, a senior consultative sales executive at TechNova Solutions.
+  const orgName = leadContext.orgCompanyName || 'CloudScale Solutions';
+  const persona = leadContext.aiPersonaName || 'Ava, senior consultative solutions lead';
+  const solutions = leadContext.solutionsContext || 'Microsoft 365 Enterprise Migration, SharePoint Online Document Management, Zero-Downtime Cloud Cutover, Power Platform Automation';
+
+  const systemPrompt = `You are ${persona} at ${orgName}.
 You are on a live phone call with ${leadContext.name} from ${leadContext.company}.
-Their public requirement was: "${leadContext.requirement}".
+Their requirement or business focus is: "${leadContext.requirement}".
+Our verified enterprise solutions and offerings: "${solutions}".
 
 CRITICAL MULTILINGUAL REQUIREMENT:
 The call language selected is "${language}". You MUST speak and reply strictly in natural, professional, spoken ${language}. If the language is Spanish, reply in Spanish. If Hindi, reply in Hindi. If Gujarati, reply in Gujarati (ગુજરાતી લિપિ). If French, German, or Arabic, reply strictly in that language. Never default to English unless the selected language is English.
 
 Your goal:
 1. Speak concisely in 1-2 natural, spoken sentences (never use bullet points, markdown, or long paragraphs).
-2. Validate their requirement, timeline, and team size in ${language}.
-3. Overcome any hesitation with warmth and authority.
+2. Directly answer their question or validate their requirement, timeline, and team size in ${language} using our verified enterprise solutions.
+3. Overcome any hesitation with warmth, precision, and authority.
 4. When they express interest or ask to connect, propose a meeting for "Thursday at 3 PM with our solutions lead" (translated naturally into ${language}).
 5. Sound natural, friendly, professional, and consultative.`;
 

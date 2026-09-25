@@ -206,32 +206,44 @@ export async function sendOutboundSms(params: SendSmsParams): Promise<SendSmsRes
 /**
  * Get Polly voice and language code for twiml
  */
-export function getPollyVoiceForLanguage(language: string = 'en'): { voice: string; twilioLang: string } {
-  let voice = 'Polly.Joanna';
-  let twilioLang = 'en-US';
+export function getPollyVoiceForLanguage(language: string = 'en'): {
+  voice: string;
+  twilioLang: string;
+  sayLang: string;
+  gatherLang: string;
+} {
+  let voice = 'Polly.Aditi';
+  let sayLang = 'en-IN';
+  let gatherLang = 'en-IN';
 
   const lower = language.toLowerCase();
   if (lower.includes('gujarati') || lower.includes('ગુજરાતી') || lower === 'gu') {
     voice = 'Polly.Aditi';
-    twilioLang = 'hi-IN';
+    sayLang = 'hi-IN';
+    gatherLang = 'gu-IN';
   } else if (lower.includes('hindi') || lower.includes('हिन्दी') || lower === 'hi') {
     voice = 'Polly.Aditi';
-    twilioLang = 'hi-IN';
+    sayLang = 'hi-IN';
+    gatherLang = 'hi-IN';
   } else if (lower.includes('spanish') || lower.includes('español') || lower === 'es') {
     voice = 'Polly.Lucia';
-    twilioLang = 'es-ES';
+    sayLang = 'es-ES';
+    gatherLang = 'es-ES';
   } else if (lower.includes('french') || lower.includes('français') || lower === 'fr') {
     voice = 'Polly.Celine';
-    twilioLang = 'fr-FR';
+    sayLang = 'fr-FR';
+    gatherLang = 'fr-FR';
   } else if (lower.includes('german') || lower.includes('deutsch') || lower === 'de') {
     voice = 'Polly.Vicki';
-    twilioLang = 'de-DE';
+    sayLang = 'de-DE';
+    gatherLang = 'de-DE';
   } else if (lower.includes('arabic') || lower.includes('العربية') || lower === 'ar') {
     voice = 'Polly.Zeina';
-    twilioLang = 'arb';
+    sayLang = 'arb';
+    gatherLang = 'ar-XA';
   }
 
-  return { voice, twilioLang };
+  return { voice, twilioLang: sayLang, sayLang, gatherLang };
 }
 
 /**
@@ -241,27 +253,34 @@ export function buildTwimlResponse({
   speechText,
   language = 'en',
   gatherUrl,
+  numDigits,
 }: {
   speechText: string;
   language?: string;
   gatherUrl?: string;
+  numDigits?: number;
 }): string {
   const VoiceResponse = twilio.twiml.VoiceResponse;
   const twiml = new VoiceResponse();
 
-  const { voice, twilioLang: langCode } = getPollyVoiceForLanguage(language);
+  const { voice, sayLang, gatherLang } = getPollyVoiceForLanguage(language);
 
   if (gatherUrl) {
-    const gather = twiml.gather({
+    const gatherOptions: any = {
       input: ['speech', 'dtmf'],
       action: gatherUrl,
       method: 'POST',
       speechTimeout: 'auto',
       timeout: 5,
-    });
-    gather.say({ voice: voice as any, language: langCode as any }, speechText);
+      language: gatherLang,
+    };
+    if (numDigits) {
+      gatherOptions.numDigits = numDigits;
+    }
+    const gather = twiml.gather(gatherOptions);
+    gather.say({ voice: voice as any, language: sayLang as any }, speechText);
   } else {
-    twiml.say({ voice: voice as any, language: langCode as any }, speechText);
+    twiml.say({ voice: voice as any, language: sayLang as any }, speechText);
   }
 
   return twiml.toString();

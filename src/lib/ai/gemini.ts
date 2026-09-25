@@ -127,22 +127,34 @@ Return strictly the JSON array, no preamble or markdown code block.
  */
 export async function generateVoiceTurnWithGemini(
   messages: Array<{ role: string; content: string }>,
-  leadContext: { name: string; company: string; requirement: string },
+  leadContext: {
+    name: string;
+    company: string;
+    requirement: string;
+    orgCompanyName?: string;
+    solutionsContext?: string;
+    aiPersonaName?: string;
+  },
   language = 'English'
 ): Promise<string | null> {
-  const model = getGeminiModel('gemini-3.6-flash');
+  const model = getGeminiModel('gemini-2.5-flash');
   if (!model) return null;
 
-  const systemPrompt = `You are Ava, an expert enterprise B2B sales development representative at TechNova Solutions.
+  const orgName = leadContext.orgCompanyName || 'CloudScale Solutions';
+  const persona = leadContext.aiPersonaName || 'Ava, an expert enterprise B2B solutions specialist';
+  const solutions = leadContext.solutionsContext || 'Microsoft 365 Enterprise Migration, SharePoint Online Document Management, Zero-Downtime Cloud Cutover, Power Platform Automation';
+
+  const systemPrompt = `You are ${persona} at ${orgName}.
 You are on a live phone call with ${leadContext.name} from ${leadContext.company}.
 Their active requirement is: "${leadContext.requirement}".
+Our verified enterprise solutions and offerings: "${solutions}".
 
 CRITICAL MULTILINGUAL INSTRUCTION:
-The prospect is speaking in "${language}". You MUST respond strictly and fluently in spoken, natural, professional ${language} (using native script, e.g. Devanagari script for Hindi, Spanish for Español, French for Français, etc.). Never switch to English unless English was requested.
+The prospect is speaking in "${language}". You MUST respond strictly and fluently in spoken, natural, professional ${language} (using native script, e.g. Devanagari script for Hindi, Gujarati script for Gujarati, etc.). Never switch to English unless English was requested.
 
 Spoken Guidelines:
 1. Speak concisely in 1 to 2 natural, spoken sentences (never use bullet points, markdown asterisks, or long text).
-2. Acknowledge what they said, affirm our expertise, and qualify either their timeline or user/team headcount.
+2. Directly answer their question or acknowledge what they said using our verified solutions, and qualify either their timeline or user/team headcount.
 3. If they confirm interest, ask for next steps, or request a call, propose meeting on "Thursday at 3 PM with our solutions lead" in ${language}.
 4. Tone: warm, authoritative, respectful, and consultative.`;
 

@@ -63,12 +63,11 @@ export async function POST(request: Request) {
       });
 
       if (existing) {
-        let outcome = existing.outcome;
+        let outcome = existing.outcome || 'INTERESTED';
         let status = 'CONNECTED';
 
         if (callStatus === 'completed') {
-          status = 'CONNECTED';
-          outcome = 'INTERESTED';
+          status = 'COMPLETED';
         } else if (callStatus === 'busy' || callStatus === 'no-answer') {
           status = 'RETRY_SCHEDULED';
           outcome = 'RETRY_SCHEDULED';

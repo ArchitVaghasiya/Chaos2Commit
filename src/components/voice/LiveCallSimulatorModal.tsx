@@ -30,6 +30,8 @@ import {
   Zap,
   Minimize2,
   MessageSquare,
+  Save,
+  Sliders,
 } from 'lucide-react';
 import { CalendlyBookingModal } from './CalendlyBookingModal';
 import { LeadItem } from '../discovery/DiscoveredLeadCard';
@@ -147,6 +149,57 @@ export default function LiveCallSimulatorModal({
   const [isSavingTwilioNumber, setIsSavingTwilioNumber] = useState(false);
   const [verificationCode, setVerificationCode] = useState<string | null>(null);
   const [isRequestingVerification, setIsRequestingVerification] = useState(false);
+
+  // Solution & Response Editing State
+  const [showSolutionsEditor, setShowSolutionsEditor] = useState(false);
+  const [editCompanyName, setEditCompanyName] = useState('CloudScale Solutions');
+  const [editProductsCatalog, setEditProductsCatalog] = useState(
+    'Microsoft 365 Enterprise Migration, SharePoint Online Document Management, Zero-Downtime Cloud Cutover, Power Platform Automation'
+  );
+  const [editDescription, setEditDescription] = useState(
+    'Enterprise Microsoft 365, SharePoint Migration & Cloud Solutions Provider'
+  );
+  const [isSavingSolutions, setIsSavingSolutions] = useState(false);
+  const [solutionsSavedSuccess, setSolutionsSavedSuccess] = useState(false);
+
+  useEffect(() => {
+    async function fetchOrgSettings() {
+      try {
+        const res = await fetch('/api/settings');
+        const data = await res.json();
+        if (data.success && data.settings) {
+          if (data.settings.companyName) setEditCompanyName(data.settings.companyName);
+          if (data.settings.productsCatalog) setEditProductsCatalog(data.settings.productsCatalog);
+          if (data.settings.description) setEditDescription(data.settings.description);
+        }
+      } catch (_) {}
+    }
+    fetchOrgSettings();
+  }, []);
+
+  const handleSaveSolutions = async () => {
+    setIsSavingSolutions(true);
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyName: editCompanyName,
+          productsCatalog: editProductsCatalog,
+          description: editDescription,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSolutionsSavedSuccess(true);
+        setTimeout(() => setSolutionsSavedSuccess(false), 2500);
+      }
+    } catch (e) {
+      console.warn('Failed to save solutions:', e);
+    } finally {
+      setIsSavingSolutions(false);
+    }
+  };
 
   // Refs for audio & speech recognition
   const chatEndRef = useRef<HTMLDivElement | null>(null);
@@ -1008,6 +1061,21 @@ export default function LiveCallSimulatorModal({
               </button>
             ) : null}
 
+            {/* Quick Solutions Editor Toggle */}
+            <button
+              type="button"
+              onClick={() => setShowSolutionsEditor((prev) => !prev)}
+              className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                showSolutionsEditor
+                  ? 'bg-purple-600/30 text-purple-200 border-purple-500/50 shadow-md'
+                  : 'bg-white/[0.04] text-slate-300 hover:text-white border-white/10'
+              }`}
+              title="Customize Solutions, Enterprise Offerings & AI Responses"
+            >
+              <Sliders className="w-3.5 h-3.5 text-purple-400" />
+              <span className="hidden sm:inline">Edit Solutions</span>
+            </button>
+
             {onMinimize && (
               <button
                 type="button"
@@ -1035,6 +1103,77 @@ export default function LiveCallSimulatorModal({
             </button>
           </div>
         </div>
+
+        {/* Collapsible Solutions & AI Response Editor */}
+        {showSolutionsEditor && (
+          <div className="p-4 bg-[#0a0f26] border-b border-indigo-500/30 text-xs animate-in slide-in-from-top-3 duration-200">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-400" />
+                <span className="font-bold text-white text-sm">Live AI Call Solutions &amp; Response Rules</span>
+                <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/30 font-semibold">
+                  Active in Live Phone &amp; Web Calls
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {solutionsSavedSuccess && (
+                  <span className="text-emerald-400 text-xs font-semibold flex items-center gap-1 animate-in fade-in">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Deployed Live!
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSaveSolutions}
+                  disabled={isSavingSolutions}
+                  className="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md disabled:opacity-50"
+                >
+                  {isSavingSolutions ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                  <span>Save Solutions Live</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1 text-[11px]">Company Name</label>
+                <input
+                  type="text"
+                  value={editCompanyName}
+                  onChange={(e) => setEditCompanyName(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-[#050814] border border-white/10 text-white focus:outline-none focus:border-indigo-500 text-xs font-medium"
+                  placeholder="e.g. CloudScale Solutions"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-slate-300 font-semibold mb-1 text-[11px]">
+                  Company Overview &amp; Value Proposition
+                </label>
+                <input
+                  type="text"
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-[#050814] border border-white/10 text-white focus:outline-none focus:border-indigo-500 text-xs"
+                  placeholder="e.g. Enterprise Microsoft 365, SharePoint Migration &amp; Cloud Solutions Provider"
+                />
+              </div>
+
+              <div className="md:col-span-3">
+                <label className="block text-slate-300 font-semibold mb-1 text-[11px] flex items-center justify-between">
+                  <span>Products, Solutions &amp; Pitch Script (Fed into Groq LLaMA 3.3 70B Live Generation)</span>
+                  <span className="text-[10px] text-slate-400">Used for answers, objection handling &amp; qualifying questions</span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={editProductsCatalog}
+                  onChange={(e) => setEditProductsCatalog(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-[#050814] border border-white/10 text-white focus:outline-none focus:border-indigo-500 text-xs font-mono"
+                  placeholder="Enter verified solutions, technical features, pricing approach, or meeting offer..."
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Twilio Diagnostic & Carrier Status Banner */}
         {telephonyMode === 'TWILIO_PSTN' && diagnostics && (

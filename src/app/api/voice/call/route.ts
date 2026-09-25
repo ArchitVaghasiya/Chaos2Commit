@@ -18,10 +18,18 @@ export async function POST(request: Request) {
       } catch (_) {}
     }
 
+    let orgSetting: any = null;
+    try {
+      orgSetting = await prisma.organizationSetting.findFirst();
+    } catch (_) {}
+
     const leadContext = {
       name: lead?.name || 'Prospect',
       company: lead?.companyName || 'the company',
       requirement: lead?.originalPostSnippet || 'Microsoft 365 & SharePoint migration',
+      orgCompanyName: orgSetting?.companyName || 'CloudScale Solutions',
+      solutionsContext: orgSetting?.productsCatalog || 'Microsoft 365 Enterprise Migration, SharePoint Online Document Management, Zero-Downtime Cloud Cutover, Power Platform Automation',
+      aiPersonaName: orgSetting?.aiPersonaName || 'Ava (Enterprise Solutions Lead)',
     };
 
     const history: VoiceTurnMessage[] = messages ? [...messages] : [];
