@@ -54,7 +54,8 @@ async function handleGather(request: Request) {
     }
 
     const { voice, twilioLang } = getPollyVoiceForLanguage(language);
-    const gatherActionUrl = `${url.origin}/api/voice/twilio/gather?leadId=${encodeURIComponent(leadId)}&name=${encodeURIComponent(leadName)}&company=${encodeURIComponent(company)}&lang=${encodeURIComponent(language)}`;
+    const publicBase = process.env.PUBLIC_WEBHOOK_URL || url.origin;
+    const gatherActionUrl = `${publicBase}/api/voice/twilio/gather?leadId=${encodeURIComponent(leadId)}&name=${encodeURIComponent(leadName)}&company=${encodeURIComponent(company)}&lang=${encodeURIComponent(language)}`;
 
     // Case 1: Silence / Timeout (No speech detected on phone)
     if (!speechResult.trim()) {
