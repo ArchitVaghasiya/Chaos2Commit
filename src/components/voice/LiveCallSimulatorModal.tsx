@@ -605,7 +605,7 @@ export default function LiveCallSimulatorModal({
     speakText(script);
   };
 
-  // Handle Hanging Up
+  // Handle Hanging Up and Persisting Completed Conversation
   const handleHangup = async () => {
     stopSpeech();
     if (telephonyMode === 'TWILIO_PSTN' && twilioSid) {
@@ -619,14 +619,58 @@ export default function LiveCallSimulatorModal({
     }
 
     setCallStatus('ENDED');
-    setMessages((prev) => [
-      ...prev,
-      {
-        speaker: 'system',
-        text: `Call ended. Final duration: ${formatTime(duration)}. Insights & meeting records saved.`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      },
-    ]);
+    const endMsg: Message = {
+      speaker: 'system',
+      text: `Call ended. Final duration: ${formatTime(duration)}. Conversation saved to Live Call Intelligence & Transcripts.`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setMessages((prev) => [...prev, endMsg]);
+
+    // Persist conversation to /api/conversations so it immediately appears in the Conversations tab!
+    const dialogueTurns = messagesRef.current.filter((m) => m.speaker === 'agent' || m.speaker === 'prospect');
+    if (dialogueTurns.length > 0) {
+      try {
+        const payload = {
+          leadId: lead?.id,
+          leadName: lead?.name || 'Prospect',
+          companyName: lead?.companyName || 'Enterprise Partner',
+          phone: lead?.phone || phoneNumber,
+          durationSeconds: duration || 45,
+          messages: dialogueTurns,
+          summary: callSummary,
+          nextBestAction: nextBestAction,
+          outcome: isMeetingBooked
+            ? 'MEETING_BOOKED'
+            : isNegativeDnd
+            ? 'DND'
+            : isHumanHandoff
+            ? 'HUMAN_HANDOFF'
+            : isCallbackScheduled
+            ? 'RETRY_SCHEDULED'
+            : 'INTERESTED',
+          sentiment: currentSentiment,
+          language: selectedLanguage,
+          calendlyLinkSent,
+          calendlyUrl,
+        };
+
+        const res = await fetch('/api/conversations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('call-completed', { detail: data.call }));
+          }
+        }
+      } catch (saveErr) {
+        console.warn('Failed to save finalized conversation:', saveErr);
+      }
+    }
   };
 
   // Re-start / Re-dial in Browser
@@ -878,8 +922,11 @@ export default function LiveCallSimulatorModal({
             )}
 
             <button
-              onClick={() => {
+              onClick={async () => {
                 stopSpeech();
+                if (callStatus === 'CONNECTED' && messages.length > 0) {
+                  await handleHangup();
+                }
                 onClose();
               }}
               aria-label="Close dialog"
@@ -968,16 +1015,29 @@ export default function LiveCallSimulatorModal({
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                      Browser Web Speech Audio Active
+                      Browser Audio Active
                     </span>
-                    <button
-                      type="button"
-                      onClick={handleRestartCall}
-                      className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                    >
-                      <RefreshCw className="w-3 h-3" />
-                      <span>Restart Call</span>
-                    </button>
+
+                    {callStatus === 'CONNECTED' ? (
+                      <button
+                        type="button"
+                        onClick={handleHangup}
+                        className="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md shadow-rose-600/30 transition-all animate-pulse"
+                        title="End call and store conversation log"
+                      >
+                        <PhoneOff className="w-3.5 h-3.5" />
+                        <span>End Call</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleRestartCall}
+                        className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        <span>Restart Call</span>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -1389,16 +1449,31 @@ export default function LiveCallSimulatorModal({
                     <span>Minimize</span>
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    stopSpeech();
-                    onClose();
-                  }}
-                  className="px-4 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-white text-xs font-semibold transition-all cursor-pointer"
-                >
-                  Close Console
-                </button>
+                {callStatus === 'CONNECTED' ? (
+                  <button
+                    type="button"
+                    onClick={handleHangup}
+                    className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-md shadow-rose-600/30 animate-pulse"
+                    title="End active call and store conversation in Conversations tab"
+                  >
+                    <PhoneOff className="w-3.5 h-3.5" />
+                    <span>End Call</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      stopSpeech();
+                      if (messages.length > 0 && callStatus !== 'ENDED') {
+                        await handleHangup();
+                      }
+                      onClose();
+                    }}
+                    className="px-4 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-white text-xs font-semibold transition-all cursor-pointer"
+                  >
+                    Close Console
+                  </button>
+                )}
               </div>
             </div>
           </div>
