@@ -54,7 +54,7 @@ export const SEED_LEADS_CATALOG: DiscoveredLeadRaw[] = [
     companyWebsite: 'www.gohelinfotech.com',
     industry: 'IT Services',
     companySize: '51 – 200 employees',
-    email: 'yash.gohel@gohelinfotech.com',
+    email: 'yashgohel241@gmail.com',
     phone: '+91 9737362307',
     linkedinProfile: 'https://linkedin.com/in/yash-gohel-tech',
     location: 'Ahmedabad, Gujarat',

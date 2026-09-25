@@ -315,16 +315,22 @@ export async function POST(request: Request) {
     if (isMeetingBooked) {
       outcomeStatus = 'MEETING_BOOKED';
       sentiment = 'POSITIVE';
+      const targetEmail =
+        lead?.email && !lead.email.includes('gohelinfotech.com')
+          ? lead.email
+          : 'yashgohel241@gmail.com';
+
       try {
         googleCalendarEvent = await scheduleMeetingOnGoogleCalendar({
           leadId: lead?.id || leadId,
           leadName: leadContext.name,
-          leadEmail: lead?.email,
+          leadEmail: targetEmail,
           leadPhone: lead?.phone,
           companyName: leadContext.company,
           meetingTime: parsedDate.meetingTime || new Date(Date.now() + 24 * 3600 * 1000),
           topic: leadContext.requirement || 'SharePoint & Cloud Architecture Implementation',
           calendarOwnerEmail: GOOGLE_CALENDAR_OWNER_EMAIL,
+          title: `Techsolution Demo & Sync with ${leadContext.name}`,
         });
       } catch (gcalErr) {
         console.warn('Google Calendar auto-scheduling error:', gcalErr);

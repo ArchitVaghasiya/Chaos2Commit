@@ -75,13 +75,16 @@ export async function ensureCalendarTable() {
 /**
  * Parse date & time mentions from conversational speech
  * Supports explicit calendar dates e.g. "October 1 at 3 PM", "28th September 2 PM",
- * "2026-10-01 at 15:00", as well as relative dates e.g. "Tomorrow at 10:30 AM", "Thursday at 3 PM".
+ * "2026-10-01 at 15:00", as well as relative dates e.g. "Tomorrow at 10:30 AM", "Thursday at 3 PM",
+ * "aavtikaale 4 vaage", "kal dopahar 3 baje", "Friday 11 AM", etc.
  * ALWAYS returns displayStr with exact calendar date: e.g. "Thursday, Oct 1, 2026 at 3:00 PM"
  */
 export function extractMeetingDateTime(speech: string): {
   detected: boolean;
   meetingTime: Date | null;
   displayStr: string;
+  hour: number;
+  minute: number;
 } {
   const text = speech.toLowerCase();
   const now = new Date();
@@ -89,22 +92,96 @@ export function extractMeetingDateTime(speech: string): {
 
   let hour = 15; // default 3 PM
   let minute = 0;
-  let matched = false;
+  let matchedTime = false;
+  let matchedDay = false;
 
-  // 1. Time extraction (e.g. "3 PM", "10:30 AM", "at 4", "15:00")
-  const timeMatch = text.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i) || text.match(/at\s*(\d{1,2})(?::(\d{2}))?/i);
-  if (timeMatch) {
-    let rawHour = parseInt(timeMatch[1], 10);
-    const rawMin = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
-    const ampm = timeMatch[3]?.toLowerCase();
+  // 1. Time extraction
+  // 1a. Explicit AM/PM (e.g. "5 pm", "10:30 am", "4pm")
+  const ampmMatch = text.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
+  // 1b. Hindi/Gujarati baje / vaage (e.g. "4 baje", "4 vaage", "4 vagye", "૪ વાગે", "4 बजे")
+  const indicTimeMatch = text.match(/(\d{1,2})(?::(\d{2}))?\s*(?:baje|बजे|vaage|vaagye|vage|vagye|વાગે)/i);
+  // 1c. "at X" or "at X:XX" or "X o'clock"
+  const atMatch = text.match(/at\s*(\d{1,2})(?::(\d{2}))?/i) || text.match(/(\d{1,2})\s*o'?clock/i);
+
+  // Time of day markers
+  const isMorning =
+    text.includes('morning') ||
+    text.includes('savare') ||
+    text.includes('સવારે') ||
+    text.includes('subah') ||
+    text.includes('सुबह');
+  const isAfternoon =
+    text.includes('afternoon') ||
+    text.includes('bapore') ||
+    text.includes('બપોરે') ||
+    text.includes('dopahar') ||
+    text.includes('दोपहर');
+  const isEvening =
+    text.includes('evening') ||
+    text.includes('sanje') ||
+    text.includes('સાંજે') ||
+    text.includes('shaam') ||
+    text.includes('sham') ||
+    text.includes('शाम');
+  const isNight =
+    text.includes('night') ||
+    text.includes('raat') ||
+    text.includes('રાત્રે') ||
+    text.includes('रात');
+
+  if (ampmMatch) {
+    let rawHour = parseInt(ampmMatch[1], 10);
+    const rawMin = ampmMatch[2] ? parseInt(ampmMatch[2], 10) : 0;
+    const ampm = ampmMatch[3]?.toLowerCase();
 
     if (ampm === 'pm' && rawHour < 12) rawHour += 12;
     if (ampm === 'am' && rawHour === 12) rawHour = 0;
-    if (!ampm && rawHour >= 1 && rawHour <= 7) rawHour += 12; // default afternoon for work hours
 
     hour = rawHour;
     minute = rawMin;
-    matched = true;
+    matchedTime = true;
+  } else if (indicTimeMatch) {
+    let rawHour = parseInt(indicTimeMatch[1], 10);
+    const rawMin = indicTimeMatch[2] ? parseInt(indicTimeMatch[2], 10) : 0;
+
+    if (isMorning && rawHour < 12) {
+      // morning AM
+    } else if ((isAfternoon || isEvening || isNight) && rawHour < 12) {
+      rawHour += 12;
+    } else if (rawHour >= 1 && rawHour <= 7) {
+      rawHour += 12; // typical working hours 1 PM - 7 PM
+    }
+
+    hour = rawHour;
+    minute = rawMin;
+    matchedTime = true;
+  } else if (atMatch) {
+    let rawHour = parseInt(atMatch[1], 10);
+    const rawMin = atMatch[2] ? parseInt(atMatch[2], 10) : 0;
+
+    if (isMorning && rawHour < 12) {
+      // morning
+    } else if ((isAfternoon || isEvening || isNight) && rawHour < 12) {
+      rawHour += 12;
+    } else if (rawHour >= 1 && rawHour <= 7) {
+      rawHour += 12;
+    }
+
+    hour = rawHour;
+    minute = rawMin;
+    matchedTime = true;
+  } else if (isMorning) {
+    hour = 10;
+    minute = 0;
+    matchedTime = true;
+  } else if (isAfternoon) {
+    hour = 14;
+    minute = 0;
+    matchedTime = true;
+  } else if (isEvening) {
+    hour = 17;
+    minute = 0;
+    matchedTime = true;
   }
 
   // 2. Explicit Month & Day extraction (e.g. "October 1", "Sep 28", "28th of September", "2026-10-01")
@@ -132,7 +209,7 @@ export function extractMeetingDateTime(speech: string): {
     const mo = parseInt(isoMatch[2], 10) - 1;
     const da = parseInt(isoMatch[3], 10);
     targetDate = new Date(yr, mo, da, hour, minute, 0, 0);
-    matched = true;
+    matchedDay = true;
   } else if (monthFirstMatch) {
     const mStr = monthFirstMatch[1].toLowerCase();
     const mo = monthMap[mStr] !== undefined ? monthMap[mStr] : monthMap[mStr.slice(0, 3)] || 0;
@@ -142,7 +219,7 @@ export function extractMeetingDateTime(speech: string): {
     if (targetDate.getTime() < now.getTime() - 24 * 3600 * 1000) {
       targetDate.setFullYear(yr + 1);
     }
-    matched = true;
+    matchedDay = true;
   } else if (dayFirstMatch) {
     const da = parseInt(dayFirstMatch[1], 10);
     const mStr = dayFirstMatch[2].toLowerCase();
@@ -152,53 +229,115 @@ export function extractMeetingDateTime(speech: string): {
     if (targetDate.getTime() < now.getTime() - 24 * 3600 * 1000) {
       targetDate.setFullYear(yr + 1);
     }
-    matched = true;
+    matchedDay = true;
   } else {
-    // Relative Day extraction (e.g. "tomorrow", "today", "thursday", etc.)
-    const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    let dayOffset = 0;
+    // 3. Day of week & relative day extraction
+    const dayTargetMap = [
+      { names: ['sunday', 'ravivar', 'ravivaare', 'itwar', 'રવિવાર', 'રવિવારે', 'रविवार'], dayIndex: 0 },
+      { names: ['monday', 'somvar', 'somvaare', 'somwar', 'somvaar', 'સોમવાર', 'સોમવારે', 'सोमवार'], dayIndex: 1 },
+      { names: ['tuesday', 'mangalvar', 'mangalvaare', 'mangalwar', 'mangalvaar', 'મંગળવાર', 'મંગળવારે', 'मंगलवार'], dayIndex: 2 },
+      { names: ['wednesday', 'budhvar', 'budhvaare', 'budhwar', 'budhvaar', 'બુધવાર', 'બુધવારે', 'बुधवार'], dayIndex: 3 },
+      { names: ['thursday', 'guruvar', 'guruvaare', 'guruwar', 'guruvaar', 'veervar', 'ગુરુવાર', 'ગુરુવારે', 'गुरुवार'], dayIndex: 4 },
+      { names: ['friday', 'shukravar', 'shukravaare', 'shukrawar', 'shukravaar', 'શુક્રવાર', 'શુક્રવારે', 'शुक्रवार'], dayIndex: 5 },
+      { names: ['saturday', 'shanivar', 'shanivaare', 'shaniwar', 'shanivaar', 'શનિવાર', 'શનિવારે', 'शनिवार'], dayIndex: 6 },
+    ];
 
-    if (text.includes('tomorrow')) {
+    let dayOffset = 0;
+    let foundDay = false;
+
+    // Check relative days
+    if (
+      text.includes('tomorrow') ||
+      text.includes('kal') ||
+      text.includes('कल') ||
+      text.includes('aavtikaal') ||
+      text.includes('aavtikaale') ||
+      text.includes('આવતીકાલે') ||
+      text.includes('આવતીકાલ')
+    ) {
       dayOffset = 1;
-      matched = true;
-    } else if (text.includes('today')) {
+      foundDay = true;
+      matchedDay = true;
+    } else if (
+      text.includes('parso') ||
+      text.includes('પરસો') ||
+      text.includes('परसों') ||
+      text.includes('day after tomorrow')
+    ) {
+      dayOffset = 2;
+      foundDay = true;
+      matchedDay = true;
+    } else if (
+      text.includes('today') ||
+      text.includes('aaj') ||
+      text.includes('आज') ||
+      text.includes('aaje') ||
+      text.includes('આજે')
+    ) {
       dayOffset = 0;
-      matched = true;
+      foundDay = true;
+      matchedDay = true;
     } else {
-      for (let i = 0; i < 7; i++) {
-        if (text.includes(daysOfWeek[i])) {
+      // Check named days of week
+      for (const item of dayTargetMap) {
+        if (item.names.some((n) => text.includes(n))) {
           const currentDay = now.getDay();
-          dayOffset = (i - currentDay + 7) % 7;
-          if (dayOffset === 0) dayOffset = 7; // Next week's instance
-          matched = true;
+          dayOffset = (item.dayIndex - currentDay + 7) % 7;
+          if (dayOffset === 0) dayOffset = 7; // Next occurrence
+          foundDay = true;
+          matchedDay = true;
           break;
         }
       }
     }
 
-    if (text.includes('thursday') && text.includes('3 pm')) {
-      matched = true;
-      const currentDay = now.getDay();
-      dayOffset = (4 - currentDay + 7) % 7 || 7;
-      hour = 15;
-      minute = 0;
+    // 4. Meeting intent detection
+    const hasMeetingIntent =
+      text.includes('meeting') ||
+      text.includes('schedule') ||
+      text.includes('calendar') ||
+      text.includes('book') ||
+      text.includes('demo') ||
+      text.includes('connect') ||
+      text.includes('appointment') ||
+      text.includes('slot') ||
+      text.includes('call me') ||
+      text.includes('let us meet') ||
+      text.includes('lets meet') ||
+      text.includes("let's meet") ||
+      text.includes('મીટિંગ') ||
+      text.includes('શેડ્યૂલ') ||
+      text.includes('બુક') ||
+      text.includes('નક્કી') ||
+      text.includes('વાત કરીએ') ||
+      text.includes('મળીએ') ||
+      text.includes('મીટીંગ') ||
+      text.includes('मीटिंग') ||
+      text.includes('शेड्यूल') ||
+      text.includes('तय') ||
+      text.includes('कॉल') ||
+      text.includes('बात करते हैं');
+
+    if (!foundDay && hasMeetingIntent) {
+      matchedDay = true;
+      dayOffset = 1; // Default to tomorrow
     }
 
-    if (!matched && (text.includes('meeting') || text.includes('calendar') || text.includes('book') || text.includes('schedule'))) {
-      matched = true;
-      dayOffset = 1;
-      hour = 15;
-      minute = 0;
-    }
-
-    if (matched) {
+    if (matchedDay || matchedTime || hasMeetingIntent) {
       targetDate.setDate(now.getDate() + dayOffset);
       targetDate.setHours(hour, minute, 0, 0);
     }
   }
 
-  if (matched) {
-    // Format display string with EXACT CALENDAR DATE (e.g. "Thursday, Oct 1, 2026 at 3:00 PM")
+  const isDetected =
+    matchedDay ||
+    matchedTime ||
+    text.includes('meeting') ||
+    text.includes('schedule') ||
+    text.includes('book') ||
+    text.includes('slot');
+
+  if (isDetected) {
     const formattedDate = targetDate.toLocaleDateString('en-US', {
       weekday: 'long',
       month: 'short',
@@ -212,6 +351,8 @@ export function extractMeetingDateTime(speech: string): {
       detected: true,
       meetingTime: targetDate,
       displayStr,
+      hour,
+      minute,
     };
   }
 
@@ -219,6 +360,8 @@ export function extractMeetingDateTime(speech: string): {
     detected: false,
     meetingTime: null,
     displayStr: '',
+    hour: 0,
+    minute: 0,
   };
 }
 
@@ -231,8 +374,8 @@ function formatDisplayTime(hour: number, minute: number): string {
 
 /**
  * Generate 1-click Google Calendar Event URL with pre-filled parameters.
- * Explicitly sends &add=jayrajsinhbhatti9687@gmail.com to directly invite and save
- * the meeting onto jayrajsinhbhatti9687@gmail.com's Google Calendar!
+ * Explicitly sends &add=jayrajsinhbhatti9687@gmail.com,yashgohel241@gmail.com to directly invite and save
+ * the meeting onto the lead's Google Calendar and Host Calendar!
  */
 export function generateGoogleCalendarUrl(params: {
   title: string;
@@ -241,6 +384,7 @@ export function generateGoogleCalendarUrl(params: {
   startTime: Date;
   endTime: Date;
   targetEmail?: string;
+  leadEmail?: string;
 }): string {
   const formatGCalTime = (d: Date) => {
     return d.toISOString().replace(/-|:|\.\d\d\d/g, '');
@@ -250,15 +394,20 @@ export function generateGoogleCalendarUrl(params: {
   const title = encodeURIComponent(params.title);
   const details = encodeURIComponent(params.description);
   const location = encodeURIComponent(params.location || 'Google Meet / Telephony Sync');
-  const target = params.targetEmail || GOOGLE_CALENDAR_OWNER_EMAIL;
-  const addParam = `&add=${encodeURIComponent(target)}`;
+  const targetOwner = params.targetEmail || GOOGLE_CALENDAR_OWNER_EMAIL;
+  
+  // Combine owner and lead email so both are invited to the meeting
+  const attendees = [targetOwner, params.leadEmail].filter(Boolean) as string[];
+  const uniqueAttendees = Array.from(new Set(attendees)).join(',');
+  const addParam = uniqueAttendees ? `&add=${encodeURIComponent(uniqueAttendees)}` : '';
 
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${datesParam}&details=${details}&location=${location}${addParam}&sf=true&output=xml`;
 }
 
 /**
  * Schedule and sync a meeting to the Google Calendar Registry with API Key
- * for jayrajsinhbhatti9687@gmail.com AUTOMATICALLY with zero human interference!
+ * for jayrajsinhbhatti9687@gmail.com and lead yashgohel241@gmail.com
+ * AUTOMATICALLY with zero human interference!
  */
 export async function scheduleMeetingOnGoogleCalendar(params: {
   leadId?: string;
@@ -270,6 +419,7 @@ export async function scheduleMeetingOnGoogleCalendar(params: {
   durationMinutes?: number;
   topic?: string;
   calendarOwnerEmail?: string;
+  title?: string;
 }): Promise<CalendarEventItem> {
   await ensureCalendarTable();
 
@@ -278,8 +428,16 @@ export async function scheduleMeetingOnGoogleCalendar(params: {
   const endTime = new Date(startTime.getTime() + duration * 60 * 1000);
   const targetOwner = params.calendarOwnerEmail || GOOGLE_CALENDAR_OWNER_EMAIL;
 
-  const title = `TechNova Demo & Sync with ${params.leadName || 'Partner'}`;
-  const description = `AI Voice Autonomous Scheduled Meeting (Zero Human Interference).\nAssigned Google Calendar: ${targetOwner}\nGoogle Calendar API Key: ${GOOGLE_CALENDAR_API_KEY}\nProspect: ${params.leadName} (${params.companyName || 'Enterprise Lead'})\nPhone: ${params.leadPhone || 'N/A'}\nEmail: ${params.leadEmail || 'N/A'}\nAgenda: ${params.topic || 'SharePoint & Cloud Infrastructure Implementation'}`;
+  // Ensure default lead email is yashgohel241@gmail.com if lead is Yash Gohel
+  let resolvedLeadEmail = params.leadEmail;
+  if (!resolvedLeadEmail || resolvedLeadEmail.includes('yash.gohel@gohelinfotech.com')) {
+    if (params.leadName?.toLowerCase().includes('yash') || params.leadPhone?.includes('9737362307')) {
+      resolvedLeadEmail = 'yashgohel241@gmail.com';
+    }
+  }
+
+  const title = params.title || `Techsolution Demo & Sync with ${params.leadName || 'Valued Partner'}`;
+  const description = `AI Voice Autonomous Scheduled Meeting (Zero Human Interference).\nHost Calendar: ${targetOwner}\nGoogle Calendar API Key: ${GOOGLE_CALENDAR_API_KEY}\nInvited Lead: ${params.leadName} (${params.companyName || 'Enterprise Lead'})\nPhone: ${params.leadPhone || 'N/A'}\nEmail: ${resolvedLeadEmail || 'yashgohel241@gmail.com'}\nAgenda: ${params.topic || 'SharePoint & Cloud Infrastructure Implementation'}`;
 
   const gCalUrl = generateGoogleCalendarUrl({
     title,
@@ -288,6 +446,7 @@ export async function scheduleMeetingOnGoogleCalendar(params: {
     startTime,
     endTime,
     targetEmail: targetOwner,
+    leadEmail: resolvedLeadEmail || 'yashgohel241@gmail.com',
   });
 
   const eventId = `gcal-evt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;

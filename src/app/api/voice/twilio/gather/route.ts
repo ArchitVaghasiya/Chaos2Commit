@@ -3,6 +3,11 @@ import { prisma } from '@/lib/prisma';
 import { generateVoiceTurnWithGroq } from '@/lib/ai/groq';
 import { generateVoiceTurnWithGemini } from '@/lib/ai/gemini';
 import { getPollyVoiceForLanguage, sendOutboundSms, getDynamicWebhookBase } from '@/lib/telephony/twilio';
+import {
+  extractMeetingDateTime,
+  scheduleMeetingOnGoogleCalendar,
+  GOOGLE_CALENDAR_OWNER_EMAIL,
+} from '@/lib/calendar/google-calendar';
 
 export async function POST(request: Request) {
   return handleGather(request);
@@ -270,7 +275,18 @@ async function handleGather(request: Request) {
       prospectLower.includes('ફોન ના કરતા') ||
       prospectLower.includes('કાઢી નાખો');
 
-    // 2. Human Handoff & Calendly SMS Detection
+    const targetPhone = lead?.phone || '+919737362307';
+    let targetEmail = lead?.email || 'yashgohel241@gmail.com';
+    if (
+      !targetEmail ||
+      targetEmail.includes('gohelinfotech.com') ||
+      (leadName && leadName.toLowerCase().includes('yash')) ||
+      targetPhone.includes('9737362307')
+    ) {
+      targetEmail = 'yashgohel241@gmail.com';
+    }
+
+    // 2. Human Handoff & Explicit Calendly Link SMS
     const isHumanHandoff =
       prospectLower.includes('human') ||
       prospectLower.includes('real person') ||
@@ -280,9 +296,6 @@ async function handleGather(request: Request) {
       prospectLower.includes('send a link') ||
       prospectLower.includes('booking link') ||
       prospectLower.includes('calendly') ||
-      prospectLower.includes('book a call') ||
-      prospectLower.includes('schedule a call') ||
-      prospectLower.includes('text message') ||
       prospectLower.includes('send sms') ||
       prospectLower.includes('ટીમ સાથે વાત') ||
       prospectLower.includes('લિંક મોકલ') ||
@@ -305,17 +318,75 @@ async function handleGather(request: Request) {
       prospectLower.includes('બીઝી છું') ||
       prospectLower.includes('बाद में कॉल करो');
 
-    // 4. Meeting Booked Detection
-    const isMeetingBooked =
-      prospectLower.includes('thursday') ||
-      prospectLower.includes('3 pm') ||
-      prospectLower.includes('book the demo') ||
-      prospectLower.includes('confirm meeting') ||
-      prospectLower.includes('let us meet') ||
+    // 4. Meeting Intent & Date/Time Extraction (Supports ANY day, ANY time, English/Gujarati/Hindi)
+    const parsedMeeting = extractMeetingDateTime(prospectText);
+
+    // Check if the previous agent turn already proposed or confirmed a meeting
+    const agentTurns = existingTranscript.filter((t: any) => t.speaker === 'agent');
+    const lastAgentText = (agentTurns.slice(-1)[0]?.text || '').toLowerCase();
+    const wasMeetingPreviouslyMentioned =
+      lastAgentText.includes('meeting') ||
+      lastAgentText.includes('મીટિંગ') ||
+      lastAgentText.includes('મીટીંગ') ||
+      lastAgentText.includes('मीटिंग') ||
+      lastAgentText.includes('schedule') ||
+      lastAgentText.includes('શેડ્યૂલ') ||
+      lastAgentText.includes('કન્ફર્મ') ||
+      lastAgentText.includes('તય') ||
+      lastAgentText.includes('तय');
+
+    const isAffirmative =
+      prospectLower.includes('yes') ||
+      prospectLower.includes('sure') ||
       prospectLower.includes('sounds good') ||
-      prospectLower.includes('મીટિંગ રાખો') ||
-      prospectLower.includes('ગુરુવારે') ||
-      prospectLower.includes('हाँ ठीक है');
+      prospectLower.includes('perfect') ||
+      prospectLower.includes('okay') ||
+      prospectLower.includes('ok') ||
+      prospectLower.includes('done') ||
+      prospectLower.includes('fine') ||
+      prospectLower.includes('haan') ||
+      prospectLower.includes('ha') ||
+      prospectLower.includes('હા') ||
+      prospectLower.includes('ચાલશે') ||
+      prospectLower.includes('બરાબર') ||
+      prospectLower.includes('સરસ') ||
+      prospectLower.includes('हाँ') ||
+      prospectLower.includes('चलेगा') ||
+      prospectLower.includes('ठीक है') ||
+      prospectLower.includes('थैंक यू') ||
+      prospectLower.includes('thank you');
+
+    const hasDirectMeetingWord =
+      prospectLower.includes('meeting') ||
+      prospectLower.includes('schedule') ||
+      prospectLower.includes('book') ||
+      prospectLower.includes('calendar') ||
+      prospectLower.includes('appointment') ||
+      prospectLower.includes('slot') ||
+      prospectLower.includes('call me at') ||
+      prospectLower.includes('let us meet') ||
+      prospectLower.includes("let's meet") ||
+      prospectLower.includes('let’s meet') ||
+      prospectLower.includes('set up a call') ||
+      prospectLower.includes('confirm meeting') ||
+      prospectLower.includes('મીટિંગ') ||
+      prospectLower.includes('શેડ્યૂલ') ||
+      prospectLower.includes('બુક') ||
+      prospectLower.includes('નક્કી') ||
+      prospectLower.includes('મીટીંગ') ||
+      prospectLower.includes('मीटिंग') ||
+      prospectLower.includes('शेड्यूल') ||
+      prospectLower.includes('તય') ||
+      prospectLower.includes('तय');
+
+    const isMeetingBooked =
+      !isNegativeDnd &&
+      (hasDirectMeetingWord ||
+        (parsedMeeting.detected && (hasDirectMeetingWord || isAffirmative || wasMeetingPreviouslyMentioned)) ||
+        (wasMeetingPreviouslyMentioned && isAffirmative));
+
+    const isMeetingWrapUp =
+      wasMeetingPreviouslyMentioned && isAffirmative && !parsedMeeting.detected && !hasDirectMeetingWord;
 
     let aiReply = '';
     let shouldHangup = false;
@@ -342,10 +413,21 @@ async function handleGather(request: Request) {
           });
         } catch (_) {}
       }
+    } else if (isMeetingWrapUp) {
+      // Prospect affirmed the meeting previously offered/booked
+      sentiment = 'POSITIVE';
+      outcomeStatus = 'MEETING_BOOKED';
+      shouldHangup = true;
+      if (language === 'Gujarati') {
+        aiReply = `ઉત્તમ! આપનો ખૂબ ખૂબ આભાર. અમે નક્કી કરેલા સમયે આપની સાથે મીટિંગમાં જોડાવા માટે ઉત્સુક છીએ. Techsolution સાથે વાત કરવા બદલ આભાર, આપનો દિવસ શુભ રહે!`;
+      } else if (language === 'Hindi') {
+        aiReply = `बहुत बढ़िया! आपका बहुत धन्यवाद। हम तय समय पर आपसे मीटिंग में जुड़ने के लिए उत्सुक हैं। Techsolution से बात करने के लिए धन्यवाद, आपका दिन शुभ हो!`;
+      } else {
+        aiReply = `Wonderful! Thank you so much Yash. We look forward to meeting with you then. Have a wonderful day!`;
+      }
     } else if (isHumanHandoff) {
       sentiment = 'NEUTRAL';
       outcomeStatus = 'HUMAN_HANDOFF';
-      const targetPhone = lead?.phone || '+919737362307';
       const calendlyUrl = `https://calendly.com/technova-solutions/cloud-qualification?leadId=${encodeURIComponent(
         leadId
       )}&name=${encodeURIComponent(leadName)}`;
@@ -404,21 +486,70 @@ async function handleGather(request: Request) {
     } else if (isMeetingBooked) {
       sentiment = 'POSITIVE';
       outcomeStatus = 'MEETING_BOOKED';
-      if (language === 'Gujarati') {
-        aiReply = `ખૂબ સરસ! મેં ગુરુવારે બપોરે 3 વાગ્યે અમારા સોલ્યુશન્સ સ્પેશિયાલિસ્ટ સાથે મીટિંગ કન્ફર્મ કરી છે. આપના ઈમેલ પર કેલેન્ડર ઇન્વિટેશન મોકલી દેવાયું છે.`;
-      } else if (language === 'Hindi') {
-        aiReply = `शानदार! मैंने गुरुवार दोपहर 3 बजे हमारे सॉल्यूशंस स्पेशलिस्ट के साथ मीटिंग तय कर दी है। कैलेंडर आमंत्रण आपके ईमेल पर भेज दिया गया है।`;
-      } else {
-        aiReply = `Sounds fantastic! I have booked Thursday at 3 PM with our solutions lead. A confirmation email and calendar invitation has been sent to your email.`;
+
+      const meetingTime = parsedMeeting.meetingTime || new Date(Date.now() + 24 * 3600 * 1000);
+      let displayStr = parsedMeeting.displayStr;
+      if (!displayStr) {
+        const d = new Date(meetingTime);
+        displayStr = `${d.toLocaleDateString('en-US', {
+          weekday: 'long',
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })} at 3:00 PM`;
+      }
+
+      // Directly initiate and schedule meeting on Google Calendar & DB
+      let googleCalEvent: any = null;
+      try {
+        googleCalEvent = await scheduleMeetingOnGoogleCalendar({
+          leadId: lead?.id || leadId,
+          leadName: lead?.name || leadName || 'Yash Gohel',
+          leadEmail: targetEmail,
+          leadPhone: targetPhone,
+          companyName: company || lead?.companyName || 'Gohel Infotech Solutions',
+          meetingTime,
+          durationMinutes: 30,
+          topic: 'Microsoft 365, SharePoint Migration & AI Enterprise Architecture',
+          calendarOwnerEmail: GOOGLE_CALENDAR_OWNER_EMAIL,
+          title: `Techsolution Demo & Sync with ${lead?.name || leadName || 'Yash Gohel'}`,
+        });
+      } catch (gcalErr) {
+        console.warn('Google Calendar direct booking error:', gcalErr);
+      }
+
+      // Dispatch direct 1-click Google Calendar SMS to physical phone
+      try {
+        const calLink = googleCalEvent?.googleCalendarUrl || 'https://calendar.google.com';
+        await sendOutboundSms({
+          to: targetPhone,
+          body: `Hi ${(lead?.name || leadName || 'Yash').split(' ')[0]}, your meeting with Techsolution is confirmed for ${displayStr}! Direct Google Calendar link: ${calLink}`,
+        });
+      } catch (smsErr) {
+        console.warn('Meeting SMS dispatch error:', smsErr);
       }
 
       if (lead) {
         try {
           await prisma.lead.update({
             where: { id: lead.id },
-            data: { status: 'MEETING_BOOKED' },
+            data: {
+              status: 'MEETING_BOOKED',
+              email: targetEmail,
+              calendlyStatus: 'BOOKED',
+              calendlyEventUri: googleCalEvent?.googleCalendarUrl || null,
+              calendlyBookedAt: new Date(),
+            },
           });
         } catch (_) {}
+      }
+
+      if (language === 'Gujarati') {
+        aiReply = `ખૂબ સરસ! મેં ${displayStr} વાગ્યે Techsolution ના સોલ્યુશન્સ સ્પેશિયાલિસ્ટ સાથે આપણી મીટિંગ કન્ફર્મ કરી દીધી છે. આ મીટિંગનું Google Calendar આમંત્રણ આપના ઈમેલ ${targetEmail} પર અને ડાયરેક્ટ લિંક SMS દ્વારા આપના મોબાઈલ પર મોકલી દેવાઈ છે. શું આ સમય આપને અનુકૂળ રહેશે?`;
+      } else if (language === 'Hindi') {
+        aiReply = `शानदार! मैंने ${displayStr} Techsolution के सॉल्यूशंस स्पेशलिस्ट के साथ आपकी मीटिंग तय कर दी है। इसका Google Calendar आमंत्रण आपके ईमेल ${targetEmail} और डायरेक्ट लिंक आपके मोबाइल पर SMS द्वारा भेज दी गई है। क्या यह समय आपके लिए सही रहेगा?`;
+      } else {
+        aiReply = `Fantastic! I have directly scheduled your meeting for ${displayStr} with our senior solutions lead at Techsolution. The Google Calendar invitation has been sent to ${targetEmail} and texted directly to your phone. Does that time work well for you?`;
       }
     } else {
       // 5. Groq LLaMA 3.3 70B & Gemini 2.5 Flash Consultative Engine

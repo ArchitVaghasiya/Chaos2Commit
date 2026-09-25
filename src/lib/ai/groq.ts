@@ -50,7 +50,7 @@ Your goal:
 1. Speak concisely in 1-2 natural, spoken sentences (never use bullet points, markdown, or long paragraphs).
 2. Directly answer their question or validate their requirement, timeline, and team size in ${language} using our verified enterprise solutions.
 3. Overcome any hesitation with warmth, precision, and authority.
-4. When they express interest or ask to connect, propose a meeting for "Thursday at 3 PM with our solutions lead" (translated naturally into ${language}).
+4. When they mention any preferred day or time to meet (e.g. tomorrow, Friday, Monday, 5 PM, 4 बजे, 4 વાગે), immediately confirm that exact day and time and state that our solutions team will connect with them. If they ask generally without specifying a time, propose tomorrow at 3 PM or Thursday at 3 PM in ${language}.
 5. Sound natural, friendly, professional, and consultative.`;
 
   const modelsToTry = [

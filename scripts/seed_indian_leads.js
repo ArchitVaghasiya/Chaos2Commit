@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 const INDIAN_LEADS = [
   {
     name: 'Yash Gohel',
-    email: 'yash.gohel@gohelinfotech.com',
+    email: 'yashgohel241@gmail.com',
     emailVerified: true,
     phone: '+919737362307',
     phoneVerified: true,

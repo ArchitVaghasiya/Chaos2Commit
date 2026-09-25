@@ -155,7 +155,7 @@ The prospect is speaking in "${language}". You MUST respond strictly and fluentl
 Spoken Guidelines:
 1. Speak concisely in 1 to 2 natural, spoken sentences (never use bullet points, markdown asterisks, or long text).
 2. Directly answer their question or acknowledge what they said using our verified solutions, and qualify either their timeline or user/team headcount.
-3. If they confirm interest, ask for next steps, or request a call, propose meeting on "Thursday at 3 PM with our solutions lead" in ${language}.
+3. If they confirm interest, ask for next steps, or request a meeting at any time or any day (e.g. tomorrow, Friday, Monday, 5 PM, 4 बजे, 4 વાગે), immediately confirm that exact slot in ${language}. If they ask generally without specifying a time, propose tomorrow at 3 PM or Thursday at 3 PM.
 4. Tone: warm, authoritative, respectful, and consultative.`;
 
   try {
