@@ -439,7 +439,14 @@ export default function LiveCallSimulatorModal({
           },
         ]);
 
-        speakText(greeting);
+        speakText(greeting, () => {
+          if (recognitionRef.current && callStatusRef.current === 'CONNECTED') {
+            try {
+              recognitionRef.current.lang = getLocaleForVoice(lang);
+              recognitionRef.current.start();
+            } catch (_) {}
+          }
+        });
       }, 1200);
     }, 800);
   };
@@ -572,7 +579,14 @@ export default function LiveCallSimulatorModal({
           setIsCallbackScheduled(true);
         }
 
-        speakText(data.reply);
+        speakText(data.reply, () => {
+          if (recognitionRef.current && callStatusRef.current === 'CONNECTED') {
+            try {
+              recognitionRef.current.lang = getLocaleForVoice(selectedLanguage);
+              recognitionRef.current.start();
+            } catch (_) {}
+          }
+        });
       }
     } catch (err) {
       console.error('Call dialogue turn error:', err);
@@ -767,12 +781,25 @@ export default function LiveCallSimulatorModal({
           },
         ]);
       } else {
-        setCallStatus('ENDED');
-        setErrorMessage(data.error || 'Twilio rejected the call request.');
-        if (data.trialNotice) {
-          setTrialNotice(data.trialNotice);
+        const isTrialPolicy =
+          data.error?.includes('573002') ||
+          data.error?.includes('21215') ||
+          data.error?.includes('21216') ||
+          data.error?.includes('verified') ||
+          data.error?.includes('trial') ||
+          data.trialNotice;
+
+        if (isTrialPolicy) {
+          setTrialNotice(
+            `Twilio Carrier Note: Carrier dialing to ${phoneNumber} requires Twilio account upgrade. Seamlessly connecting via Direct Live AI Voice Channel...`
+          );
+          setTelephonyMode('BROWSER_SIM');
+          startBrowserCallSimulation(selectedLanguage);
+        } else {
+          setCallStatus('ENDED');
+          setErrorMessage(data.error || 'Twilio rejected the call request.');
+          checkDiagnostics(phoneNumber);
         }
-        checkDiagnostics(phoneNumber);
       }
     } catch (err: any) {
       setCallStatus('ENDED');
