@@ -892,6 +892,131 @@ export function getLocaleForVoice(language: string): string {
   }
 }
 
+/**
+ * Detect language switch requests or native script from speech text
+ */
+export function detectLanguageFromSpeech(text: string): SupportedLanguage | null {
+  if (!text) return null;
+  const lower = text.toLowerCase();
+
+  // 1. Unicode Script Checks (Definitive)
+  if (/[\u0A80-\u0AFF]/.test(text)) {
+    return 'ગુજરાતી';
+  }
+  if (/[\u0900-\u097F]/.test(text)) {
+    return 'हिन्दी';
+  }
+  if (/[\u0600-\u06FF]/.test(text)) {
+    return 'العربية';
+  }
+
+  // 2. Explicit Language Switch Requests (e.g. "speak in hindi", "hindi me baat karo")
+  if (
+    lower.includes('gujarati') ||
+    lower.includes('ગુજરાતી') ||
+    lower.includes('gujrati') ||
+    lower.includes('gujarati ma') ||
+    lower.includes('gujarati mein')
+  ) {
+    return 'ગુજરાતી';
+  }
+
+  if (
+    lower.includes('hindi') ||
+    lower.includes('हिन्दी') ||
+    lower.includes('hindi me') ||
+    lower.includes('hindi mein') ||
+    lower.includes('shudh hindi')
+  ) {
+    return 'हिन्दी';
+  }
+
+  if (
+    lower.includes('spanish') ||
+    lower.includes('español') ||
+    lower.includes('espanol') ||
+    lower.includes('en español') ||
+    lower.includes('habla español') ||
+    lower.includes('hablemos en español')
+  ) {
+    return 'Español';
+  }
+
+  if (
+    lower.includes('french') ||
+    lower.includes('français') ||
+    lower.includes('francais') ||
+    lower.includes('en français') ||
+    lower.includes('parlez français')
+  ) {
+    return 'Français';
+  }
+
+  if (
+    lower.includes('german') ||
+    lower.includes('deutsch') ||
+    lower.includes('auf deutsch') ||
+    lower.includes('sprich deutsch')
+  ) {
+    return 'Deutsch';
+  }
+
+  if (
+    lower.includes('arabic') ||
+    lower.includes('العربية') ||
+    lower.includes('arabi')
+  ) {
+    return 'العربية';
+  }
+
+  if (
+    lower.includes('speak in english') ||
+    lower.includes('talk in english') ||
+    lower.includes('in english please') ||
+    lower.includes('switch to english') ||
+    lower.includes('can we speak english')
+  ) {
+    return 'English';
+  }
+
+  return null;
+}
+
+/**
+ * Detect language of any given text (AI reply or speech) to pick the correct TTS voice
+ */
+export function detectLanguageOfText(text: string, fallbackLanguage: SupportedLanguage = 'English'): SupportedLanguage {
+  if (!text) return fallbackLanguage;
+
+  // Direct native character script detection
+  if (/[\u0A80-\u0AFF]/.test(text)) {
+    return 'ગુજરાતી';
+  }
+  if (/[\u0900-\u097F]/.test(text)) {
+    return 'हिन्दी';
+  }
+  if (/[\u0600-\u06FF]/.test(text)) {
+    return 'العربية';
+  }
+
+  // French specific common words / characters
+  if (/[éèêëàâôûîïç]/i.test(text) || /\b(bonjour|merci|nous|vous|avec|votre|notre|c'est|dans|pour)\b/i.test(text)) {
+    return 'Français';
+  }
+
+  // Spanish specific common words / characters
+  if (/[ñáéíóú¿¡]/i.test(text) || /\b(hola|gracias|nosotros|usted|con|para|reunión|llamada|soluciones)\b/i.test(text)) {
+    return 'Español';
+  }
+
+  // German specific common words / characters
+  if (/[äöüß]/i.test(text) || /\b(hallo|danke|wir|sie|haben|einen|einer|termin|donnerstag|freitag)\b/i.test(text)) {
+    return 'Deutsch';
+  }
+
+  return fallbackLanguage;
+}
+
 export function getAiGreeting(language: string, firstName: string, company: string, requirementTopic: string): string {
   switch (language) {
     case 'ગુજરાતી':

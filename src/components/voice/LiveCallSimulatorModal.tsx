@@ -40,6 +40,8 @@ import {
   getLocaleForVoice,
   getAiGreeting,
   getQuickReplies,
+  detectLanguageOfText,
+  detectLanguageFromSpeech,
 } from '@/lib/i18n/translations';
 
 export const formatCallTime = (secs: number) => {
@@ -160,6 +162,26 @@ export default function LiveCallSimulatorModal({
   const messagesRef = useRef<Message[]>([]);
   const callStatusRef = useRef(callStatus);
   const durationRef = useRef(duration);
+  const activeUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+
+  // Synchronize available voices across browsers (Chrome, Edge, Safari)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    const loadVoices = () => {
+      const v = window.speechSynthesis.getVoices();
+      if (v && v.length > 0) {
+        setVoices(v);
+      }
+    };
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+    return () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.onvoiceschanged = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     durationRef.current = duration;
@@ -202,12 +224,13 @@ export default function LiveCallSimulatorModal({
         window.speechSynthesis.cancel();
       } catch (_) {}
     }
+    activeUtteranceRef.current = null;
     setIsAiSpeaking(false);
   }, []);
 
-  // Text-To-Speech function using Web Speech API with language locale
+  // Text-To-Speech function using Web Speech API with dynamic multilingual voice selection
   const speakText = useCallback(
-    (text: string, onEnd?: () => void) => {
+    (text: string, onEnd?: () => void, languageOverride?: SupportedLanguage) => {
       if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
         if (onEnd) onEnd();
         return;
@@ -215,28 +238,78 @@ export default function LiveCallSimulatorModal({
 
       try {
         window.speechSynthesis.cancel();
+
+        // 1. Identify active language for TTS: explicit override -> script detection -> selected language
+        const langToUse: SupportedLanguage =
+          languageOverride || detectLanguageOfText(text, selectedLanguage);
+        const targetLocale = getLocaleForVoice(langToUse);
+
         const utterance = new SpeechSynthesisUtterance(text);
-        const targetLocale = getLocaleForVoice(selectedLanguage);
         utterance.lang = targetLocale;
-        utterance.rate = 1.05;
+        utterance.rate = 1.0;
         utterance.pitch = 1.0;
 
-        const voices = window.speechSynthesis.getVoices();
-        if (voices && voices.length > 0) {
+        // Keep reference in ref to prevent garbage collection mid-speech in Chrome/Edge
+        activeUtteranceRef.current = utterance;
+
+        const availableVoices =
+          voices.length > 0 ? voices : window.speechSynthesis.getVoices();
+
+        if (availableVoices && availableVoices.length > 0) {
           const langPrefix = targetLocale.split('-')[0].toLowerCase();
-          const matchedVoice = voices.find(
-            (v) =>
-              v.lang.toLowerCase() === targetLocale.toLowerCase() ||
-              v.lang.toLowerCase().startsWith(langPrefix)
+
+          // A. Exact locale match (e.g. 'hi-IN', 'gu-IN', 'es-ES', 'fr-FR', 'de-DE', 'ar-SA', 'en-US')
+          let matchedVoice = availableVoices.find(
+            (v) => v.lang.toLowerCase() === targetLocale.toLowerCase()
           );
+
+          // B. Language prefix match (e.g. starts with 'hi', 'gu', 'es', 'fr', 'de', 'ar')
+          if (!matchedVoice) {
+            matchedVoice = availableVoices.find((v) =>
+              v.lang.toLowerCase().startsWith(langPrefix)
+            );
+          }
+
+          // C. Match by voice descriptive name or regional tag
+          if (!matchedVoice) {
+            const voiceSearchTerms: Record<SupportedLanguage, string[]> = {
+              'ગુજરાતી': ['gujarati', 'gujarat', 'dhwani', 'niranjan'],
+              'हिन्दी': ['hindi', 'india', 'swara', 'madhur', 'kalpana', 'hemant'],
+              'Español': ['spanish', 'español', 'espanol', 'helena', 'laura', 'pablo'],
+              'Français': ['french', 'français', 'francais', 'julie', 'paul', 'denise'],
+              'Deutsch': ['german', 'deutsch', 'katja', 'hedda', 'stefan'],
+              'العربية': ['arabic', 'arab', 'salma', 'shakir', 'hamed'],
+              'English': ['english', 'david', 'zira', 'mark', 'natural', 'jenny', 'guy'],
+            };
+            const terms = voiceSearchTerms[langToUse] || [];
+            matchedVoice = availableVoices.find((v) => {
+              const nameLower = v.name.toLowerCase();
+              return terms.some((term) => nameLower.includes(term));
+            });
+          }
+
+          // D. Fallback for Gujarati: If gu-IN voice pack is not installed on the user's OS,
+          // use Hindi (hi-IN) voice which has native Indic phonetics and pronounces Gujarati script properly,
+          // avoiding silent failure or English phonetic gibberish.
+          if (!matchedVoice && langToUse === 'ગુજરાતી') {
+            matchedVoice = availableVoices.find(
+              (v) =>
+                v.lang.toLowerCase().startsWith('hi') ||
+                v.name.toLowerCase().includes('hindi') ||
+                v.name.toLowerCase().includes('india')
+            );
+          }
+
           if (matchedVoice) {
             utterance.voice = matchedVoice;
+            utterance.lang = matchedVoice.lang || targetLocale;
           }
         }
 
         utterance.onstart = () => setIsAiSpeaking(true);
         utterance.onend = () => {
           setIsAiSpeaking(false);
+          activeUtteranceRef.current = null;
           if (onEnd) onEnd();
         };
         utterance.onerror = (e) => {
@@ -244,6 +317,7 @@ export default function LiveCallSimulatorModal({
             console.warn('SpeechSynthesis error event:', (e as any)?.error);
           }
           setIsAiSpeaking(false);
+          activeUtteranceRef.current = null;
           if (onEnd) onEnd();
         };
 
@@ -254,10 +328,11 @@ export default function LiveCallSimulatorModal({
       } catch (err) {
         console.warn('SpeechSynthesis error:', err);
         setIsAiSpeaking(false);
+        activeUtteranceRef.current = null;
         if (onEnd) onEnd();
       }
     },
-    [selectedLanguage]
+    [selectedLanguage, voices]
   );
 
   // Initialize Speech Recognition for Hands-Free Microphone
@@ -485,7 +560,7 @@ export default function LiveCallSimulatorModal({
           },
         ]);
 
-        speakText(greeting);
+        speakText(greeting, undefined, lang);
       }, 1200);
     }, 800);
   };
@@ -542,6 +617,17 @@ export default function LiveCallSimulatorModal({
     stopSpeech();
     setInputText('');
 
+    // Pre-detect if the user requested a language switch in their speech/text
+    const promptLanguageSwitch = detectLanguageFromSpeech(text);
+    if (promptLanguageSwitch && promptLanguageSwitch !== selectedLanguage) {
+      setSelectedLanguage(promptLanguageSwitch);
+      if (recognitionRef.current) {
+        recognitionRef.current.lang = getLocaleForVoice(promptLanguageSwitch);
+      }
+    }
+
+    const effectiveLang = promptLanguageSwitch || selectedLanguage;
+
     const currentOffset = durationRef.current;
     const prospectMsg: Message = {
       speaker: 'prospect',
@@ -570,12 +656,23 @@ export default function LiveCallSimulatorModal({
           leadId: lead?.id,
           prospectSpeech: text,
           messages: historyPayload,
-          language: selectedLanguage,
+          language: effectiveLang,
         }),
       });
 
       const data = await res.json();
       if (data.success && data.reply) {
+        // Dynamic language synchronization from backend response
+        const returnedLang = (data.activeLanguage || data.language) as SupportedLanguage;
+        const targetActiveLang = returnedLang || effectiveLang;
+
+        if (targetActiveLang && targetActiveLang !== selectedLanguage) {
+          setSelectedLanguage(targetActiveLang);
+          if (recognitionRef.current) {
+            recognitionRef.current.lang = getLocaleForVoice(targetActiveLang);
+          }
+        }
+
         const agentOffset = durationRef.current;
         const agentMsg: Message = {
           speaker: 'agent',
@@ -584,7 +681,18 @@ export default function LiveCallSimulatorModal({
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           offsetSeconds: agentOffset,
         };
-        setMessages((prev) => [...prev, agentMsg]);
+
+        const updatedMessages: Message[] = [...messagesRef.current, agentMsg];
+        if (targetActiveLang && targetActiveLang !== selectedLanguage) {
+          updatedMessages.push({
+            speaker: 'system',
+            text: `🌐 Language switched to ${targetActiveLang} • Ava voice and speech recognition updated`,
+            time: formatCallTime(agentOffset),
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            offsetSeconds: agentOffset,
+          });
+        }
+        setMessages(updatedMessages);
 
         if (data.sentiment) setCurrentSentiment(data.sentiment);
         if (data.summary) setCallSummary(data.summary);
@@ -631,7 +739,8 @@ export default function LiveCallSimulatorModal({
           setIsCallbackScheduled(true);
         }
 
-        speakText(data.reply);
+        // Voice output dynamically matches the target language!
+        speakText(data.reply, undefined, targetActiveLang);
       }
     } catch (err) {
       console.error('Call dialogue turn error:', err);

@@ -9,6 +9,11 @@ import {
   GOOGLE_CALENDAR_API_KEY,
   GOOGLE_CALENDAR_OWNER_EMAIL,
 } from '@/lib/calendar/google-calendar';
+import {
+  detectLanguageFromSpeech,
+  detectLanguageOfText,
+  SupportedLanguage,
+} from '@/lib/i18n/translations';
 
 export async function POST(request: Request) {
   try {
@@ -16,7 +21,7 @@ export async function POST(request: Request) {
     const leadId = body.leadId;
     const messages = body.messages;
     const prospectSpeech = body.prospectSpeech || body.message || '';
-    const language = body.language || 'English';
+    const rawLanguage = body.language || 'English';
     const campaignId = body.campaignId;
 
     // Fetch lead details safely if leadId is a valid string
@@ -44,7 +49,11 @@ export async function POST(request: Request) {
     }
 
     const prospectLower = (prospectSpeech || '').toLowerCase();
-    const lang = (language || lead?.preferredLanguage || 'English').toLowerCase();
+    
+    // Auto-detect dynamic language switch from prospect speech
+    const requestedLang = detectLanguageFromSpeech(prospectSpeech);
+    const activeLanguage: SupportedLanguage = requestedLang || (rawLanguage as SupportedLanguage) || 'English';
+    const lang = activeLanguage.toLowerCase();
 
     // =========================================================================
     // 1. NEGATIVE-CALL & DND DETECTION (Evaluator Requirement)
@@ -190,12 +199,12 @@ export async function POST(request: Request) {
       const requestedSlot = prospectRequestedTime.detected ? prospectRequestedTime.displayStr : null;
 
       // 1. Try Groq for sub-150ms voice generation
-      const groqResponse = await generateVoiceTurnWithGroq(history, leadContext, language, requestedSlot);
+      const groqResponse = await generateVoiceTurnWithGroq(history, leadContext, activeLanguage, requestedSlot);
       if (groqResponse) {
         aiResponse = groqResponse;
       } else {
         // 2. Fallback to Gemini 2.5 Flash for multilingual nuance
-        const geminiResponse = await generateVoiceTurnWithGemini(history, leadContext, language, requestedSlot);
+        const geminiResponse = await generateVoiceTurnWithGemini(history, leadContext, activeLanguage, requestedSlot);
         if (geminiResponse) {
           aiResponse = geminiResponse;
         }
@@ -404,7 +413,7 @@ export async function POST(request: Request) {
           ? 'Prospect requested callback due to active meeting. Rescheduled for tomorrow 10:30 AM.'
           : isMeetingBooked
           ? `Qualified: Rollout for ${leadContext.company}. Meeting booked for ${parsedDate.displayStr || 'tomorrow at 2:00 PM'}.`
-          : `Active qualification with ${leadContext.name} (${leadContext.company}) in ${language}.`;
+          : `Active qualification with ${leadContext.name} (${leadContext.company}) in ${activeLanguage}.`;
 
         const nextActionText = isNegativeDnd
           ? 'DND status locked. No further outbound automated calls permitted.'
@@ -425,7 +434,7 @@ export async function POST(request: Request) {
                 status: isNegativeDnd ? 'DND_REQUESTED' : isHumanHandoff ? 'HUMAN_HANDOFF' : isCallbackRequested ? 'RETRY_SCHEDULED' : 'CONNECTED',
                 outcome: isNegativeDnd ? 'DND' : isHumanHandoff ? 'HUMAN_HANDOFF' : isCallbackRequested ? 'RETRY_SCHEDULED' : isMeetingBooked ? 'MEETING_BOOKED' : 'INTERESTED',
                 durationSeconds: 145,
-                language,
+                language: activeLanguage,
                 telephonyProvider: 'STUDIO_WEB',
                 sentiment,
                 callSummary: summaryText,
@@ -448,9 +457,13 @@ export async function POST(request: Request) {
       }
     }
 
+    const finalReplyLang = detectLanguageOfText(aiResponse, activeLanguage);
+
     return NextResponse.json({
       success: true,
       reply: aiResponse,
+      activeLanguage: finalReplyLang,
+      language: finalReplyLang,
       meetingBooked: isMeetingBooked,
       meetingScheduledAt: googleCalendarEvent?.startTime || (parsedDate.meetingTime ? parsedDate.meetingTime.toISOString() : null),
       meetingDisplayStr: parsedDate.displayStr || (googleCalendarEvent?.startTime ? new Date(googleCalendarEvent.startTime).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }) + ' at 2:00 PM' : 'Tomorrow at 2:00 PM'),
