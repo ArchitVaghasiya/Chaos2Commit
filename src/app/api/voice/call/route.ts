@@ -295,10 +295,26 @@ export async function POST(request: Request) {
     // =========================================================================
     if (leadId) {
       try {
-        const fullTranscript = [
+        const rawTurns = [
           ...history,
           { role: 'assistant', content: aiResponse, sentiment },
         ];
+
+        const timedTranscript = rawTurns.map((turn: any, idx: number) => {
+          const offsetSec = idx === 0 ? 2 : idx * 14;
+          const mins = Math.floor(offsetSec / 60).toString().padStart(2, '0');
+          const secs = (offsetSec % 60).toString().padStart(2, '0');
+          return {
+            speaker: turn.role === 'assistant' ? 'Ava (AI)' : lead?.name || 'Prospect',
+            role: turn.role,
+            text: turn.content || turn.text || '',
+            content: turn.content || turn.text || '',
+            time: `${mins}:${secs}`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            offsetSeconds: offsetSec,
+            sentiment: turn.sentiment || (turn.role === 'assistant' ? sentiment : undefined),
+          };
+        });
 
         let leadStatusUpdate = lead?.status;
         let dndFlag = lead?.dndStatus || false;
@@ -371,7 +387,7 @@ export async function POST(request: Request) {
                 sentiment,
                 callSummary: summaryText,
                 nextBestAction: nextActionText,
-                transcriptJson: JSON.stringify(fullTranscript),
+                transcriptJson: JSON.stringify(timedTranscript),
                 meetingScheduledAt: isMeetingBooked ? new Date(Date.now() + 86400000 * 2) : null,
                 callbackScheduledAt: callbackTime,
                 calendlyLinkSent: isHumanHandoff,

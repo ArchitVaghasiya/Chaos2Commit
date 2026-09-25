@@ -41,10 +41,18 @@ import {
   getQuickReplies,
 } from '@/lib/i18n/translations';
 
+export const formatCallTime = (secs: number) => {
+  const mins = Math.floor(secs / 60);
+  const remaining = secs % 60;
+  return `${mins.toString().padStart(2, '0')}:${remaining.toString().padStart(2, '0')}`;
+};
+
 interface Message {
   speaker: 'agent' | 'prospect' | 'system';
   text: string;
+  time?: string;
   timestamp: string;
+  offsetSeconds?: number;
 }
 
 interface TwilioDiagnostics {
@@ -144,6 +152,11 @@ export default function LiveCallSimulatorModal({
   const recognitionRef = useRef<any>(null);
   const messagesRef = useRef<Message[]>([]);
   const callStatusRef = useRef(callStatus);
+  const durationRef = useRef(duration);
+
+  useEffect(() => {
+    durationRef.current = duration;
+  }, [duration]);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -378,7 +391,9 @@ export default function LiveCallSimulatorModal({
       {
         speaker: 'system',
         text: `Initiating autonomous AI outbound call to ${lead.name} (${lead.companyName})...`,
+        time: '00:00',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        offsetSeconds: 0,
       },
     ]);
 
@@ -389,7 +404,9 @@ export default function LiveCallSimulatorModal({
         {
           speaker: 'system',
           text: `Ringing prospect line (${lead.phone || '+91 9737362307'})...`,
+          time: '00:00',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          offsetSeconds: 0,
         },
       ]);
 
@@ -407,12 +424,16 @@ export default function LiveCallSimulatorModal({
           {
             speaker: 'system',
             text: `Call Connected • Two-Way Live Audio Active (${lang})`,
+            time: '00:00',
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            offsetSeconds: 0,
           },
           {
             speaker: 'agent',
             text: greeting,
+            time: '00:02',
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            offsetSeconds: 2,
           },
         ]);
 
@@ -473,10 +494,13 @@ export default function LiveCallSimulatorModal({
     stopSpeech();
     setInputText('');
 
+    const currentOffset = durationRef.current;
     const prospectMsg: Message = {
       speaker: 'prospect',
       text,
+      time: formatCallTime(currentOffset),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      offsetSeconds: currentOffset,
     };
 
     const nextMessages = [...messagesRef.current, prospectMsg];
@@ -504,10 +528,13 @@ export default function LiveCallSimulatorModal({
 
       const data = await res.json();
       if (data.success && data.reply) {
+        const agentOffset = durationRef.current;
         const agentMsg: Message = {
           speaker: 'agent',
           text: data.reply,
+          time: formatCallTime(agentOffset),
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          offsetSeconds: agentOffset,
         };
         setMessages((prev) => [...prev, agentMsg]);
 
@@ -527,12 +554,15 @@ export default function LiveCallSimulatorModal({
           setCalendlyLinkSent(true);
           if (data.calendlyUrl) setCalendlyUrl(data.calendlyUrl);
           setCalendlyStatus('LINK_SENT');
+          const smsOffset = durationRef.current;
           setMessages((prev) => [
             ...prev,
             {
               speaker: 'system',
               text: `📱 SMS Dispatched: Calendly direct booking link sent to ${lead?.phone || phoneNumber}. Tracking appointment status...`,
+              time: formatCallTime(smsOffset),
               timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              offsetSeconds: smsOffset,
             },
           ]);
         }
@@ -568,12 +598,15 @@ export default function LiveCallSimulatorModal({
         setCalendlyLinkSent(true);
         setCalendlyUrl(data.calendlyUrl);
         setCalendlyStatus('LINK_SENT');
+        const manualSmsOffset = durationRef.current;
         setMessages((prev) => [
           ...prev,
           {
             speaker: 'system',
             text: `📱 SMS Sent: Calendly meeting booking link dispatched to ${phoneNumber}. Tracking appointment status...`,
+            time: formatCallTime(manualSmsOffset),
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            offsetSeconds: manualSmsOffset,
           },
         ]);
         speakText('I have just sent a text message with our Calendly booking link to your phone.');
@@ -594,12 +627,16 @@ export default function LiveCallSimulatorModal({
       {
         speaker: 'system',
         text: `🔄 Automated AI Re-Dial Initiated • Lead had not completed Calendly booking`,
+        time: '00:00',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        offsetSeconds: 0,
       },
       {
         speaker: 'agent',
         text: script,
+        time: '00:02',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        offsetSeconds: 2,
       },
     ]);
     speakText(script);
@@ -619,10 +656,13 @@ export default function LiveCallSimulatorModal({
     }
 
     setCallStatus('ENDED');
+    const finalDuration = durationRef.current || duration || 0;
     const endMsg: Message = {
       speaker: 'system',
-      text: `Call ended. Final duration: ${formatTime(duration)}. Conversation saved to Live Call Intelligence & Transcripts.`,
+      text: `Call ended. Final duration: ${formatCallTime(finalDuration)}. Conversation saved to Live Call Intelligence & Transcripts.`,
+      time: formatCallTime(finalDuration),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      offsetSeconds: finalDuration,
     };
 
     setMessages((prev) => [...prev, endMsg]);
@@ -636,7 +676,7 @@ export default function LiveCallSimulatorModal({
           leadName: lead?.name || 'Prospect',
           companyName: lead?.companyName || 'Enterprise Partner',
           phone: lead?.phone || phoneNumber,
-          durationSeconds: duration || 45,
+          durationSeconds: Math.max(15, finalDuration),
           messages: dialogueTurns,
           summary: callSummary,
           nextBestAction: nextBestAction,
@@ -1147,7 +1187,8 @@ export default function LiveCallSimulatorModal({
                       <div key={idx} className="flex justify-center my-1.5">
                         <span className="text-[11px] text-slate-400 bg-white/[0.05] border border-white/10 px-3 py-1 rounded-full flex items-center gap-1.5 font-mono">
                           <Clock className="w-3 h-3 text-slate-400" />
-                          {msg.text}
+                          {msg.time && <span className="text-emerald-400 font-bold">[{msg.time}]</span>}
+                          <span>{msg.text}</span>
                         </span>
                       </div>
                     );
@@ -1173,7 +1214,11 @@ export default function LiveCallSimulatorModal({
                       >
                         <div className="flex items-center justify-between gap-3 text-[10px] opacity-75 mb-1 font-semibold">
                           <span>{isAgent ? 'Ava (AI Sales Executive)' : `${lead.name} (Prospect)`}</span>
-                          <span>{msg.timestamp}</span>
+                          <span className="flex items-center gap-1.5 font-mono">
+                            <Clock className="w-2.5 h-2.5 opacity-70" />
+                            <span>{msg.time || formatCallTime(msg.offsetSeconds ?? 0)}</span>
+                            <span className="opacity-60 font-sans">• {msg.timestamp}</span>
+                          </span>
                         </div>
                         <p>{msg.text}</p>
                       </div>

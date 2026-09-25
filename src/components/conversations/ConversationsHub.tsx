@@ -30,12 +30,19 @@ export interface CallRecord {
   companyName: string;
   phone: string;
   duration: string;
+  durationSeconds?: number;
   status: string;
   outcome: string;
   timestamp: string;
   summary: string;
   nextBestAction: string;
-  transcript: { speaker: string; text: string; time: string }[];
+  transcript: {
+    speaker: string;
+    text: string;
+    time: string;
+    timestamp?: string;
+    offsetSeconds?: number;
+  }[];
   sentiment?: string;
   language?: string;
   calendlyStatus?: string;
@@ -406,8 +413,17 @@ export default function ConversationsHub() {
                     <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                       <span>Audio Recording • {selectedCall.contactName} ({selectedCall.companyName})</span>
                     </h3>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      Recorded: {selectedCall.timestamp} • Duration: {selectedCall.duration}
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex flex-wrap items-center gap-2">
+                      <span>Recorded: <strong className="text-slate-700 dark:text-slate-200">{selectedCall.timestamp}</strong></span>
+                      <span>•</span>
+                      <span>Duration: <strong className="text-slate-700 dark:text-slate-200">{selectedCall.duration}</strong></span>
+                      <span>•</span>
+                      <span>Turns: <strong className="text-slate-700 dark:text-slate-200">{selectedCall.transcript.length} turns</strong></span>
+                      {isPlayingAudio && activeSpeechIdx !== null && selectedCall.transcript[activeSpeechIdx] && (
+                        <span className="text-indigo-600 dark:text-indigo-400 font-bold font-mono animate-pulse">
+                          • Playing Turn {activeSpeechIdx + 1} ({selectedCall.transcript[activeSpeechIdx].time})
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -507,7 +523,11 @@ export default function ConversationsHub() {
                         >
                           <div className="flex items-center justify-between text-[10px] opacity-75 mb-1 font-semibold gap-3">
                             <span>{msg.speaker}</span>
-                            <span>{msg.time}</span>
+                            <span className="flex items-center gap-1.5 font-mono">
+                              <Clock className="w-2.5 h-2.5 opacity-60" />
+                              <span>{msg.time}</span>
+                              {msg.timestamp && <span className="opacity-60 font-sans">• {msg.timestamp}</span>}
+                            </span>
                           </div>
                           <p>{msg.text}</p>
                         </div>
