@@ -57,7 +57,7 @@ const SAMPLE_FALLBACK_RECORDS: CallRecord[] = [
   {
     id: 'call-sample-1',
     contactName: 'John Smith',
-    companyName: 'TechNova Solutions',
+    companyName: 'Apex Health Systems',
     phone: '+1 (555) 123-4567',
     duration: '2m 45s',
     status: 'CONNECTED',
@@ -69,7 +69,7 @@ const SAMPLE_FALLBACK_RECORDS: CallRecord[] = [
     transcript: [
       {
         speaker: 'Ava (AI)',
-        text: "Hello John, I'm Ava from TechNova Solutions. I'm calling about your public Microsoft 365 & SharePoint automation requirement.",
+        text: "Hello John, I'm Ava from Techsolution. I'm calling about your public Microsoft 365 & SharePoint automation requirement.",
         time: '00:02',
       },
       {
@@ -110,7 +110,7 @@ const SAMPLE_FALLBACK_RECORDS: CallRecord[] = [
     transcript: [
       {
         speaker: 'Ava (AI)',
-        text: "Hi Priya, Ava calling from TechNova Solutions regarding your company's cloud infrastructure deployment.",
+        text: "Hi Priya, Ava calling from Techsolution regarding your company's cloud infrastructure deployment.",
         time: '00:03',
       },
       {
