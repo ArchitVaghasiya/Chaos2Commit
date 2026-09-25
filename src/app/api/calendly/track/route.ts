@@ -7,6 +7,11 @@ import {
 } from '@/lib/calendly/calendly-service';
 import { prisma } from '@/lib/prisma';
 
+import {
+  scheduleMeetingOnGoogleCalendar,
+  GOOGLE_CALENDAR_OWNER_EMAIL,
+} from '@/lib/calendar/google-calendar';
+
 export async function GET() {
   try {
     const summary = await getCalendlyTrackingSummary();
@@ -32,6 +37,24 @@ export async function POST(request: Request) {
 
     if (action === 'BOOK') {
       const result = await recordCalendlyBooking(leadId, eventUri);
+      // Automatically store to jayrajsinhbhatti9687@gmail.com Google Calendar with zero human interference
+      try {
+        const lead = result.lead;
+        if (lead) {
+          await scheduleMeetingOnGoogleCalendar({
+            leadId: lead.id,
+            leadName: lead.name,
+            leadEmail: lead.email,
+            leadPhone: lead.phone,
+            companyName: lead.companyName,
+            meetingTime: lead.calendlyBookedAt || new Date(Date.now() + 24 * 3600 * 1000),
+            topic: 'Calendly Confirmed Demo & Sync',
+            calendarOwnerEmail: GOOGLE_CALENDAR_OWNER_EMAIL,
+          });
+        }
+      } catch (gcalErr) {
+        console.warn('Auto GCal booking from Calendly error:', gcalErr);
+      }
       return NextResponse.json(result);
     }
 

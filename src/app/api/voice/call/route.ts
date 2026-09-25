@@ -3,10 +3,21 @@ import { generateVoiceTurnWithGroq, VoiceTurnMessage } from '@/lib/ai/groq';
 import { generateVoiceTurnWithGemini } from '@/lib/ai/gemini';
 import { prisma } from '@/lib/prisma';
 import { sendCalendlyLinkViaSms, generateCalendlyUrl } from '@/lib/calendly/calendly-service';
+import {
+  extractMeetingDateTime,
+  scheduleMeetingOnGoogleCalendar,
+  GOOGLE_CALENDAR_API_KEY,
+  GOOGLE_CALENDAR_OWNER_EMAIL,
+} from '@/lib/calendar/google-calendar';
 
 export async function POST(request: Request) {
   try {
-    const { leadId, messages, prospectSpeech, language = 'English', campaignId } = await request.json();
+    const body = await request.json();
+    const leadId = body.leadId;
+    const messages = body.messages;
+    const prospectSpeech = body.prospectSpeech || body.message || '';
+    const language = body.language || 'English';
+    const campaignId = body.campaignId;
 
     // Fetch lead details safely if leadId is a valid string
     let lead: any = null;
@@ -277,11 +288,18 @@ export async function POST(request: Request) {
       }
     }
 
+    // =========================================================================
+    // 3.5 GOOGLE CALENDAR & DATE/TIME SCHEDULING (API KEY SYNC)
+    // =========================================================================
+    const combinedSpeech = `${prospectSpeech} ${aiResponse}`;
+    const parsedDate = extractMeetingDateTime(combinedSpeech);
+
     // Meeting booked detection
     const aiText = (aiResponse || '').toLowerCase();
     const isMeetingBooked =
       !isNegativeDnd &&
-      (aiText.includes('booked') ||
+      (parsedDate.detected ||
+        aiText.includes('booked') ||
         aiText.includes('calendar invite') ||
         aiText.includes('look forward to connecting on thursday') ||
         aiText.includes('agendado') ||
@@ -293,9 +311,24 @@ export async function POST(request: Request) {
         aiText.includes('حجزت') ||
         (prospectLower.includes('set up a call') && (aiText.includes('thursday') || aiText.includes('3 pm'))));
 
+    let googleCalendarEvent: any = null;
     if (isMeetingBooked) {
       outcomeStatus = 'MEETING_BOOKED';
       sentiment = 'POSITIVE';
+      try {
+        googleCalendarEvent = await scheduleMeetingOnGoogleCalendar({
+          leadId: lead?.id || leadId,
+          leadName: leadContext.name,
+          leadEmail: lead?.email,
+          leadPhone: lead?.phone,
+          companyName: leadContext.company,
+          meetingTime: parsedDate.meetingTime || new Date(Date.now() + 24 * 3600 * 1000),
+          topic: leadContext.requirement || 'SharePoint & Cloud Architecture Implementation',
+          calendarOwnerEmail: GOOGLE_CALENDAR_OWNER_EMAIL,
+        });
+      } catch (gcalErr) {
+        console.warn('Google Calendar auto-scheduling error:', gcalErr);
+      }
     }
 
     // =========================================================================
@@ -396,7 +429,9 @@ export async function POST(request: Request) {
                 callSummary: summaryText,
                 nextBestAction: nextActionText,
                 transcriptJson: JSON.stringify(timedTranscript),
-                meetingScheduledAt: isMeetingBooked ? new Date(Date.now() + 86400000 * 2) : null,
+                meetingScheduledAt: isMeetingBooked
+                  ? (googleCalendarEvent?.startTime ? new Date(googleCalendarEvent.startTime) : parsedDate.meetingTime || new Date(Date.now() + 86400000 * 2))
+                  : null,
                 callbackScheduledAt: callbackTime,
                 calendlyLinkSent: isHumanHandoff,
                 calendlyUrl: isHumanHandoff ? calendlyUrl : null,
@@ -415,6 +450,10 @@ export async function POST(request: Request) {
       success: true,
       reply: aiResponse,
       meetingBooked: isMeetingBooked,
+      meetingScheduledAt: googleCalendarEvent?.startTime || (parsedDate.meetingTime ? parsedDate.meetingTime.toISOString() : null),
+      meetingDisplayStr: parsedDate.displayStr || (googleCalendarEvent?.startTime ? new Date(googleCalendarEvent.startTime).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }) + ' at 3:00 PM' : 'Thursday at 3:00 PM'),
+      googleCalendarUrl: googleCalendarEvent?.googleCalendarUrl || null,
+      googleCalendarApiKey: GOOGLE_CALENDAR_API_KEY,
       isNegativeDnd,
       isHumanHandoff,
       isCallbackRequested,
