@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { generateVoiceTurnWithGroq } from '@/lib/ai/groq';
 import { generateVoiceTurnWithGemini } from '@/lib/ai/gemini';
-import { buildTwimlResponse, getPollyVoiceForLanguage } from '@/lib/telephony/twilio';
+import { buildTwimlResponse, getPollyVoiceForLanguage, sendOutboundSms } from '@/lib/telephony/twilio';
 
 export async function POST(request: Request) {
   return handleGather(request);
@@ -158,7 +158,38 @@ async function handleGather(request: Request) {
         } catch (_) {}
       }
     } else if (isHumanHandoff) {
-      aiReply = `Absolutely! I am bridging our Senior Solutions Architect to this call right now. Please hold for one moment.`;
+      const calendlyUrl = `https://calendly.com/technova-solutions/cloud-qualification?leadId=${encodeURIComponent(leadId)}&name=${encodeURIComponent(leadName)}`;
+      const langLower = language.toLowerCase();
+      if (langLower.includes('gujarati') || langLower.includes('ગુજરાતી')) {
+        aiReply = `ચોક્કસ! હું તમને અમારી સિનિયર એન્જિનિયરિંગ ટીમ સાથે વાત કરવા માટે SMS દ્વારા Calendly લિંક મોકલી રહી છું, જેથી તમે અનુકૂળ સમય બુક કરી શકો.`;
+      } else if (langLower.includes('hindi') || langLower.includes('हिन्दी')) {
+        aiReply = `बिल्कुल! मैं आपको हमारी तकनीकी टीम के साथ मीटिंग के लिए SMS द्वारा Calendly लिंक भेज रही हूँ।`;
+      } else {
+        aiReply = `Absolutely! I am sending an SMS with our Senior Solutions Architect's Calendly calendar link so you can book your preferred demo slot directly.`;
+      }
+
+      if (leadId) {
+        try {
+          const leadRecord = await prisma.lead.findUnique({ where: { id: leadId } });
+          if (leadRecord && leadRecord.phone) {
+            await sendOutboundSms({
+              to: leadRecord.phone,
+              body: `Hi ${leadRecord.name.split(' ')[0]}, here is your direct link to book a qualification demo with our team: ${calendlyUrl}`,
+            });
+            await prisma.lead.update({
+              where: { id: leadId },
+              data: {
+                calendlyLinkSent: true,
+                calendlyLinkSentAt: new Date(),
+                calendlyStatus: 'LINK_SENT',
+                calendlyEventUri: calendlyUrl,
+              },
+            });
+          }
+        } catch (smsErr) {
+          console.warn('Could not dispatch Calendly SMS in gather route:', smsErr);
+        }
+      }
     } else {
       // Build LLM messages
       const history = existingTranscript.map((t: any) => ({

@@ -15,13 +15,13 @@ async function handleTwiml(request: Request) {
   const company = url.searchParams.get('company') || 'your company';
   const language = url.searchParams.get('lang') || 'English';
 
-  let greeting = `Hello ${name}! This is Ava calling from TechNova Solutions regarding your public cloud requirement at ${company}. How can we assist you today?`;
+  let greeting = `Hello ${name}! This is Ava calling from CloudScale Solutions regarding your cloud and Microsoft 365 requirements at ${company}. How can we assist you today?`;
 
   const langLower = language.toLowerCase();
   if (langLower.includes('gujarati') || langLower.includes('ગુજરાતી') || langLower === 'gu') {
-    greeting = `નમસ્તે ${name}! હું TechNova Solutions માંથી એવા બોલું છું. તમારી કંપની ${company} માટે ક્લાઉડ અને માઈક્રોસોફ્ટ 365 સોલ્યુશન્સ વિશે વાત કરવી હતી.`;
+    greeting = `નમસ્તે ${name}! હું CloudScale Solutions માંથી Ava બોલું છું. તમારી કંપની ${company} માટે Cloud Migration અને Microsoft 365 સોલ્યુશન્સ વિશે વાત કરવા કૉલ કર્યો છે.`;
   } else if (langLower.includes('hindi') || langLower.includes('हिन्दी') || langLower === 'hi') {
-    greeting = `नमस्ते ${name}! मैं टेकनोवा सॉल्यूशंस से एवा बोल रही हूँ। आपकी कंपनी ${company} के क्लाउड प्रोजेक्ट के संबंध में बात करना चाहती हूँ।`;
+    greeting = `नमस्ते ${name}! मैं CloudScale Solutions से Ava बोल रही हूँ। आपकी कंपनी ${company} के Cloud और Microsoft 365 प्रोजेक्ट के संबंध में बात करना चाहती हूँ।`;
   } else if (langLower.includes('spanish') || langLower.includes('español')) {
     greeting = `¡Hola ${name}! Le saluda Ava de TechNova Solutions respecto a su requerimiento de nube en ${company}. ¿Cómo podemos ayudarle hoy?`;
   } else if (langLower.includes('german') || langLower.includes('deutsch')) {
