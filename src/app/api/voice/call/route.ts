@@ -185,13 +185,17 @@ export async function POST(request: Request) {
         aiResponse = `No problem at all! I have scheduled a priority callback for tomorrow at your preferred time window. We look forward to connecting then!`;
       }
     } else {
+      // Extract any meeting date/time specifically mentioned by the prospect
+      const prospectRequestedTime = extractMeetingDateTime(prospectSpeech);
+      const requestedSlot = prospectRequestedTime.detected ? prospectRequestedTime.displayStr : null;
+
       // 1. Try Groq for sub-150ms voice generation
-      const groqResponse = await generateVoiceTurnWithGroq(history, leadContext, language);
+      const groqResponse = await generateVoiceTurnWithGroq(history, leadContext, language, requestedSlot);
       if (groqResponse) {
         aiResponse = groqResponse;
       } else {
         // 2. Fallback to Gemini 2.5 Flash for multilingual nuance
-        const geminiResponse = await generateVoiceTurnWithGemini(history, leadContext, language);
+        const geminiResponse = await generateVoiceTurnWithGemini(history, leadContext, language, requestedSlot);
         if (geminiResponse) {
           aiResponse = geminiResponse;
         }
@@ -200,61 +204,62 @@ export async function POST(request: Request) {
       // 3. Multilingual rule-based dialogue fallback
       if (!aiResponse) {
         const turnCount = history.filter((m) => m.role === 'user').length;
+        const meetingSlot = requestedSlot || (prospectRequestedTime.meetingTime ? prospectRequestedTime.displayStr : 'tomorrow at 2:00 PM');
         if (lang.includes('español') || lang.includes('spanish') || lang === 'es') {
           if (turnCount <= 1) {
             aiResponse = `Comprendido. ¿Qué plazo y tamaño de equipo tienen previstos para esta implementación en ${leadContext.company}?`;
           } else if (turnCount === 2) {
-            aiResponse = `¡Excelente! He agendado una reunión para el jueves a las 3 PM con nuestro especialista de soluciones. Ya hemos enviado la confirmación e invitación a su correo.`;
+            aiResponse = `¡Excelente! He agendado una reunión para ${meetingSlot} con nuestro especialista de soluciones. Ya hemos enviado la confirmación e invitación a su correo.`;
           } else {
-            aiResponse = `Suena fantástico. Esperamos conectar con usted el jueves a las 3 PM. ¡Que tenga un excelente día!`;
+            aiResponse = `Suena fantástico. Esperamos conectar con usted para ${meetingSlot}. ¡Que tenga un excelente día!`;
           }
         } else if (lang.includes('हिन्दी') || lang.includes('hindi') || lang === 'hi') {
           if (turnCount <= 1) {
             aiResponse = `बिल्कुल समझ गई। आप ${leadContext.company} में इस रोलआउट के लिए क्या समय सीमा और टीम का आकार निर्धारित कर रहे हैं?`;
           } else if (turnCount === 2) {
-            aiResponse = `शानदार! मैंने हमारे सॉल्यूशंस स्पेशलिस्ट के साथ गुरुवार दोपहर 3 बजे की बैठक तय कर दी है। कैलेंडर आमंत्रण आपके ईमेल पर भेज दिया गया है।`;
+            aiResponse = `शानदार! मैंने हमारे सॉल्यूशंस स्पेशलिस्ट के साथ ${meetingSlot} की बैठक तय कर दी है। कैलेंडर आमंत्रण आपके ईमेल पर भेज दिया गया है।`;
           } else {
-            aiResponse = `बहुत बढ़िया। हम गुरुवार दोपहर 3 बजे बातचीत करने के लिए उत्सुक हैं। आपका दिन शुभ हो!`;
+            aiResponse = `बहुत बढ़िया। हम ${meetingSlot} बातचीत करने के लिए उत्सुक हैं। आपका दिन शुभ हो!`;
           }
         } else if (lang.includes('ગુજરાતી') || lang.includes('gujarati') || lang === 'gu') {
           if (turnCount <= 1) {
             aiResponse = `બરાબર સમજાયું. આપ ${leadContext.company} માં આ અમલીકરણ માટે શું સમયમર્યાદા અને ટીમનું કદ વિચારી રહ્યા છો?`;
           } else if (turnCount === 2) {
-            aiResponse = `ખૂબ સરસ! મેં અમારા સોલ્યુશન્સ સ્પેશિયાલિસ્ટ સાથે ગુરુવારે બપોરે 3 વાગ્યે મીટિંગ નક્કી કરી છે. કેલેન્ડર આમંત્રણ આપના ઈમેલ પર મોકલી દેવાયું છે.`;
+            aiResponse = `ખૂબ સરસ! મેં અમારા સોલ્યુશન્સ સ્પેશિયાલિસ્ટ સાથે ${meetingSlot} માટે મીટિંગ નક્કી કરી છે. કેલેન્ડર આમંત્રણ આપના ઈમેલ પર મોકલી દેવાયું છે.`;
           } else {
-            aiResponse = `સરસ. આપણે ગુરુવારે બપોરે 3 વાગ્યે વાતચીત કરવા માટે ઉત્સાહિત છીએ. આપનો દિવસ શુભ રહે!`;
+            aiResponse = `સરસ. આપણે ${meetingSlot} વાતચીત કરવા માટે ઉત્સાહિત છીએ. આપનો દિવસ શુભ રહે!`;
           }
         } else if (lang.includes('français') || lang.includes('french') || lang === 'fr') {
           if (turnCount <= 1) {
             aiResponse = `Bien compris. Quels sont vos délais et la taille de votre équipe pour ce déploiement chez ${leadContext.company} ?`;
           } else if (turnCount === 2) {
-            aiResponse = `Parfait ! J'ai réservé jeudi à 15h avec notre responsable des solutions. Une invitation de calendrier vous a été envoyée.`;
+            aiResponse = `Parfait ! J'ai réservé ${meetingSlot} avec notre responsable des solutions. Une invitation de calendrier vous a été envoyée.`;
           } else {
-            aiResponse = `Formidable. Nous nous réjouissons d'échanger jeudi à 15h. Passez une excellente journée !`;
+            aiResponse = `Formidable. Nous nous réjouissons d'échanger ${meetingSlot}. Passez une excellente journée !`;
           }
         } else if (lang.includes('deutsch') || lang.includes('german') || lang === 'de') {
           if (turnCount <= 1) {
             aiResponse = `Verstanden. Welchen Zeitrahmen und welche Teamgröße planen Sie für diese Implementierung bei ${leadContext.company}?`;
           } else if (turnCount === 2) {
-            aiResponse = `Ausgezeichnet! Ich habe Donnerstag um 15:00 Uhr mit unserem Solution Lead reserviert. Eine Kalendereinladung wurde an Sie gesendet.`;
+            aiResponse = `Ausgezeichnet! Ich habe ${meetingSlot} mit unserem Solution Lead reserviert. Eine Kalendereinladung wurde an Sie gesendet.`;
           } else {
-            aiResponse = `Klingt fantastisch. Wir freuen uns auf unser Gespräch am Donnerstag um 15:00 Uhr. Einen schönen Tag noch!`;
+            aiResponse = `Klingt fantastisch. Wir freuen uns auf unser Gespräch am ${meetingSlot}. Einen schönen Tag noch!`;
           }
         } else if (lang.includes('العربية') || lang.includes('arabic') || lang === 'ar') {
           if (turnCount <= 1) {
             aiResponse = `مفهوم تماماً. ما هو الجدول الزمني وحجم الفريق المخطط له لهذا المشروع في ${leadContext.company}؟`;
           } else if (turnCount === 2) {
-            aiResponse = `رائع جداً! لقد حجزت يوم الخميس في الساعة 3 مساءً مع رئيس الحلول لدينا. تم إرسال دعوة التقويم إلى بريدك الإلكتروني.`;
+            aiResponse = `رائع جداً! لقد حجزت موعد ${meetingSlot} مع رئيس الحلول لدينا. تم إرسال دعوة التقويم إلى بريدك الإلكتروني.`;
           } else {
-            aiResponse = `ممتاز. نحن نتطلع للتواصل معك يوم الخميس في الساعة 3 مساءً. نتمنى لك يوماً سعيداً!`;
+            aiResponse = `ممتاز. نحن نتطلع للتواصل معك في ${meetingSlot}. نتمنى لك يوماً سعيداً!`;
           }
         } else {
           if (turnCount <= 1) {
             aiResponse = `Understood. What timeline and team size are you planning for this rollout at ${leadContext.company}?`;
           } else if (turnCount === 2) {
-            aiResponse = `Absolutely! I have booked Thursday at 3 PM with our solutions lead. A confirmation email and calendar invite has been sent to your email.`;
+            aiResponse = `Absolutely! I have booked ${meetingSlot} with our solutions lead. A confirmation email and calendar invite has been sent to your email.`;
           } else {
-            aiResponse = `Sounds fantastic. We look forward to connecting on Thursday at 3 PM. Have a wonderful day!`;
+            aiResponse = `Sounds fantastic. We look forward to connecting on ${meetingSlot}. Have a wonderful day!`;
           }
         }
       }
@@ -283,8 +288,11 @@ export async function POST(request: Request) {
     // =========================================================================
     // 3.5 GOOGLE CALENDAR & DATE/TIME SCHEDULING (API KEY SYNC)
     // =========================================================================
-    const combinedSpeech = `${prospectSpeech} ${aiResponse}`;
-    const parsedDate = extractMeetingDateTime(combinedSpeech);
+    // Prioritize date/time mentioned by the prospect first; fall back to AI reply
+    let parsedDate = extractMeetingDateTime(prospectSpeech);
+    if (!parsedDate.detected) {
+      parsedDate = extractMeetingDateTime(aiResponse);
+    }
 
     // Meeting booked detection
     const aiText = (aiResponse || '').toLowerCase();
@@ -293,15 +301,17 @@ export async function POST(request: Request) {
       (parsedDate.detected ||
         aiText.includes('booked') ||
         aiText.includes('calendar invite') ||
-        aiText.includes('look forward to connecting on thursday') ||
+        aiText.includes('look forward to connecting') ||
         aiText.includes('agendado') ||
         aiText.includes('réservé') ||
         aiText.includes('gebucht') ||
         aiText.includes('बैठक तय') ||
         aiText.includes('મીટિંગ નક્કી') ||
-        aiText.includes('ગુરુવારે બપોરે 3') ||
         aiText.includes('حجزت') ||
-        (prospectLower.includes('set up a call') && (aiText.includes('thursday') || aiText.includes('3 pm'))));
+        prospectLower.includes('set up a call') ||
+        prospectLower.includes('book a call') ||
+        prospectLower.includes('schedule a call') ||
+        prospectLower.includes('confirm meeting'));
 
     let googleCalendarEvent: any = null;
     if (isMeetingBooked) {
@@ -393,7 +403,7 @@ export async function POST(request: Request) {
           : isCallbackRequested
           ? 'Prospect requested callback due to active meeting. Rescheduled for tomorrow 10:30 AM.'
           : isMeetingBooked
-          ? `Qualified: 150-user M365 rollout for ${leadContext.company}. Budget approved; meeting booked for Thursday 3 PM.`
+          ? `Qualified: Rollout for ${leadContext.company}. Meeting booked for ${parsedDate.displayStr || 'tomorrow at 2:00 PM'}.`
           : `Active qualification with ${leadContext.name} (${leadContext.company}) in ${language}.`;
 
         const nextActionText = isNegativeDnd
@@ -443,7 +453,7 @@ export async function POST(request: Request) {
       reply: aiResponse,
       meetingBooked: isMeetingBooked,
       meetingScheduledAt: googleCalendarEvent?.startTime || (parsedDate.meetingTime ? parsedDate.meetingTime.toISOString() : null),
-      meetingDisplayStr: parsedDate.displayStr || (googleCalendarEvent?.startTime ? new Date(googleCalendarEvent.startTime).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }) + ' at 3:00 PM' : 'Thursday at 3:00 PM'),
+      meetingDisplayStr: parsedDate.displayStr || (googleCalendarEvent?.startTime ? new Date(googleCalendarEvent.startTime).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }) + ' at 2:00 PM' : 'Tomorrow at 2:00 PM'),
       googleCalendarUrl: googleCalendarEvent?.googleCalendarUrl || null,
       googleCalendarApiKey: GOOGLE_CALENDAR_API_KEY,
       isNegativeDnd,
@@ -461,7 +471,7 @@ export async function POST(request: Request) {
         : isCallbackRequested
         ? 'Callback scheduled for tomorrow 10:30 AM.'
         : isMeetingBooked
-        ? 'Meeting booked for Thursday 3:00 PM.'
+        ? `Meeting booked for ${parsedDate.displayStr || 'tomorrow at 2:00 PM'}.`
         : 'In-progress qualification...',
       nextBestAction: isNegativeDnd
         ? 'Regulatory DND flag active. Outreach halted.'

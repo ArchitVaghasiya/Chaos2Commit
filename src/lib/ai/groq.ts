@@ -20,12 +20,17 @@ export interface VoiceTurnMessage {
 export async function generateVoiceTurnWithGroq(
   messages: VoiceTurnMessage[],
   leadContext: { name: string; company: string; requirement: string },
-  language = 'English'
+  language = 'English',
+  requestedMeetingSlot?: string | null
 ) {
   const groq = getGroqClient();
   if (!groq) {
     return null; // Fallback to simulated voice turn
   }
+
+  const meetingInstruction = requestedMeetingSlot
+    ? `The prospect explicitly requested meeting on "${requestedMeetingSlot}". You MUST acknowledge, confirm, and agree to their exact requested time ("${requestedMeetingSlot}") with our solutions lead. Do NOT change it to Thursday 3 PM.`
+    : `When they express interest or ask to connect, propose a convenient meeting time (e.g. tomorrow afternoon or ask what day and time works best for them in ${language}). Never hardcode Thursday 3 PM unless requested.`;
 
   const systemPrompt = `You are Ava, a senior consultative sales executive at TechNova Solutions.
 You are on a live phone call with ${leadContext.name} from ${leadContext.company}.
@@ -38,7 +43,7 @@ Your goal:
 1. Speak concisely in 1-2 natural, spoken sentences (never use bullet points, markdown, or long paragraphs).
 2. Validate their requirement, timeline, and team size in ${language}.
 3. Overcome any hesitation with warmth and authority.
-4. When they express interest or ask to connect, propose a meeting for "Thursday at 3 PM with our solutions lead" (translated naturally into ${language}).
+4. ${meetingInstruction}
 5. Sound natural, friendly, professional, and consultative.`;
 
   const modelsToTry = [

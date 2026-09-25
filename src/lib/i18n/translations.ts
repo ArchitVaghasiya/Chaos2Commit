@@ -940,20 +940,20 @@ export function getLanguageConfirmationSpeech(
 export function getCallLimitWrapupSpeech(language: string): string {
   switch (language) {
     case 'ગુજરાતી':
-      return `હું જોઈ શકું છું કે આપણે આજના 3 મિનિટના પ્રારંભિક કૉલની સમય મર્યાદા પર પહોંચી ગયા છીએ. મેં મીટિંગનું આમંત્રણ આપના ઇમેઇલ પર મોકલી આપ્યું છે. ગુરુવારે બપોરે 3 વાગ્યે મળીએ, આભાર!`;
+      return `હું જોઈ શકું છું કે આપણે આજના 3 મિનિટના પ્રારંભિક કૉલની સમય મર્યાદા પર પહોંચી ગયા છીએ. મેં મીટિંગનું આમંત્રણ અને વિગતો આપના ઇમેઇલ પર મોકલી આપ્યા છે. આપણી મીટિંગમાં મળવા માટે ઉત્સાહિત છીએ, આભાર!`;
     case 'हिन्दी':
-      return `मैं देख रही हूँ कि हम आज की 3 मिनट की प्रारंभिक कॉल की समय सीमा पर पहुँच गए हैं। मैंने बैठक का विवरण आपके ईमेल पर भेज दिया है। गुरुवार दोपहर 3 बजे मिलते हैं, धन्यवाद!`;
+      return `मैं देख रही हूँ कि हम आज की 3 मिनट की प्रारंभिक कॉल की समय सीमा पर पहुँच गए हैं। मैंने बैठक का आमंत्रण और विवरण आपके ईमेल पर भेज दिया है। हम जल्द ही बातचीत करने के लिए उत्सुक हैं, धन्यवाद!`;
     case 'Español':
-      return `Veo que hemos alcanzado el límite de 3 minutos para esta llamada introductoria. He enviado la invitación de reunión a su correo. ¡Hablamos el jueves a las 3 PM, muchas gracias!`;
+      return `Veo que hemos alcanzado el límite de 3 minutos para esta llamada introductoria. He enviado la invitación de reunión a su correo. ¡Esperamos conectar con usted pronto, muchas gracias!`;
     case 'Français':
-      return `Je vois que nous avons atteint la limite de 3 minutes pour cet appel préliminaire. J'ai envoyé l'invitation à votre adresse e-mail. À jeudi 15h, merci !`;
+      return `Je vois que nous avons atteint la limite de 3 minutes pour cet appel préliminaire. J'ai envoyé l'invitation à votre adresse e-mail. Au plaisir d'échanger lors de notre réunion, merci !`;
     case 'Deutsch':
-      return `Ich sehe, dass wir das 3-Minuten-Limit für unser heutiges Erstgespräch erreicht haben. Ich habe die Termineinladung an Ihre E-Mail gesendet. Bis Donnerstag um 15:00 Uhr, vielen Dank!`;
+      return `Ich sehe, dass wir das 3-Minuten-Limit für unser heutiges Erstgespräch erreicht haben. Ich habe die Termineinladung an Ihre E-Mail gesendet. Wir freuen uns auf das Gespräch, vielen Dank!`;
     case 'العربية':
-      return `أرى أننا وصلنا إلى الحد الأقصى البالغ 3 دقائق لمكالمتنا التمهيدية اليوم. لقد أرسلت تفاصيل الموعد إلى بريدك الإلكتروني. نلتقي يوم الخميس، شكراً جزيلاً!`;
+      return `أرى أننا وصلنا إلى الحد الأقصى البالغ 3 دقائق لمكالمتنا التمهيدية اليوم. لقد أرسلت تفاصيل الموعد إلى بريدك الإلكتروني. نتطلع إلى لقائنا القريب، شكراً جزيلاً!`;
     case 'English':
     default:
-      return `I see we've reached our 3-minute time limit for today's introductory call. I've sent the meeting invitation and architecture summary to your email. We look forward to speaking on Thursday at 3 PM!`;
+      return `I see we've reached our 3-minute time limit for today's introductory call. I've sent the meeting invitation and architecture summary to your email. We look forward to our scheduled discussion!`;
   }
 }
 

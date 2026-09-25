@@ -180,7 +180,7 @@ async function handleGather(request: Request) {
           { name: leadName, company, requirement: 'Microsoft 365 & SharePoint Solutions' },
           language
         );
-        aiReply = geminiResp || `Thank you for sharing that. Would Thursday at 3 PM work for a brief 15-minute technical walkthrough?`;
+        aiReply = geminiResp || `Thank you for sharing that. Would tomorrow afternoon work for a brief 15-minute technical walkthrough?`;
       }
     }
 
@@ -201,7 +201,7 @@ async function handleGather(request: Request) {
             sentiment: isNegative ? 'NEGATIVE' : isMeetingBooked ? 'POSITIVE' : 'NEUTRAL',
             outcome: isMeetingBooked ? 'MEETING_BOOKED' : isNegative ? 'NOT_INTERESTED' : 'INTERESTED',
             callSummary: `Real-time Twilio PSTN call turn logged. Latest prospect statement: "${prospectText.substring(0, 80)}"`,
-            nextBestAction: isMeetingBooked ? 'Send calendar invite for Thursday 3 PM.' : isNegative ? 'Compliance DND active.' : 'Continue qualification on team size and target timeline.',
+            nextBestAction: isMeetingBooked ? 'Send calendar invite for scheduled meeting slot.' : isNegative ? 'Compliance DND active.' : 'Continue qualification on team size and target timeline.',
           },
         });
       } catch (dbErr) {

@@ -154,21 +154,52 @@ export function extractMeetingDateTime(speech: string): {
     }
     matched = true;
   } else {
-    // Relative Day extraction (e.g. "tomorrow", "today", "thursday", etc.)
-    const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    // Relative Day extraction (multilingual: tomorrow, today, days of week)
+    const multilingualDays: { [key: string]: number } = {
+      // English
+      sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6,
+      // Spanish
+      domingo: 0, lunes: 1, martes: 2, miércoles: 3, miercoles: 3, jueves: 4, viernes: 5, sábado: 6, sabado: 6,
+      // Hindi
+      रविवार: 0, सोमवार: 1, मंगलवार: 2, बुधवार: 3, गुरुवार: 4, शुक्रवार: 5, शनिवार: 6,
+      // Gujarati
+      રવિવાર: 0, સોમવાર: 1, મંગળવાર: 2, બુધવાર: 3, ગુરુવાર: 4, શુક્રવાર: 5, શનિવાર: 6,
+      // French
+      dimanche: 0, lundi: 1, mardi: 2, mercredi: 3, jeudi: 4, vendredi: 5, samedi: 6,
+      // German
+      sonntag: 0, montag: 1, dienstag: 2, mittwoch: 3, donnerstag: 4, freitag: 5, samstag: 6,
+    };
+
+    const isTomorrow =
+      text.includes('tomorrow') ||
+      text.includes('mañana') ||
+      text.includes('demain') ||
+      text.includes('morgen') ||
+      text.includes('कल') ||
+      text.includes('આવતીકાલે') ||
+      text.includes('કાલે');
+
+    const isToday =
+      text.includes('today') ||
+      text.includes('hoy') ||
+      text.includes('aujourd') ||
+      text.includes('heute') ||
+      text.includes('आज') ||
+      text.includes('આજે');
+
     let dayOffset = 0;
 
-    if (text.includes('tomorrow')) {
+    if (isTomorrow) {
       dayOffset = 1;
       matched = true;
-    } else if (text.includes('today')) {
+    } else if (isToday) {
       dayOffset = 0;
       matched = true;
     } else {
-      for (let i = 0; i < 7; i++) {
-        if (text.includes(daysOfWeek[i])) {
+      for (const [dayWord, targetDayNum] of Object.entries(multilingualDays)) {
+        if (text.includes(dayWord)) {
           const currentDay = now.getDay();
-          dayOffset = (i - currentDay + 7) % 7;
+          dayOffset = (targetDayNum - currentDay + 7) % 7;
           if (dayOffset === 0) dayOffset = 7; // Next week's instance
           matched = true;
           break;
@@ -176,19 +207,9 @@ export function extractMeetingDateTime(speech: string): {
       }
     }
 
-    if (text.includes('thursday') && text.includes('3 pm')) {
+    if (!matched && (text.includes('meeting') || text.includes('calendar') || text.includes('book') || text.includes('schedule') || text.includes('call'))) {
       matched = true;
-      const currentDay = now.getDay();
-      dayOffset = (4 - currentDay + 7) % 7 || 7;
-      hour = 15;
-      minute = 0;
-    }
-
-    if (!matched && (text.includes('meeting') || text.includes('calendar') || text.includes('book') || text.includes('schedule'))) {
-      matched = true;
-      dayOffset = 1;
-      hour = 15;
-      minute = 0;
+      dayOffset = 1; // Default to tomorrow
     }
 
     if (matched) {
@@ -198,7 +219,7 @@ export function extractMeetingDateTime(speech: string): {
   }
 
   if (matched) {
-    // Format display string with EXACT CALENDAR DATE (e.g. "Thursday, Oct 1, 2026 at 3:00 PM")
+    // Format display string with EXACT CALENDAR DATE (e.g. "Monday, Oct 5, 2026 at 2:00 PM")
     const formattedDate = targetDate.toLocaleDateString('en-US', {
       weekday: 'long',
       month: 'short',

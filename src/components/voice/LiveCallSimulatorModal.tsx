@@ -600,7 +600,7 @@ export default function LiveCallSimulatorModal({
             ...prev,
             {
               speaker: 'system',
-              text: `📅 Google Calendar Event Synced: Meeting reserved for ${data.meetingDisplayStr || 'Thursday at 3:00 PM'} (Google API Key: AIzaSyAD33...kazY-o).`,
+              text: `📅 Google Calendar Event Synced: Meeting reserved for ${data.meetingDisplayStr || 'Confirmed Date & Time'} (Google API Key: AIzaSyAD33...kazY-o).`,
               time: formatCallTime(gcalOffset),
               timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               offsetSeconds: gcalOffset,
@@ -1189,7 +1189,7 @@ export default function LiveCallSimulatorModal({
                     <div className="font-semibold text-white flex items-center gap-2">
                       <span>Google Calendar Synced</span>
                       <span className="text-[10px] px-2 py-0.5 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                        {meetingDisplayStr || 'Thursday at 3:00 PM'}
+                        {meetingDisplayStr || 'Confirmed Date & Time'}
                       </span>
                     </div>
                     <div className="text-[11px] text-zinc-300">
@@ -1401,12 +1401,32 @@ export default function LiveCallSimulatorModal({
 
                 <button
                   type="button"
-                  onClick={() => handleSendMessage('Sounds fantastic! Let us book the calendar demo for Thursday at 3 PM.')}
+                  onClick={() => handleSendMessage('Sounds fantastic! Let us book the demo for tomorrow at 2 PM.')}
                   disabled={callStatus !== 'CONNECTED' || isAiThinking}
                   className="px-2.5 py-1 rounded-lg bg-emerald-600/15 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40"
                 >
                   <Calendar className="w-3 h-3 text-emerald-400" />
-                  <span>Confirm Meeting Booking</span>
+                  <span>Book Tomorrow 2 PM</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSendMessage('Can we schedule the meeting for Monday at 10 AM instead?')}
+                  disabled={callStatus !== 'CONNECTED' || isAiThinking}
+                  className="px-2.5 py-1 rounded-lg bg-teal-600/15 hover:bg-teal-600/30 text-teal-300 border border-teal-500/30 text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40"
+                >
+                  <Calendar className="w-3 h-3 text-teal-400" />
+                  <span>Propose Monday 10 AM</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSendMessage('How about Friday at 4 PM?')}
+                  disabled={callStatus !== 'CONNECTED' || isAiThinking}
+                  className="px-2.5 py-1 rounded-lg bg-purple-600/15 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40"
+                >
+                  <Calendar className="w-3 h-3 text-purple-400" />
+                  <span>Propose Friday 4 PM</span>
                 </button>
               </div>
             </div>

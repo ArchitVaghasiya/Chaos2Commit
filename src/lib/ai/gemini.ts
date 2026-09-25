@@ -128,10 +128,15 @@ Return strictly the JSON array, no preamble or markdown code block.
 export async function generateVoiceTurnWithGemini(
   messages: Array<{ role: string; content: string }>,
   leadContext: { name: string; company: string; requirement: string },
-  language = 'English'
+  language = 'English',
+  requestedMeetingSlot?: string | null
 ): Promise<string | null> {
   const model = getGeminiModel('gemini-3.6-flash');
   if (!model) return null;
+
+  const meetingInstruction = requestedMeetingSlot
+    ? `The prospect explicitly requested meeting on "${requestedMeetingSlot}". You MUST acknowledge, confirm, and agree to their exact requested time ("${requestedMeetingSlot}") with our solutions lead. Do NOT change it to Thursday 3 PM.`
+    : `When they express interest or ask to connect, propose a convenient meeting time (e.g. tomorrow afternoon or ask what day and time works best for them in ${language}). Never hardcode Thursday 3 PM unless requested.`;
 
   const systemPrompt = `You are Ava, an expert enterprise B2B sales development representative at TechNova Solutions.
 You are on a live phone call with ${leadContext.name} from ${leadContext.company}.
@@ -143,7 +148,7 @@ The prospect is speaking in "${language}". You MUST respond strictly and fluentl
 Spoken Guidelines:
 1. Speak concisely in 1 to 2 natural, spoken sentences (never use bullet points, markdown asterisks, or long text).
 2. Acknowledge what they said, affirm our expertise, and qualify either their timeline or user/team headcount.
-3. If they confirm interest, ask for next steps, or request a call, propose meeting on "Thursday at 3 PM with our solutions lead" in ${language}.
+3. ${meetingInstruction}
 4. Tone: warm, authoritative, respectful, and consultative.`;
 
   try {
