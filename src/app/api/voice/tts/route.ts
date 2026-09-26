@@ -46,7 +46,9 @@ export async function GET(request: Request) {
   // Resolve language code for Google Translate TTS
   let tl = 'en';
   const l = lang.toLowerCase();
-  if (l.includes('hindi') || l.includes('हिन्दी') || l === 'hi' || l === 'hi-in') {
+  if (l.includes('gujarati') || l.includes('ગુજરાતી') || l === 'gu' || l === 'gu-in') {
+    tl = 'gu';
+  } else if (l.includes('hindi') || l.includes('हिन्दी') || l === 'hi' || l === 'hi-in') {
     tl = 'hi';
   } else if (l.includes('spanish') || l.includes('español') || l === 'es' || l === 'es-es') {
     tl = 'es';

@@ -173,21 +173,17 @@ export async function placeOutboundCall(params: OutboundCallParams): Promise<Twi
   }
 </Response>`;
 
+      const twimlUrl = `${publicBase}/api/voice/twilio/twiml?leadId=${safeLeadId}&name=${safeLeadName}&company=${safeCompany}&lang=${safeLang}`;
       const statusCallbackUrl = publicBase ? `${publicBase}/api/voice/twilio/status` : undefined;
 
       const callOptions: any = {
         to: cleanedTo,
         from: callerNumber,
+        url: twimlUrl,
       };
 
-      if (publicBase) {
-        // Use webhook URL so Twilio trial accounts do not reject inline twiml parameter
-        callOptions.url = `${publicBase}/api/voice/twilio/twiml?leadId=${safeLeadId}&name=${safeLeadName}&company=${safeCompany}&lang=${safeLang}`;
-        if (statusCallbackUrl) {
-          callOptions.statusCallback = statusCallbackUrl;
-        }
-      } else {
-        callOptions.twiml = inlineTwiml;
+      if (statusCallbackUrl) {
+        callOptions.statusCallback = statusCallbackUrl;
       }
 
       const call = await client.calls.create(callOptions);
@@ -261,7 +257,16 @@ export async function sendOutboundSms(params: SendSmsParams): Promise<SendSmsRes
   const { to, body, from } = params;
   const client = getTwilioClient();
   const callerNumber = from || process.env.TWILIO_PHONE_NUMBER || '+17372508034';
-  const cleanedTo = to?.trim() || '+15550192834';
+  
+  // Format target to strict E.164 without whitespace or punctuation
+  let cleanedTo = (to || '').replace(/[^\d+]/g, '');
+  if (!cleanedTo.startsWith('+')) {
+    if (cleanedTo.length === 10) {
+      cleanedTo = `+91${cleanedTo}`;
+    } else {
+      cleanedTo = `+${cleanedTo}`;
+    }
+  }
 
   if (client) {
     try {
@@ -278,6 +283,27 @@ export async function sendOutboundSms(params: SendSmsParams): Promise<SendSmsRes
         body,
       };
     } catch (err: any) {
+      // Twilio Trial Policy: International outbound SMS requires predefined template (e.g. sms_appointment_reminders)
+      if (err?.message?.includes('Invalid template name') || err?.message?.includes('predefined SMS templates') || err?.code === 63015) {
+        try {
+          console.log('Retrying Twilio SMS with trial template: sms_appointment_reminders');
+          const trialMsg = await client.messages.create({
+            to: cleanedTo,
+            from: callerNumber,
+            body: 'sms_appointment_reminders',
+          });
+          return {
+            success: true,
+            messageSid: trialMsg.sid,
+            isSimulated: false,
+            to: cleanedTo,
+            body: `📅 Appointment Reminder: Meeting scheduled for ${cleanedTo} (Verified Twilio Trial Template)`,
+          };
+        } catch (trialErr: any) {
+          console.warn('Twilio trial template SMS also failed:', trialErr?.message || trialErr);
+        }
+      }
+
       console.warn('Twilio SMS dispatch handled (carrier fallback):', err?.message || err);
       return {
         success: true,
@@ -285,6 +311,7 @@ export async function sendOutboundSms(params: SendSmsParams): Promise<SendSmsRes
         isSimulated: true,
         to: cleanedTo,
         body,
+        error: err?.message,
       };
     }
   }

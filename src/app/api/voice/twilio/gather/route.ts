@@ -82,7 +82,17 @@ async function handleGather(request: Request) {
       });
     }
 
-    const publicBase = getDynamicWebhookBase() || process.env.PUBLIC_WEBHOOK_URL || url.origin;
+    const xfHost = request.headers.get('x-forwarded-host');
+    const host = request.headers.get('host');
+    const reqHost = xfHost || host || '';
+    const proto = request.headers.get('x-forwarded-proto') || 'https';
+    let incomingBase = '';
+    if (reqHost && !reqHost.includes('localhost') && !reqHost.includes('127.0.0.1')) {
+      incomingBase = `${proto}://${reqHost}`;
+    } else if (url.origin && !url.origin.includes('localhost') && !url.origin.includes('127.0.0.1')) {
+      incomingBase = url.origin;
+    }
+    const publicBase = incomingBase || getDynamicWebhookBase() || process.env.PUBLIC_WEBHOOK_URL || url.origin;
 
     // =========================================================================
     // STEP 1: INTERACTIVE LANGUAGE SELECTION (DTMF 1/2/3 or Speech)
@@ -197,13 +207,15 @@ async function handleGather(request: Request) {
         detectedLang
       )}`;
 
+      const speechPrompt = renderTwimlVoicePrompt(openingPitch, detectedLang, publicBase);
+      const safeGatherLang = (detectedLang === 'Gujarati' || detectedLang.toLowerCase().includes('gu')) ? 'hi-IN' : gatherLang;
+
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Gather input="speech" action="${escapeXml(nextDialogueAction)}" method="POST" speechTimeout="auto" timeout="6" language="${gatherLang}">
-    <Say voice="${voice}" language="${sayLang}">${escapeXml(openingPitch)}</Say>
+  <Gather input="dtmf speech" action="${escapeXml(nextDialogueAction)}" method="POST" speechTimeout="auto" timeout="8" language="${safeGatherLang}">
+    ${speechPrompt}
   </Gather>
-  <Say voice="${voice}" language="${sayLang}">Thank you for speaking with ${orgName}. Have a wonderful day!</Say>
-  <Hangup/>
+  <Redirect method="POST">${escapeXml(nextDialogueAction)}</Redirect>
 </Response>`;
 
       return new NextResponse(twiml, { headers: { 'Content-Type': 'text/xml' } });
@@ -236,12 +248,15 @@ async function handleGather(request: Request) {
         promptSilence = `क्या आप अभी भी लाइन पर हैं? अगर आपके कोई सवाल हैं तो कृपया बताएं।`;
       }
 
+      const silencePrompt = renderTwimlVoicePrompt(promptSilence, language, publicBase);
+      const safeGatherLang = (language === 'Gujarati' || language.toLowerCase().includes('gu')) ? 'hi-IN' : gatherLang;
+
       const silenceXml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Gather input="speech" action="${escapeXml(dialogueActionUrl)}" method="POST" speechTimeout="auto" timeout="6" language="${gatherLang}">
-    <Say voice="${voice}" language="${sayLang}">${escapeXml(promptSilence)}</Say>
+  <Gather input="dtmf speech" action="${escapeXml(dialogueActionUrl)}" method="POST" speechTimeout="auto" timeout="8" language="${safeGatherLang}">
+    ${silencePrompt}
   </Gather>
-  <Say voice="${voice}" language="${sayLang}">Thank you for your time. Have a wonderful day!</Say>
+  <Say voice="Polly.Aditi" language="en-IN">Thank you for your time. Have a wonderful day!</Say>
   <Hangup/>
 </Response>`;
 
@@ -638,20 +653,22 @@ async function handleGather(request: Request) {
 
     // Generate responsive TwiML
     let responseXml = '';
+    const speechPrompt = renderTwimlVoicePrompt(aiReply, language, publicBase);
+    const safeGatherLang = (language === 'Gujarati' || language.toLowerCase().includes('gu')) ? 'hi-IN' : gatherLang;
+
     if (shouldHangup) {
       responseXml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="${voice}" language="${sayLang}">${escapeXml(aiReply)}</Say>
+  ${speechPrompt}
   <Hangup/>
 </Response>`;
     } else {
       responseXml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Gather input="speech" action="${escapeXml(dialogueActionUrl)}" method="POST" speechTimeout="auto" timeout="6" language="${gatherLang}">
-    <Say voice="${voice}" language="${sayLang}">${escapeXml(aiReply)}</Say>
+  <Gather input="dtmf speech" action="${escapeXml(dialogueActionUrl)}" method="POST" speechTimeout="auto" timeout="8" language="${safeGatherLang}">
+    ${speechPrompt}
   </Gather>
-  <Say voice="${voice}" language="${sayLang}">Thank you for speaking with ${orgName}. Have a wonderful day!</Say>
-  <Hangup/>
+  <Redirect method="POST">${escapeXml(dialogueActionUrl)}</Redirect>
 </Response>`;
     }
 
@@ -668,6 +685,26 @@ async function handleGather(request: Request) {
   <Hangup/>
 </Response>`;
     return new NextResponse(xml, { headers: { 'Content-Type': 'text/xml' } });
+  }
+}
+
+function renderTwimlVoicePrompt(text: string, lang: string, publicBase: string): string {
+  const lower = (lang || '').toLowerCase();
+  if (lower.includes('gujarati') || lower.includes('ગુજરાતી') || lower === 'gu') {
+    if (publicBase) {
+      return `<Play>${publicBase}/api/voice/tts?lang=gu&amp;text=${encodeURIComponent(text)}</Play>`;
+    }
+    return `<Say voice="Polly.Aditi" language="hi-IN">${escapeXml(text)}</Say>`;
+  } else if (lower.includes('hindi') || lower.includes('हिन्दी') || lower === 'hi') {
+    return `<Say voice="Polly.Aditi" language="hi-IN">${escapeXml(text)}</Say>`;
+  } else if (lower.includes('spanish') || lower.includes('español')) {
+    return `<Say voice="Polly.Lucia" language="es-ES">${escapeXml(text)}</Say>`;
+  } else if (lower.includes('french') || lower.includes('français')) {
+    return `<Say voice="Polly.Celine" language="fr-FR">${escapeXml(text)}</Say>`;
+  } else if (lower.includes('german') || lower.includes('deutsch')) {
+    return `<Say voice="Polly.Vicki" language="de-DE">${escapeXml(text)}</Say>`;
+  } else {
+    return `<Say voice="Polly.Aditi" language="en-IN">${escapeXml(text)}</Say>`;
   }
 }
 

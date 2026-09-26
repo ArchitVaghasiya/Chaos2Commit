@@ -170,7 +170,7 @@ export async function markUnbookedAndScheduleRedial(leadId: string) {
       success: true,
       message: `Lead ${updated.name} has not booked via Calendly. Auto-redial queued (Attempt #${newRedialCount}).`,
       lead: updated,
-      suggestedScript: `Hi ${updated.name}, Ava following up from TechNova Solutions. I noticed you hadn't had a chance to pick a time slot on the Calendly link we sent earlier. I'm calling back to see if we can lock in a quick 10-minute slot right now or answer any questions?`,
+      suggestedScript: `Hi ${updated.name}, Ava following up from Techsolution. I noticed you hadn't had a chance to pick a time slot on the Calendly link we sent earlier. I'm calling back to see if we can lock in a quick 10-minute slot right now or answer any questions?`,
     };
   } catch (error: any) {
     console.error('markUnbookedAndScheduleRedial error:', error);

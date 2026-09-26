@@ -88,7 +88,7 @@ export async function POST(request: Request) {
           phone: lead.phone,
           company: lead.companyName,
           reason: 'CALENDLY_UNBOOKED_FOLLOWUP',
-          openingLine: `Hi ${lead.name}, this is Ava from TechNova Solutions. I noticed you received our Calendly booking link earlier but hadn't selected a time slot yet. I wanted to follow up directly to see if we can find a convenient 10-minute window for a quick discussion?`,
+          openingLine: `Hi ${lead.name}, this is Ava from Techsolution. I noticed you received our Calendly booking link earlier but hadn't selected a time slot yet. I wanted to follow up directly to see if we can find a convenient 10-minute window for a quick discussion?`,
         },
       });
     }

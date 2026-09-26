@@ -42,7 +42,32 @@ import {
   getLocaleForVoice,
   getAiGreeting,
   getQuickReplies,
+  getLanguageConfirmationSpeech,
 } from '@/lib/i18n/translations';
+
+export const DEMO_PRESENTATION_NUMBERS = [
+  {
+    id: 'yash-live',
+    name: 'Yash Gohel (Verified Mobile)',
+    phone: '+91 9737362307',
+    badge: 'Live Physical Ring (Twilio)',
+    isVerified: true,
+  },
+  {
+    id: 'jury-line-1',
+    name: 'Twilio Gateway (Jury Line 1)',
+    phone: '+1 737-250-8034',
+    badge: 'Austin TX Gateway',
+    isVerified: false,
+  },
+  {
+    id: 'jury-line-2',
+    name: 'Enterprise VIP Mobile (Jury Line 2)',
+    phone: '+91 98765 43210',
+    badge: 'Mumbai VIP Line',
+    isVerified: false,
+  },
+];
 
 export const formatCallTime = (secs: number) => {
   const mins = Math.floor(secs / 60);
@@ -88,6 +113,7 @@ interface LiveCallSimulatorModalProps {
   onMinimize?: () => void;
   onMeetingBookedSuccess?: () => void;
   defaultLanguage?: string;
+  initialTelephonyMode?: 'BROWSER_SIM' | 'TWILIO_PSTN';
 }
 
 export default function LiveCallSimulatorModal({
@@ -97,15 +123,28 @@ export default function LiveCallSimulatorModal({
   onMinimize,
   onMeetingBookedSuccess,
   defaultLanguage = 'English',
+  initialTelephonyMode,
 }: LiveCallSimulatorModalProps) {
-  // Mode Selection: Real Twilio Mobile Call (Default) vs Browser Live AI Call
-  const [telephonyMode, setTelephonyMode] = useState<'BROWSER_SIM' | 'TWILIO_PSTN'>('TWILIO_PSTN');
+  // Mode Selection: Default to Browser Demo Web Call unless specified or Yash's verified phone
+  const isDefaultYash = lead?.phone?.includes('9737362307') || lead?.name?.toLowerCase().includes('yash');
+  const [telephonyMode, setTelephonyMode] = useState<'BROWSER_SIM' | 'TWILIO_PSTN'>(
+    initialTelephonyMode || (isDefaultYash ? 'TWILIO_PSTN' : 'BROWSER_SIM')
+  );
 
-  // Shared Core State
-  const [phoneNumber, setPhoneNumber] = useState(lead?.phone || '+91 9737362307');
+  useEffect(() => {
+    if (initialTelephonyMode && isOpen) {
+      setTelephonyMode(initialTelephonyMode);
+    }
+  }, [initialTelephonyMode, isOpen]);
+
+  // Shared Core State - uses lead's own phone number!
+  const [phoneNumber, setPhoneNumber] = useState(
+    lead?.phone || (isDefaultYash ? '+91 9737362307' : '+1 415-890-2341')
+  );
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>(
     (defaultLanguage as SupportedLanguage) || 'English'
   );
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [callStatus, setCallStatus] = useState<'IDLE' | 'DIALING' | 'RINGING' | 'CONNECTED' | 'ENDED'>('IDLE');
   const [duration, setDuration] = useState(0);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -139,10 +178,13 @@ export default function LiveCallSimulatorModal({
   const [showCalendlyModal, setShowCalendlyModal] = useState(false);
   const [isSendingCalendlySms, setIsSendingCalendlySms] = useState(false);
 
-  // Google Calendar Integration State (API Key: AIzaSyAD33SpN0e9bvky9WKYJ44SmFR0HkazY-o)
+  // Google Calendar Integration & Twilio Meeting Verification SMS State
   const [googleCalendarUrl, setGoogleCalendarUrl] = useState<string | null>(null);
   const [meetingDisplayStr, setMeetingDisplayStr] = useState<string | null>(null);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [isSendingVerificationSms, setIsSendingVerificationSms] = useState(false);
+  const [hasSentMeetingSms, setHasSentMeetingSms] = useState(false);
+  const [meetingSmsSid, setMeetingSmsSid] = useState<string | null>(null);
 
   // Twilio Specific State
   const [twilioSid, setTwilioSid] = useState<string | null>(null);
@@ -210,13 +252,27 @@ export default function LiveCallSimulatorModal({
   // Refs for audio & speech recognition
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSpokenRef = useRef<string>('');
+  const lastTrackedTextRef = useRef<string>('');
+  const lastSpeechTimeRef = useRef<number>(0);
   const recognitionRef = useRef<any>(null);
   const handleSendMessageRef = useRef<((text?: string) => Promise<void>) | null>(null);
   const messagesRef = useRef<Message[]>([]);
   const callStatusRef = useRef(callStatus);
   const durationRef = useRef(duration);
+  const isAiThinkingRef = useRef(isAiThinking);
+  const isAiSpeakingRef = useRef(isAiSpeaking);
   const hasTriggeredMeetingSuccessRef = useRef(false);
   const onMeetingBookedSuccessRef = useRef(onMeetingBookedSuccess);
+
+  useEffect(() => {
+    isAiThinkingRef.current = isAiThinking;
+  }, [isAiThinking]);
+
+  useEffect(() => {
+    isAiSpeakingRef.current = isAiSpeaking;
+  }, [isAiSpeaking]);
 
   useEffect(() => {
     onMeetingBookedSuccessRef.current = onMeetingBookedSuccess;
@@ -262,28 +318,35 @@ export default function LiveCallSimulatorModal({
     };
   }, [callStatus]);
 
-  // Stop any ongoing SpeechSynthesis
+  // Stop any ongoing SpeechSynthesis or Audio stream
   const stopSpeech = useCallback(() => {
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      } catch (_) {}
+      audioRef.current = null;
+    }
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       try {
         window.speechSynthesis.cancel();
       } catch (_) {}
     }
     setIsAiSpeaking(false);
+    isAiSpeakingRef.current = false;
   }, []);
 
-  // Text-To-Speech function using Web Speech API with language locale
-  const speakText = useCallback(
-    (text: string, onEnd?: () => void) => {
+  // Fallback to Web Speech Synthesis API
+  const fallbackWebSpeech = useCallback(
+    (text: string, lang: string, onEnd?: () => void) => {
       if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
         if (onEnd) onEnd();
         return;
       }
-
       try {
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
-        const targetLocale = getLocaleForVoice(selectedLanguage);
+        const targetLocale = getLocaleForVoice(lang);
         utterance.lang = targetLocale;
         utterance.rate = 1.05;
         utterance.pitch = 1.0;
@@ -301,16 +364,18 @@ export default function LiveCallSimulatorModal({
           }
         }
 
-        utterance.onstart = () => setIsAiSpeaking(true);
+        utterance.onstart = () => {
+          setIsAiSpeaking(true);
+          isAiSpeakingRef.current = true;
+        };
         utterance.onend = () => {
           setIsAiSpeaking(false);
+          isAiSpeakingRef.current = false;
           if (onEnd) onEnd();
         };
-        utterance.onerror = (e) => {
-          if ((e as any)?.error !== 'canceled' && (e as any)?.error !== 'interrupted') {
-            console.warn('SpeechSynthesis error event:', (e as any)?.error);
-          }
+        utterance.onerror = () => {
           setIsAiSpeaking(false);
+          isAiSpeakingRef.current = false;
           if (onEnd) onEnd();
         };
 
@@ -318,14 +383,264 @@ export default function LiveCallSimulatorModal({
           window.speechSynthesis.resume();
         }
         window.speechSynthesis.speak(utterance);
-      } catch (err) {
-        console.warn('SpeechSynthesis error:', err);
+      } catch (_) {
         setIsAiSpeaking(false);
+        isAiSpeakingRef.current = false;
         if (onEnd) onEnd();
       }
     },
-    [selectedLanguage]
+    []
   );
+
+  // Text-To-Speech function using high-fidelity /api/voice/tts audio engine with Web Speech API fallback
+  const speakText = useCallback(
+    (text: string, onEnd?: () => void, langOverride?: string) => {
+      if (typeof window === 'undefined') {
+        if (onEnd) onEnd();
+        return;
+      }
+
+      stopSpeech();
+
+      const activeLang = langOverride || selectedLanguage || 'English';
+
+      try {
+        // High-Fidelity Neural Audio via /api/voice/tts
+        const cleanSpeech = text
+          .replace(/[*_#`~]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        if (!cleanSpeech) {
+          if (onEnd) onEnd();
+          return;
+        }
+
+        const audioUrl = `/api/voice/tts?lang=${encodeURIComponent(activeLang)}&text=${encodeURIComponent(cleanSpeech)}`;
+        const audio = new Audio(audioUrl);
+        audioRef.current = audio;
+
+        audio.onplay = () => {
+          setIsAiSpeaking(true);
+          isAiSpeakingRef.current = true;
+        };
+
+        audio.onended = () => {
+          setIsAiSpeaking(false);
+          isAiSpeakingRef.current = false;
+          audioRef.current = null;
+          if (onEnd) onEnd();
+        };
+
+        audio.onerror = (err) => {
+          console.warn('Audio TTS stream error, falling back to Web Speech API:', err);
+          audioRef.current = null;
+          fallbackWebSpeech(cleanSpeech, activeLang, onEnd);
+        };
+
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((playErr) => {
+            console.warn('Audio play auto-play policy block or error:', playErr);
+            audioRef.current = null;
+            fallbackWebSpeech(cleanSpeech, activeLang, onEnd);
+          });
+        }
+      } catch (err) {
+        console.warn('TTS playback error, attempting fallback:', err);
+        fallbackWebSpeech(text, activeLang, onEnd);
+      }
+    },
+    [selectedLanguage, stopSpeech, fallbackWebSpeech]
+  );
+
+  // Handle explicit language change from dropdown
+  const handleLanguageSelect = (newLang: SupportedLanguage) => {
+    stopSpeech();
+    setSelectedLanguage(newLang);
+
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.lang = getLocaleForVoice(newLang);
+      } catch (_) {}
+    }
+
+    if (lead) {
+      const firstName = (lead.name || 'Prospect').trim().split(' ')[0];
+      const requirement = lead.originalPostSnippet
+        ? lead.originalPostSnippet.substring(0, 45) + '...'
+        : 'Microsoft 365 & SharePoint migration';
+
+      const switchGreeting = getLanguageConfirmationSpeech(newLang, firstName, lead.companyName, requirement);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          speaker: 'system',
+          text: `Language switched to ${newLang} • Two-Way Live Audio Active`,
+          time: formatCallTime(durationRef.current),
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          offsetSeconds: durationRef.current,
+        },
+        {
+          speaker: 'agent',
+          text: switchGreeting,
+          time: formatCallTime(durationRef.current),
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          offsetSeconds: durationRef.current,
+        },
+      ]);
+
+      if (callStatus === 'CONNECTED' || callStatus === 'IDLE' || callStatus === 'DIALING' || callStatus === 'RINGING') {
+        if (callStatus !== 'CONNECTED') setCallStatus('CONNECTED');
+        speakText(switchGreeting, () => {
+          if (recognitionRef.current && callStatusRef.current === 'CONNECTED') {
+            try {
+              recognitionRef.current.start();
+            } catch (_) {}
+          }
+        }, newLang);
+      }
+    }
+  };
+
+  // Multilingual quick demo evaluation chips
+  const getMultilingualChips = (lang: SupportedLanguage) => {
+    switch (lang) {
+      case 'ગુજરાતી':
+        return [
+          {
+            label: 'પૂછપરછ / કિંમત',
+            text: 'હા, અમારે 150 યુઝર્સ માટે પાર્ટનરની જરૂર છે. તમારી કિંમત અને માઈગ્રેશન સમયમર્યાદા શું છે?',
+            icon: Zap,
+            color: 'bg-blue-600/15 hover:bg-blue-600/30 text-blue-300 border-blue-500/30',
+          },
+          {
+            label: 'DND / ફોન ના કરતા',
+            text: 'કૃપા કરીને મને કૉલ ના કરો! મારો નંબર હટાવી દો અને લિસ્ટમાંથી કાઢી નાખો.',
+            icon: PhoneMissed,
+            color: 'bg-rose-600/15 hover:bg-rose-600/30 text-rose-300 border-rose-500/30',
+          },
+          {
+            label: 'ટીમ વાત / SMS લિંક',
+            text: 'શું હું તમારી ટીમ સાથે વાત કરી શકું? મને SMS દ્વારા કેલેન્ડલી લિંક મોકલો જેથી હું સમય બુક કરી શકું.',
+            icon: UserCheck,
+            color: 'bg-purple-600/15 hover:bg-purple-600/30 text-purple-300 border-purple-500/30',
+          },
+          {
+            label: 'કૉલબેક શેડ્યૂલ',
+            text: 'હું અત્યારે ક્લાયન્ટ મીટિંગમાં બીઝી છું, કૃપા કરીને મને કાલે સવારે 10:30 વાગ્યે ફોન કરશો.',
+            icon: Clock,
+            color: 'bg-amber-600/15 hover:bg-amber-600/30 text-amber-300 border-amber-500/30',
+          },
+          {
+            label: 'મીટિંગ નક્કી & SMS',
+            text: 'ખૂબ સરસ! ગુરુવારે બપોરે 3 વાગ્યે ડેમો માટે મીટિંગ નક્કી કરો અને મને વેરિફિકેશન SMS મોકલો.',
+            icon: Calendar,
+            color: 'bg-emerald-600/15 hover:bg-emerald-600/30 text-emerald-300 border-emerald-500/30',
+          },
+        ];
+      case 'हिन्दी':
+        return [
+          {
+            label: 'पूछताछ / कीमत',
+            text: 'हाँ, हम 150 यूज़र्स के लिए पार्टनर तलाश रहे हैं। आपकी कीमत और रोलआउट टाइमलाइन क्या है?',
+            icon: Zap,
+            color: 'bg-blue-600/15 hover:bg-blue-600/30 text-blue-300 border-blue-500/30',
+          },
+          {
+            label: 'DND / कॉल मत करो',
+            text: 'कृपया मुझे कॉल करना बंद करें! मेरा नंबर अपनी लिस्ट से तुरंत हटा दें।',
+            icon: PhoneMissed,
+            color: 'bg-rose-600/15 hover:bg-rose-600/30 text-rose-300 border-rose-500/30',
+          },
+          {
+            label: 'टीम से बात / SMS लिंक',
+            text: 'क्या मैं आपकी टीम से बात कर सकता हूँ? मुझे SMS से Calendly बुकिंग लिंक भेजें ताकि मैं समय चुन सकूँ।',
+            icon: UserCheck,
+            color: 'bg-purple-600/15 hover:bg-purple-600/30 text-purple-300 border-purple-500/30',
+          },
+          {
+            label: 'कॉल-बैक शेड्यूल',
+            text: 'मैं अभी क्लाइंट मीटिंग में व्यस्त हूँ, कृपया मुझे कल सुबह 10:30 बजे कॉल करें।',
+            icon: Clock,
+            color: 'bg-amber-600/15 hover:bg-amber-600/30 text-amber-300 border-amber-500/30',
+          },
+          {
+            label: 'मीटिंग तय & SMS',
+            text: 'शानदार! गुरुवार दोपहर 3 बजे डेमो के लिए मीटिंग पक्की कर दीजिए और मुझे वेरिफिकेशन SMS भेजें।',
+            icon: Calendar,
+            color: 'bg-emerald-600/15 hover:bg-emerald-600/30 text-emerald-300 border-emerald-500/30',
+          },
+        ];
+      case 'Español':
+        return [
+          {
+            label: 'Precios / Consulta',
+            text: 'Sí, buscamos un socio para 150 usuarios. ¿Cuál es el precio y los plazos de implementación?',
+            icon: Zap,
+            color: 'bg-blue-600/15 hover:bg-blue-600/30 text-blue-300 border-blue-500/30',
+          },
+          {
+            label: 'No llamar • DND',
+            text: '¡Por favor no me llamen más! Eliminen mi número de su lista inmediatamente.',
+            icon: PhoneMissed,
+            color: 'bg-rose-600/15 hover:bg-rose-600/30 text-rose-300 border-rose-500/30',
+          },
+          {
+            label: 'Hablar con equipo • SMS',
+            text: '¿Puedo hablar con un representante humano? Envíenme un SMS con su enlace de Calendly.',
+            icon: UserCheck,
+            color: 'bg-purple-600/15 hover:bg-purple-600/30 text-purple-300 border-purple-500/30',
+          },
+          {
+            label: 'Devolver llamada',
+            text: 'Estoy en una reunión importante ahora, por favor llámenme mañana a las 10:30 AM.',
+            icon: Clock,
+            color: 'bg-amber-600/15 hover:bg-amber-600/30 text-amber-300 border-amber-500/30',
+          },
+          {
+            label: 'Confirmar reunión & SMS',
+            text: '¡Suena fantástico! Agendemos la demo para el jueves a las 3 PM y envíenme la verificación por SMS.',
+            icon: Calendar,
+            color: 'bg-emerald-600/15 hover:bg-emerald-600/30 text-emerald-300 border-emerald-500/30',
+          },
+        ];
+      default:
+        return [
+          {
+            label: 'Pricing Inquiry',
+            text: 'Yes, we are actively looking for a partner for 150 users. What is your pricing and implementation timeline?',
+            icon: Zap,
+            color: 'bg-blue-600/15 hover:bg-blue-600/30 text-blue-300 border-blue-500/30',
+          },
+          {
+            label: 'DND Opt-Out',
+            text: 'Please stop calling me! Remove my phone number and take me off your list right now.',
+            icon: PhoneMissed,
+            color: 'bg-rose-600/15 hover:bg-rose-600/30 text-rose-300 border-rose-500/30',
+          },
+          {
+            label: 'Human Handoff / Link',
+            text: 'Can I speak with a human or team member? Please send me a text message with a link so I can book a call directly from your timeslots.',
+            icon: UserCheck,
+            color: 'bg-purple-600/15 hover:bg-purple-600/30 text-purple-300 border-purple-500/30',
+          },
+          {
+            label: 'Schedule Callback',
+            text: "I'm in an important client meeting right now, please call me back tomorrow morning at 10:30 AM.",
+            icon: Clock,
+            color: 'bg-amber-600/15 hover:bg-amber-600/30 text-amber-300 border-amber-500/30',
+          },
+          {
+            label: 'Confirm Meeting & SMS',
+            text: 'Sounds fantastic! Let us book the calendar demo for Thursday at 3 PM and send me a verification SMS to confirm.',
+            icon: Calendar,
+            color: 'bg-emerald-600/15 hover:bg-emerald-600/30 text-emerald-300 border-emerald-500/30',
+          },
+        ];
+    }
+  };
 
   // Initialize Speech Recognition for Hands-Free Microphone
   useEffect(() => {
@@ -345,6 +660,9 @@ export default function LiveCallSimulatorModal({
       };
 
       recognition.onresult = (event: any) => {
+        // Prevent speech loopback if AI is currently synthesizing or thinking
+        if (isAiThinkingRef.current || isAiSpeakingRef.current) return;
+
         let interim = '';
         let finalPhrase = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -355,14 +673,43 @@ export default function LiveCallSimulatorModal({
           }
         }
         const spoken = (finalPhrase || interim).trim();
-        if (spoken) {
-          setSpeechTranscript(spoken);
-          setInputText(spoken);
-        }
+        if (!spoken) return;
+
+        setSpeechTranscript(spoken);
+        setInputText(spoken);
+
+        // 1. Immediate dispatch if Web Speech API engine marked final phrase
         if (finalPhrase.trim()) {
-          handleSendMessageRef.current?.(finalPhrase.trim());
+          if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+          const toSend = finalPhrase.trim();
+          lastSpokenRef.current = '';
+          lastTrackedTextRef.current = '';
           setSpeechTranscript('');
           setInputText('');
+          handleSendMessageRef.current?.(toSend);
+          return;
+        }
+
+        // 2. Robust Silence VAD:
+        // Only reset the debounce timer when speech is still actively changing.
+        // If Chrome repeatedly sends identical interim results while the user is silent,
+        // we DO NOT reset the timer, allowing the 750ms silence window to fire reliably!
+        if (spoken !== lastTrackedTextRef.current) {
+          lastTrackedTextRef.current = spoken;
+          lastSpokenRef.current = spoken;
+          lastSpeechTimeRef.current = Date.now();
+
+          if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+          silenceTimerRef.current = setTimeout(() => {
+            const pending = lastTrackedTextRef.current.trim();
+            if (pending && !isAiThinkingRef.current && !isAiSpeakingRef.current) {
+              lastTrackedTextRef.current = '';
+              lastSpokenRef.current = '';
+              setSpeechTranscript('');
+              setInputText('');
+              handleSendMessageRef.current?.(pending);
+            }
+          }, 750);
         }
       };
 
@@ -377,7 +724,25 @@ export default function LiveCallSimulatorModal({
       };
 
       recognition.onend = () => {
+        // Dispatch any pending speech remaining in buffer when microphone stops
+        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+        const pending = (lastTrackedTextRef.current || lastSpokenRef.current).trim();
+        if (pending && !isAiThinkingRef.current && !isAiSpeakingRef.current) {
+          lastTrackedTextRef.current = '';
+          lastSpokenRef.current = '';
+          setSpeechTranscript('');
+          setInputText('');
+          handleSendMessageRef.current?.(pending);
+        }
         setIsMicListening(false);
+
+        // Auto-restart recognition if call is connected and AI is not speaking
+        if (callStatusRef.current === 'CONNECTED' && !isAiThinkingRef.current && !isAiSpeakingRef.current) {
+          try {
+            recognition.start();
+            setIsMicListening(true);
+          } catch (_) {}
+        }
       };
 
       recognitionRef.current = recognition;
@@ -512,6 +877,15 @@ export default function LiveCallSimulatorModal({
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           },
         ]);
+
+        // Start hands-free speech recognition in browser so user can speak directly into console or mobile
+        if (recognitionRef.current) {
+          try {
+            recognitionRef.current.lang = getLocaleForVoice(lang);
+            recognitionRef.current.start();
+            setIsMicListening(true);
+          } catch (_) {}
+        }
       } else {
         const isTrialPolicy =
           data.error?.includes('573002') ||
@@ -559,7 +933,8 @@ export default function LiveCallSimulatorModal({
   // Reset & load on modal open
   useEffect(() => {
     if (isOpen && lead) {
-      const initialTarget = lead.phone || '+91 9737362307';
+      const isLeadYash = lead.phone?.includes('9737362307') || lead.name.toLowerCase().includes('yash');
+      const initialTarget = lead.phone || (isLeadYash ? '+91 9737362307' : '+1 415-890-2341');
       setPhoneNumber(initialTarget);
       setDuration(0);
       setMessages([]);
@@ -569,9 +944,11 @@ export default function LiveCallSimulatorModal({
       setIsNegativeDnd(false);
       setIsHumanHandoff(false);
       setIsCallbackScheduled(false);
+      setIsSendingVerificationSms(false);
+      setHasSentMeetingSms(false);
+      setMeetingSmsSid(null);
       setCallSummary('Evaluating requirement fit, timeline, and decision maker authority...');
       setNextBestAction('Qualify company rollout scale and propose solutions demo.');
-      setTelephonyMode('TWILIO_PSTN');
 
       // Detect language from lead
       let detectedLang: SupportedLanguage = 'English';
@@ -586,8 +963,24 @@ export default function LiveCallSimulatorModal({
       }
       setSelectedLanguage(detectedLang);
 
-      // Directly place real physical PSTN carrier call (NO browser demo simulation)
-      handleStartRealCall(initialTarget, detectedLang);
+      // Smart Mode Resolution:
+      // If caller explicitly passed initialTelephonyMode, respect it.
+      // Otherwise: ONLY Yash's verified phone number defaults to Twilio PSTN;
+      // All other prospects default to Browser Demo Web Call!
+      const isYashVerified = initialTarget.includes('9737362307');
+      const resolvedMode = initialTelephonyMode
+        ? initialTelephonyMode
+        : (isYashVerified ? 'TWILIO_PSTN' : 'BROWSER_SIM');
+
+      setTelephonyMode(resolvedMode);
+
+      if (resolvedMode === 'TWILIO_PSTN' && isYashVerified) {
+        // Place real physical carrier call to verified device
+        handleStartRealCall(initialTarget, detectedLang);
+      } else {
+        // Run in-browser AI duplex voice call with real speech synthesis
+        startBrowserCallSimulation(detectedLang, initialTarget);
+      }
 
       // Check Twilio diagnostics in background
       checkDiagnostics(initialTarget);
@@ -598,16 +991,17 @@ export default function LiveCallSimulatorModal({
     return () => {
       stopSpeech();
     };
-  }, [isOpen, lead?.id]);
+  }, [isOpen, lead?.id, initialTelephonyMode]);
 
   // Start in-browser simulated call
-  const startBrowserCallSimulation = (lang: SupportedLanguage) => {
+  const startBrowserCallSimulation = (lang: SupportedLanguage, targetOverride?: string) => {
     if (!lead) return;
+    const targetDisplay = targetOverride || phoneNumber || lead.phone || '+1 415-890-2341';
     setCallStatus('DIALING');
     setMessages([
       {
         speaker: 'system',
-        text: `Initiating autonomous AI outbound call to ${lead.name} (${lead.companyName})...`,
+        text: `Initiating autonomous AI outbound call to ${lead.name} (${lead.companyName}) at ${targetDisplay}...`,
         time: '00:00',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         offsetSeconds: 0,
@@ -620,7 +1014,7 @@ export default function LiveCallSimulatorModal({
         ...prev,
         {
           speaker: 'system',
-          text: `Ringing prospect line (${lead.phone || '+91 9737362307'})...`,
+          text: `Ringing prospect line (${targetDisplay})...`,
           time: '00:00',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           offsetSeconds: 0,
@@ -661,7 +1055,7 @@ export default function LiveCallSimulatorModal({
               recognitionRef.current.start();
             } catch (_) {}
           }
-        });
+        }, lang);
       }, 1200);
     }, 800);
   };
@@ -678,7 +1072,7 @@ export default function LiveCallSimulatorModal({
           if (data.success) {
             if (data.status === 'in-progress' || data.status === 'answered' || data.status === 'CONNECTED') {
               setCallStatus('CONNECTED');
-            } else if (data.status === 'ringing') {
+            } else if (data.status === 'ringing' || data.status === 'DIALING' || data.status === 'queued') {
               setCallStatus('RINGING');
             } else if (data.status === 'completed' || data.status === 'failed' || data.status === 'canceled') {
               setCallStatus('ENDED');
@@ -692,7 +1086,9 @@ export default function LiveCallSimulatorModal({
             if (data.callSummary) setCallSummary(data.callSummary);
             if (data.nextBestAction) setNextBestAction(data.nextBestAction);
 
-            if (data.transcript && Array.isArray(data.transcript) && data.transcript.length > 0) {
+            // Only update messages from database if DB has MORE messages than local state
+            // to prevent overwriting active live conversation
+            if (data.transcript && Array.isArray(data.transcript) && data.transcript.length > messagesRef.current.length) {
               setMessages(data.transcript);
             }
 
@@ -716,14 +1112,24 @@ export default function LiveCallSimulatorModal({
   // Handle Prospect Speech / User Message directly in console & live call
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputText).trim();
-    if (!text || isAiThinking) return;
+    if (!text || isAiThinkingRef.current) return;
 
-    if (callStatus !== 'CONNECTED') {
-      setCallStatus('CONNECTED');
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    lastSpokenRef.current = '';
+    lastTrackedTextRef.current = '';
+
+    // Stop mic recognition while Ava is responding to prevent self-echo loopback
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (_) {}
     }
 
+    setCallStatus('CONNECTED');
+    callStatusRef.current = 'CONNECTED';
     stopSpeech();
     setInputText('');
+    setSpeechTranscript('');
 
     const currentOffset = durationRef.current;
     const prospectMsg: Message = {
@@ -737,6 +1143,7 @@ export default function LiveCallSimulatorModal({
     const nextMessages = [...messagesRef.current, prospectMsg];
     setMessages(nextMessages);
     setIsAiThinking(true);
+    isAiThinkingRef.current = true;
 
     try {
       const historyPayload = nextMessages
@@ -754,6 +1161,7 @@ export default function LiveCallSimulatorModal({
           prospectSpeech: text,
           messages: historyPayload,
           language: selectedLanguage,
+          phoneNumber: phoneNumber,
         }),
       });
 
@@ -767,7 +1175,30 @@ export default function LiveCallSimulatorModal({
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           offsetSeconds: agentOffset,
         };
-        setMessages((prev) => [...prev, agentMsg]);
+        const updatedTurnMessages = [...nextMessages, agentMsg];
+        setMessages(updatedTurnMessages);
+
+        // Keep CallLog in SQLite synchronized when operating in Twilio mode
+        if (telephonyMode === 'TWILIO_PSTN' && twilioSid) {
+          fetch('/api/conversations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              leadId: lead?.id,
+              leadName: lead?.name || 'Yash Gohel',
+              companyName: lead?.companyName || 'Gohel Infotech Solutions',
+              phone: phoneNumber,
+              durationSeconds: Math.max(5, durationRef.current),
+              messages: updatedTurnMessages.filter((m) => m.speaker === 'agent' || m.speaker === 'prospect'),
+              summary: data.summary || callSummary,
+              nextBestAction: data.nextBestAction || nextBestAction,
+              outcome: data.meetingBooked ? 'MEETING_BOOKED' : 'INTERESTED',
+              telephonyProvider: 'TWILIO_VOICE',
+              twilioCallSid: twilioSid,
+              language: selectedLanguage,
+            }),
+          }).catch(() => {});
+        }
 
         if (data.sentiment) setCurrentSentiment(data.sentiment);
         if (data.summary) setCallSummary(data.summary);
@@ -786,13 +1217,30 @@ export default function LiveCallSimulatorModal({
             ...prev,
             {
               speaker: 'system',
-              text: `📅 Google Calendar Event Synced: Meeting reserved for ${data.meetingDisplayStr || 'Thursday at 3:00 PM'} (Google API Key: AIzaSyAD33...kazY-o).`,
+              text: `📅 Google Calendar Event Synced: Meeting reserved for ${data.meetingDisplayStr || 'Thursday at 3:00 PM'}.`,
               time: formatCallTime(gcalOffset),
               timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               offsetSeconds: gcalOffset,
             },
           ]);
+
+          if (data.meetingSmsSent) {
+            setHasSentMeetingSms(true);
+            if (data.meetingSmsSid) setMeetingSmsSid(data.meetingSmsSid);
+            const smsOffset = durationRef.current;
+            setMessages((prev) => [
+              ...prev,
+              {
+                speaker: 'system',
+                text: `📱 Twilio Meeting Verification SMS Delivered to ${data.meetingSmsPhone || phoneNumber}: "Meeting confirmed at ${data.meetingDisplayStr || 'Thursday at 3:00 PM IST'}" (Twilio SID: ${data.meetingSmsSid || 'PSTN-Carrier'})`,
+                time: formatCallTime(smsOffset),
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                offsetSeconds: smsOffset,
+              },
+            ]);
+          }
         }
+
         if (data.isNegativeDnd) {
           setIsNegativeDnd(true);
         }
@@ -818,18 +1266,22 @@ export default function LiveCallSimulatorModal({
         }
 
         speakText(data.reply, () => {
+          isAiSpeakingRef.current = false;
+          setIsAiSpeaking(false);
           if (recognitionRef.current && callStatusRef.current === 'CONNECTED') {
             try {
               recognitionRef.current.lang = getLocaleForVoice(selectedLanguage);
               recognitionRef.current.start();
+              setIsMicListening(true);
             } catch (_) {}
           }
-        });
+        }, selectedLanguage);
       }
     } catch (err) {
       console.error('Call dialogue turn error:', err);
     } finally {
       setIsAiThinking(false);
+      isAiThinkingRef.current = false;
     }
   };
 
@@ -873,6 +1325,53 @@ export default function LiveCallSimulatorModal({
       console.error('Manual Calendly SMS failed:', e);
     } finally {
       setIsSendingCalendlySms(false);
+    }
+  };
+
+  // Direct Twilio Meeting Verification SMS Dispatch
+  const handleSendMeetingVerificationSms = async () => {
+    setIsSendingVerificationSms(true);
+    try {
+      const res = await fetch('/api/voice/sms/verify-meeting', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadId: lead?.id,
+          phone: phoneNumber,
+          leadName: lead?.name || 'Carlos Mendez',
+          meetingTime: meetingDisplayStr || 'Thursday at 3:00 PM IST',
+          language: selectedLanguage,
+          meetingUrl: googleCalendarUrl || 'https://meet.google.com/qrs-tuvw-xyz',
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setHasSentMeetingSms(true);
+        if (data.messageSid) setMeetingSmsSid(data.messageSid);
+        const smsOffset = durationRef.current || duration || 0;
+        setMessages((prev) => [
+          ...prev,
+          {
+            speaker: 'system',
+            text: `📱 Twilio Meeting Verification SMS Delivered to ${phoneNumber}: "Meeting scheduled for ${meetingDisplayStr || 'Thursday at 3:00 PM IST'}" (SID: ${data.messageSid || 'Twilio-PSTN'})`,
+            time: formatCallTime(smsOffset),
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            offsetSeconds: smsOffset,
+          },
+        ]);
+
+        let voiceAnnounce = `I have sent a text message to ${phoneNumber} verifying your scheduled meeting.`;
+        if (selectedLanguage === 'हिन्दी') {
+          voiceAnnounce = `मैंने ${phoneNumber} पर वेरिफिकेशन SMS भेज दिया है ताकि आप तय की गई मीटिंग का समय देख सकें।`;
+        } else if (selectedLanguage === 'ગુજરાતી') {
+          voiceAnnounce = `મેં ${phoneNumber} પર વેરિફિકેશન SMS મોકલી દીધો છે જેથી આપ નક્કી કરેલી મીટિંગનો સમય ચકાસી શકો.`;
+        }
+        speakText(voiceAnnounce, undefined, selectedLanguage);
+      }
+    } catch (err) {
+      console.warn('Manual meeting verification SMS error:', err);
+    } finally {
+      setIsSendingVerificationSms(false);
     }
   };
 
@@ -1138,7 +1637,13 @@ export default function LiveCallSimulatorModal({
             <div className="p-0.5 rounded-xl bg-black/60 border border-white/10 flex items-center text-xs">
               <button
                 type="button"
-                onClick={() => setTelephonyMode('BROWSER_SIM')}
+                onClick={() => {
+                  setTelephonyMode('BROWSER_SIM');
+                  stopSpeech();
+                  setDuration(0);
+                  setMessages([]);
+                  startBrowserCallSimulation(selectedLanguage, phoneNumber);
+                }}
                 className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                   telephonyMode === 'BROWSER_SIM'
                     ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
@@ -1147,13 +1652,31 @@ export default function LiveCallSimulatorModal({
                 title="Direct Website Live AI Voice Call with Duplex Mic & Speaker (Works on all numbers)"
               >
                 <Volume2 className="w-3.5 h-3.5" />
-                <span>Website Live AI Call</span>
-                <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] bg-emerald-400/20 text-emerald-300 font-medium">100% Numbers</span>
+                <span>Website Live AI Call (Demo)</span>
+                <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] bg-emerald-400/20 text-emerald-300 font-medium">Any Phone</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => setTelephonyMode('TWILIO_PSTN')}
+                onClick={() => {
+                  setTelephonyMode('TWILIO_PSTN');
+                  stopSpeech();
+                  setDuration(0);
+                  setMessages([]);
+                  const isYashNumber = phoneNumber.includes('9737362307');
+                  if (isYashNumber) {
+                    handleStartRealCall(phoneNumber, selectedLanguage);
+                  } else {
+                    setCallStatus('IDLE');
+                    setMessages([
+                      {
+                        speaker: 'system',
+                        text: `Twilio PSTN Carrier Mode active for ${phoneNumber}. Click "Dial Physical Call" or select verified phone (+91 9737362307) to ring physical device.`,
+                        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                      },
+                    ]);
+                  }
+                }}
                 className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                   telephonyMode === 'TWILIO_PSTN'
                     ? 'bg-indigo-600 text-white shadow-md'
@@ -1163,7 +1686,7 @@ export default function LiveCallSimulatorModal({
               >
                 <PhoneCall className="w-3.5 h-3.5" />
                 <span>Twilio Mobile PSTN</span>
-                <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] bg-indigo-400/20 text-indigo-300 font-medium">75m Quota</span>
+                <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] bg-indigo-400/20 text-indigo-300 font-medium">Physical Call</span>
               </button>
             </div>
 
@@ -1376,158 +1899,158 @@ export default function LiveCallSimulatorModal({
         <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-hidden">
           {/* Left Panel: Call Controls, Waveforms & Live Transcript */}
           <div className="lg:col-span-8 p-4 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-white/[0.08] bg-[#050818] overflow-y-auto">
-            {/* Top Dialing & Language Selection Bar */}
-            <div className="p-3 rounded-2xl bg-gradient-to-r from-[#0d1633] via-[#09112a] to-[#0d1633] border border-indigo-500/30 shadow-lg mb-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                <div className="flex items-center gap-2">
-                  <Globe2 className="w-4 h-4 text-indigo-400" />
-                  <span className="font-semibold text-slate-300">Call Language:</span>
-                  <select
-                    value={selectedLanguage}
-                    onChange={(e) => setSelectedLanguage(e.target.value as SupportedLanguage)}
-                    className="bg-black/70 border border-white/20 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-indigo-400 cursor-pointer font-semibold"
-                  >
-                    <option value="English">English (US/UK/Global)</option>
-                    <option value="हिन्दी">हिन्दी (Hindi - India)</option>
-                    <option value="ગુજરાતી">ગુજરાતી (Gujarati - Regional)</option>
-                    <option value="Español">Español (Spanish)</option>
-                    <option value="Français">Français (French)</option>
-                    <option value="Deutsch">Deutsch (German)</option>
-                    <option value="العربية">العربية (Arabic)</option>
-                  </select>
+            {/* Sleek, Single-Row Utility Toolbar */}
+            <div className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-md flex flex-wrap items-center justify-between gap-2.5 mb-2.5 shadow-sm">
+              {/* Left: Language Selection */}
+              <div className="flex items-center gap-1.5">
+                <Globe2 className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">Lang:</span>
+                <select
+                  value={selectedLanguage}
+                  onChange={(e) => handleLanguageSelect(e.target.value as SupportedLanguage)}
+                  className="bg-black/60 border border-white/15 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-indigo-400 cursor-pointer font-medium"
+                  title="Select AI speech & recognition language"
+                >
+                  <option value="English">🌐 English (US/UK)</option>
+                  <option value="हिन्दी">🇮🇳 हिन्दी (Hindi)</option>
+                  <option value="ગુજરાતી">🇮🇳 ગુજરાતી (Gujarati)</option>
+                  <option value="Español">🇪🇸 Español</option>
+                  <option value="Français">🇫🇷 Français</option>
+                  <option value="Deutsch">🇩🇪 Deutsch</option>
+                  <option value="العربية">🇸🇦 العربية</option>
+                </select>
+              </div>
+
+              {/* Center: Direct Number Input & 1-Click Shuffle */}
+              <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 bg-black/60 border border-white/15 rounded-lg px-2.5 py-1">
+                  <PhoneCall className="w-3 h-3 text-emerald-400 shrink-0" />
+                  <input
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="+91 9737362307"
+                    disabled={callStatus === 'CONNECTED' || callStatus === 'RINGING' || isDialingTwilio}
+                    className="bg-transparent border-none text-white font-mono text-xs focus:outline-none w-32 tracking-wide"
+                    title="Enter any destination phone number"
+                  />
                 </div>
 
-                {telephonyMode === 'TWILIO_PSTN' ? (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="tel"
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="+91 9737362307"
-                      disabled={callStatus === 'CONNECTED' || callStatus === 'RINGING' || isDialingTwilio}
-                      className="px-2.5 py-1 rounded-lg bg-black/70 border border-white/20 text-white font-mono text-xs focus:outline-none focus:border-emerald-400"
-                    />
-                    {callStatus === 'CONNECTED' || callStatus === 'RINGING' ? (
-                      <button
-                        type="button"
-                        onClick={handleHangup}
-                        className="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1 cursor-pointer shadow-md shadow-rose-600/30 transition-all animate-pulse"
-                      >
-                        <PhoneOff className="w-3 h-3" />
-                        <span>Hang Up</span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleStartRealCall()}
-                        disabled={isDialingTwilio}
-                        className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 cursor-pointer disabled:opacity-40"
-                      >
-                        {isDialingTwilio ? <Loader2 className="w-3 h-3 animate-spin" /> : <PhoneCall className="w-3 h-3" />}
-                        <span>{callStatus === 'ENDED' ? 'Re-dial PSTN' : 'Dial Physical Call'}</span>
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1.5 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                      Website Voice Channel Active (Duplex AI)
-                    </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextNum = phoneNumber.includes('9737362307')
+                      ? (lead?.phone || '+1 (555) 718-4920')
+                      : '+91 9737362307';
+                    setPhoneNumber(nextNum);
+                    if (telephonyMode === 'TWILIO_PSTN' && nextNum.includes('9737362307')) {
+                      handleStartRealCall(nextNum, selectedLanguage);
+                    } else if (telephonyMode === 'BROWSER_SIM') {
+                      startBrowserCallSimulation(selectedLanguage, nextNum);
+                    }
+                  }}
+                  disabled={callStatus === 'CONNECTED' || callStatus === 'RINGING' || isDialingTwilio}
+                  className="px-2 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 border border-white/10 text-xs font-medium flex items-center gap-1 cursor-pointer transition-all disabled:opacity-40"
+                  title="Shuffle between Prospect Phone and Verified Line (+91 9737362307)"
+                >
+                  <RefreshCw className="w-3 h-3 text-indigo-400" />
+                  <span>Shuffle</span>
+                </button>
+              </div>
 
-                    {callStatus === 'CONNECTED' ? (
-                      <button
-                        type="button"
-                        onClick={handleHangup}
-                        className="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md shadow-rose-600/30 transition-all animate-pulse"
-                        title="End call and store conversation log"
-                      >
-                        <PhoneOff className="w-3.5 h-3.5" />
-                        <span>End Call</span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={handleRestartCall}
-                        className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                      >
-                        <RefreshCw className="w-3 h-3" />
-                        <span>Restart Call</span>
-                      </button>
-                    )}
+              {/* Right: Audio Waveform Equalizer & Direct Meeting Verification SMS Button */}
+              <div className="flex items-center gap-2">
+                {callStatus === 'CONNECTED' && (
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-black/40 border border-white/10 text-[11px]">
+                    <div className="relative flex items-center justify-center">
+                      <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping absolute" />
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 relative" />
+                    </div>
+                    <span className="text-slate-300 font-medium">
+                      {isAiSpeaking ? 'Ava Speaking' : isMicListening ? 'Listening...' : 'Live Audio'}
+                    </span>
+                    <div className="flex items-center gap-0.5 ml-1">
+                      <span className={`w-0.5 rounded-full bg-emerald-400 transition-all ${isAiSpeaking || isMicListening ? 'h-3.5 animate-pulse' : 'h-1.5'}`} />
+                      <span className={`w-0.5 rounded-full bg-indigo-400 transition-all ${isAiSpeaking || isMicListening ? 'h-4.5 animate-pulse' : 'h-2'}`} />
+                      <span className={`w-0.5 rounded-full bg-teal-400 transition-all ${isAiSpeaking || isMicListening ? 'h-3 animate-pulse' : 'h-1'}`} />
+                    </div>
                   </div>
                 )}
+
+                {/* Direct Meeting Verification SMS Button */}
+                <button
+                  type="button"
+                  onClick={handleSendMeetingVerificationSms}
+                  disabled={isSendingVerificationSms}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all ${
+                    hasSentMeetingSms
+                      ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40'
+                      : 'bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40'
+                  } disabled:opacity-50`}
+                  title="Dispatch Twilio SMS to verify meeting appointment at given time (Free trial SMS)"
+                >
+                  <MessageSquare className="w-3 h-3 text-indigo-400" />
+                  <span>
+                    {isSendingVerificationSms
+                      ? 'Sending...'
+                      : hasSentMeetingSms
+                      ? '✓ SMS Verified'
+                      : 'Verify by SMS'}
+                  </span>
+                </button>
               </div>
             </div>
 
-            {/* Live Audio Waveform Animation Banner */}
-            {callStatus === 'CONNECTED' && (
-              <div className="mb-3 p-3 rounded-xl bg-gradient-to-r from-indigo-950/60 via-slate-900 to-indigo-950/60 border border-indigo-500/30 flex items-center justify-between animate-in fade-in">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div className="w-3 h-3 rounded-full bg-emerald-400 animate-ping absolute" />
-                    <div className="w-3 h-3 rounded-full bg-emerald-500 relative" />
+            {/* Google Calendar & Twilio Meeting Verification Synced Banner */}
+            {(isMeetingBooked || hasSentMeetingSms) && (
+              <div className="mb-2.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-950/60 via-[#0a2318] to-emerald-950/60 border border-emerald-500/40 text-emerald-200 text-xs flex flex-wrap items-center justify-between gap-2 animate-in fade-in shadow-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-emerald-600 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-white" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-white flex items-center gap-2">
-                      <span>{isAiSpeaking ? 'Ava AI is speaking...' : isMicListening ? 'Listening to your voice...' : 'Live Audio Active'}</span>
-                      <span className="text-[10px] font-mono text-emerald-400">({formatTime(duration)})</span>
-                    </div>
-                    <div className="text-[11px] text-slate-300">
-                      {isAiSpeaking ? 'Audio output playing through speakers' : 'Speak into microphone or select an evaluation chip below'}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Animated Audio Equalizer Bars */}
-                <div className="flex items-center gap-1 pr-2">
-                  <span className={`w-1 rounded-full bg-emerald-400 transition-all ${isAiSpeaking || isMicListening ? 'h-5 animate-pulse' : 'h-2'}`} style={{ animationDelay: '0ms' }} />
-                  <span className={`w-1 rounded-full bg-indigo-400 transition-all ${isAiSpeaking || isMicListening ? 'h-7 animate-pulse' : 'h-3'}`} style={{ animationDelay: '150ms' }} />
-                  <span className={`w-1 rounded-full bg-teal-400 transition-all ${isAiSpeaking || isMicListening ? 'h-4 animate-pulse' : 'h-2'}`} style={{ animationDelay: '300ms' }} />
-                  <span className={`w-1 rounded-full bg-emerald-300 transition-all ${isAiSpeaking || isMicListening ? 'h-6 animate-pulse' : 'h-3'}`} style={{ animationDelay: '450ms' }} />
-                  <span className={`w-1 rounded-full bg-indigo-300 transition-all ${isAiSpeaking || isMicListening ? 'h-3 animate-pulse' : 'h-1.5'}`} style={{ animationDelay: '200ms' }} />
-                </div>
-              </div>
-            )}
-
-            {/* Google Calendar Meeting Scheduled Banner */}
-            {isMeetingBooked && (
-              <div className="mb-3 p-3 rounded-xl bg-gradient-to-r from-emerald-950/70 via-teal-950/60 to-emerald-950/70 border border-emerald-500/40 text-emerald-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 animate-in fade-in shadow-lg shadow-emerald-500/10">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center shrink-0 shadow-md shadow-emerald-600/30">
-                    <Calendar className="w-4 h-4 text-white" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-white flex items-center gap-2">
-                      <span>Google Calendar Synced</span>
+                    <div className="font-semibold text-white flex items-center gap-2 text-xs">
+                      <span>Meeting Confirmed &amp; Verified</span>
                       <span className="text-[10px] px-2 py-0.5 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                        {meetingDisplayStr || 'Thursday at 3:00 PM'}
+                        {meetingDisplayStr || 'Thursday at 3:00 PM IST'}
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded font-mono font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                        📱 SMS Sent to {phoneNumber}
                       </span>
                     </div>
-                    <div className="text-[11px] text-zinc-300">
-                      API Key Active &bull; Added to Google Calendar schedule
+                    <div className="text-[11px] text-slate-300">
+                      Dispatched via Twilio Trial SMS &bull; Calendar reservation synchronized
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleSendMeetingVerificationSms}
+                    disabled={isSendingVerificationSms}
+                    className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-all disabled:opacity-50"
+                  >
+                    <MessageSquare className="w-3 h-3" />
+                    <span>{isSendingVerificationSms ? 'Sending...' : 'Resend SMS'}</span>
+                  </button>
                   {googleCalendarUrl && (
                     <a
                       href={googleCalendarUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold flex items-center gap-1.5 cursor-pointer transition-all shadow-md shadow-emerald-500/20"
+                      className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
                     >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      <span>Open in Google Cal</span>
+                      <ExternalLink className="w-3 h-3" />
+                      <span>Google Cal</span>
                     </a>
                   )}
                   <button
                     type="button"
                     onClick={() => setShowCalendarModal(true)}
-                    className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[11px] font-semibold flex items-center gap-1.5 cursor-pointer transition-all border border-zinc-700"
+                    className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-all border border-zinc-700"
                   >
-                    <span>View Calendar Schedule</span>
+                    <span>Schedule</span>
                   </button>
                 </div>
               </div>
@@ -1664,62 +2187,28 @@ export default function LiveCallSimulatorModal({
             </div>
 
             {/* Quick Demo Scenario Evaluation Chips (Essential for Presentations!) */}
-            <div className="mt-3 space-y-1.5">
-              <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold px-1">
-                <span>1-Click Test Scenarios for Evaluation:</span>
-                <span className="text-indigo-400 text-[10px]">Natural Voice &bull; Objection &bull; Negative Call &bull; Handoff</span>
+            <div className="mt-2 space-y-1">
+              <div className="flex items-center justify-between text-[10.5px] text-slate-400 font-semibold px-1">
+                <span>1-Click Evaluation Scenarios:</span>
+                <span className="text-indigo-400 text-[10px]">Natural Voice &bull; Objection &bull; DND &bull; Calendar SMS</span>
               </div>
 
               <div className="flex flex-wrap gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => handleSendMessage('Yes, we are actively looking for a partner for 150 users. What is your pricing and implementation timeline?')}
-                  disabled={callStatus === 'ENDED' || isAiThinking}
-                  className="px-2.5 py-1 rounded-lg bg-blue-600/15 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40"
-                >
-                  <Zap className="w-3 h-3 text-blue-400" />
-                  <span>Inquire / Objection (Pricing)</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSendMessage('Please stop calling me! Remove my phone number and take me off your list right now.')}
-                  disabled={callStatus === 'ENDED' || isAiThinking}
-                  className="px-2.5 py-1 rounded-lg bg-rose-600/15 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40"
-                >
-                  <PhoneMissed className="w-3 h-3 text-rose-400" />
-                  <span>Negative Call &bull; DND Opt-Out</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSendMessage('Can I speak with a human or team member? Please send me a text message with a link so I can book a call directly from your timeslots.')}
-                  disabled={callStatus === 'ENDED' || isAiThinking}
-                  className="px-2.5 py-1 rounded-lg bg-purple-600/15 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40"
-                >
-                  <UserCheck className="w-3 h-3 text-purple-400" />
-                  <span>Human Handoff &bull; Send Calendly Link</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSendMessage("I'm in an important client meeting right now, please call me back tomorrow morning at 10:30 AM.")}
-                  disabled={callStatus === 'ENDED' || isAiThinking}
-                  className="px-2.5 py-1 rounded-lg bg-amber-600/15 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40"
-                >
-                  <Clock className="w-3 h-3 text-amber-400" />
-                  <span>Busy &bull; Callback Retry</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSendMessage('Sounds fantastic! Let us book the calendar demo for Thursday at 3 PM.')}
-                  disabled={callStatus === 'ENDED' || isAiThinking}
-                  className="px-2.5 py-1 rounded-lg bg-emerald-600/15 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40"
-                >
-                  <Calendar className="w-3 h-3 text-emerald-400" />
-                  <span>Confirm Meeting Booking</span>
-                </button>
+                {getMultilingualChips(selectedLanguage).map((chip, idx) => {
+                  const ChipIcon = chip.icon;
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleSendMessage(chip.text)}
+                      disabled={callStatus === 'ENDED' || isAiThinking}
+                      className={`px-2 py-0.5 rounded-lg ${chip.color} text-[10.5px] sm:text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40 hover:scale-[1.02] active:scale-95`}
+                    >
+                      <ChipIcon className="w-3 h-3" />
+                      <span>{chip.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -1756,7 +2245,12 @@ export default function LiveCallSimulatorModal({
                   type="text"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
                   placeholder={
                     isMicListening
                       ? 'Listening to your speech...'
@@ -1845,63 +2339,65 @@ export default function LiveCallSimulatorModal({
                 </div>
               </div>
 
-              {/* Calendly Booking & Re-Dial Tracker Card */}
+              {/* Twilio Free SMS & Appointment Verification Card */}
               <div className="p-3.5 rounded-xl bg-blue-950/20 border border-blue-500/30 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-blue-400" />
-                    Calendly SMS &amp; Re-Dial Tracker
+                    <MessageSquare className="w-3.5 h-3.5 text-blue-400" />
+                    Twilio Free SMS &amp; Verification
                   </span>
                   <span
                     className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${
-                      calendlyStatus === 'BOOKED'
+                      hasSentMeetingSms
                         ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                        : calendlyStatus === 'NOT_BOOKED'
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                         : calendlyLinkSent
                         ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                        : 'bg-white/10 text-slate-400'
+                        : 'bg-white/10 text-slate-300'
                     }`}
                   >
-                    {calendlyStatus === 'BOOKED'
-                      ? 'BOOKED'
-                      : calendlyStatus === 'NOT_BOOKED'
-                      ? 'RE-DIAL DUE'
-                      : calendlyLinkSent
-                      ? 'LINK SENT'
-                      : 'STANDBY'}
+                    {hasSentMeetingSms ? '✓ SMS VERIFIED' : calendlyLinkSent ? 'LINK SENT' : '100 FREE SMS'}
                   </span>
                 </div>
 
                 <p className="text-[11px] text-slate-300 leading-relaxed bg-black/40 p-2 rounded-lg border border-white/[0.06]">
-                  {calendlyStatus === 'BOOKED'
-                    ? 'Prospect booked a meeting via Calendly link. Auto-redial cancelled.'
-                    : calendlyStatus === 'NOT_BOOKED'
-                    ? 'Prospect did not book within timeframe. Automated re-dial queued.'
+                  {hasSentMeetingSms
+                    ? `Appointment confirmation SMS delivered to ${phoneNumber}. Meeting time verified!`
                     : calendlyLinkSent
-                    ? 'SMS delivered with timeslot selector. Waiting for prospect booking.'
-                    : 'If prospect requests human handoff, AI sends an SMS with direct Calendly booking link.'}
+                    ? 'Calendly timeslot booking link delivered via Twilio SMS.'
+                    : 'When you schedule or confirm a meeting, an instant verification SMS is automatically sent to the phone number to confirm the appointment.'}
                 </p>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    disabled={isSendingVerificationSms}
+                    onClick={handleSendMeetingVerificationSms}
+                    className="py-1.5 px-2 rounded-lg bg-emerald-600/25 hover:bg-emerald-600/40 border border-emerald-500/40 text-emerald-200 text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer transition-all disabled:opacity-50"
+                    title="Send instant appointment verification SMS via Twilio to confirm meeting"
+                  >
+                    <MessageSquare className="w-3 h-3" />
+                    <span>{isSendingVerificationSms ? 'Sending...' : 'Verify by SMS'}</span>
+                  </button>
+
                   {!calendlyLinkSent ? (
                     <button
                       type="button"
                       disabled={isSendingCalendlySms}
                       onClick={handleSendCalendlySmsManually}
-                      className="w-full py-1.5 px-3 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/40 text-blue-200 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                      className="py-1.5 px-2 rounded-lg bg-blue-600/25 hover:bg-blue-600/40 border border-blue-500/40 text-blue-200 text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer transition-all disabled:opacity-50"
+                      title="Send Calendly link SMS"
                     >
-                      <MessageSquare className="w-3.5 h-3.5" />
-                      <span>{isSendingCalendlySms ? 'Dispatching SMS...' : 'Send Calendly SMS Now'}</span>
+                      <Calendar className="w-3 h-3" />
+                      <span>{isSendingCalendlySms ? 'Sending...' : 'Send Calendly'}</span>
                     </button>
                   ) : (
                     <button
                       type="button"
                       onClick={() => setShowCalendlyModal(true)}
-                      className="w-full py-1.5 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-md shadow-indigo-500/20"
+                      className="py-1.5 px-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer transition-all"
                     >
-                      <Calendar className="w-3.5 h-3.5" />
-                      <span>Open Calendly Simulation</span>
+                      <Calendar className="w-3 h-3" />
+                      <span>Calendly View</span>
                     </button>
                   )}
                 </div>

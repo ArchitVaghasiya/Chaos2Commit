@@ -16,7 +16,43 @@ async function handleTwiml(request: Request) {
   const name = url.searchParams.get('name') || 'Yash';
   const company = url.searchParams.get('company') || 'Gohel Infotech Solutions';
   const lang = url.searchParams.get('lang') || 'Gujarati';
-  const publicBase = getDynamicWebhookBase() || process.env.PUBLIC_WEBHOOK_URL || url.origin;
+  const xfHost = request.headers.get('x-forwarded-host');
+  const host = request.headers.get('host');
+  const reqHost = xfHost || host || '';
+  const proto = request.headers.get('x-forwarded-proto') || 'https';
+  let incomingBase = '';
+  if (reqHost && !reqHost.includes('localhost') && !reqHost.includes('127.0.0.1')) {
+    incomingBase = `${proto}://${reqHost}`;
+  } else if (url.origin && !url.origin.includes('localhost') && !url.origin.includes('127.0.0.1')) {
+    incomingBase = url.origin;
+  }
+  const publicBase = incomingBase || getDynamicWebhookBase() || process.env.PUBLIC_WEBHOOK_URL || url.origin;
+
+  let callSid = url.searchParams.get('CallSid') || url.searchParams.get('callSid') || '';
+  if (!callSid && request.method === 'POST') {
+    try {
+      const cloned = request.clone();
+      const fd = await cloned.formData();
+      callSid = (fd.get('CallSid') as string) || '';
+    } catch (_) {}
+  }
+
+  // Update CallLog status to CONNECTED
+  if (callSid) {
+    try {
+      await prisma.callLog.updateMany({
+        where: { twilioCallSid: callSid },
+        data: { status: 'CONNECTED' },
+      });
+    } catch (_) {}
+  } else if (leadId) {
+    try {
+      await prisma.callLog.updateMany({
+        where: { leadId, status: { in: ['DIALING', 'RINGING'] } },
+        data: { status: 'CONNECTED' },
+      });
+    } catch (_) {}
+  }
 
   let orgSetting: any = null;
   try {

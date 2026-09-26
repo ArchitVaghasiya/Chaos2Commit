@@ -107,6 +107,7 @@ export default function HomePage() {
   const [leads, setLeads] = useState<LeadItem[]>(INITIAL_FALLBACK_LEADS);
   const [selectedLead, setSelectedLead] = useState<LeadItem | null>(INITIAL_FALLBACK_LEADS[0]);
   const [isCallModalOpen, setIsCallModalOpen] = useState(false);
+  const [callModalMode, setCallModalMode] = useState<'BROWSER_SIM' | 'TWILIO_PSTN'>('TWILIO_PSTN');
   const [isCallMinimized, setIsCallMinimized] = useState(false);
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -232,13 +233,13 @@ export default function HomePage() {
       if (leadsRes.status === 'fulfilled' && leadsRes.value.ok) {
         const data = await leadsRes.value.json();
         if (data.leads && data.leads.length > 0) {
-          const yashLead = data.leads.find((l: any) =>
-            (l.phone && l.phone.includes('9737362307')) ||
-            (l.companyName && l.companyName.toLowerCase().includes('gohel'))
-          );
-          if (yashLead) {
-            setSelectedLead(yashLead);
-          }
+          setLeads(data.leads);
+          setSelectedLead((current) => {
+            if (current && data.leads.some((l: any) => l.id === current.id)) {
+              return current;
+            }
+            return data.leads[0];
+          });
         }
       }
 
@@ -321,11 +322,19 @@ export default function HomePage() {
     }
   };
 
-  const openCallModalForLead = (lead: LeadItem) => {
+  const openCallModalForLead = (lead: LeadItem, mode?: 'BROWSER_SIM' | 'TWILIO_PSTN') => {
     setSelectedLead(lead);
+    const isYashPhone = lead.phone?.includes('9737362307');
+    const targetMode = mode || (isYashPhone ? 'TWILIO_PSTN' : 'BROWSER_SIM');
+    setCallModalMode(targetMode);
     setIsCallMinimized(false);
     setIsCallModalOpen(true);
-    info('Live Carrier Call', `Dispatching direct physical call to ${lead.phone || '+91 9737362307'}...`);
+    info(
+      targetMode === 'TWILIO_PSTN' ? 'Live Physical Carrier Call' : 'Browser AI Voice Demo',
+      targetMode === 'TWILIO_PSTN'
+        ? `Dispatching direct physical PSTN call to ${lead.phone || '+91 9737362307'}...`
+        : `Launching interactive AI voice demo for ${lead.name} (${lead.phone || 'Web Call'})...`
+    );
   };
 
   const openScoreModalForLead = (lead: LeadItem) => {
@@ -718,8 +727,20 @@ export default function HomePage() {
               />
             )}
 
-            {/* 4. Campaigns Management Tab (Video Slide 6 Lead Volume Chart & Controls) */}
-            {activeTab === 'campaigns' && <CampaignsHub currentLanguage={currentLanguage} />}
+            {/* 4. Campaigns Management Tab (Lead Batches, Auto-Dialer & Telephony Modes) */}
+            {activeTab === 'campaigns' && (
+              <CampaignsHub
+                currentLanguage={currentLanguage}
+                leads={leads}
+                onOpenCallModal={(lead, mode) => openCallModalForLead(lead, mode)}
+                onMeetingBookedSuccess={handleMeetingBookedSuccess}
+                onUpdateLeadStatus={(leadId, status, updates) => {
+                  setLeads((prev) =>
+                    prev.map((l) => (l.id === leadId ? { ...l, status, ...updates } : l))
+                  );
+                }}
+              />
+            )}
 
             {/* 5. AI Voice Agent Hub */}
             {activeTab === 'ai-voice-agent' && (
@@ -898,6 +919,7 @@ export default function HomePage() {
 
       <LiveCallSimulatorModal
         defaultLanguage={currentLanguage}
+        initialTelephonyMode={callModalMode}
         lead={selectedLead}
         isOpen={isCallModalOpen}
         onClose={() => {

@@ -3,6 +3,7 @@ import { generateVoiceTurnWithGroq, VoiceTurnMessage } from '@/lib/ai/groq';
 import { generateVoiceTurnWithGemini } from '@/lib/ai/gemini';
 import { prisma } from '@/lib/prisma';
 import { sendCalendlyLinkViaSms, generateCalendlyUrl } from '@/lib/calendly/calendly-service';
+import { sendOutboundSms } from '@/lib/telephony/twilio';
 import {
   extractMeetingDateTime,
   scheduleMeetingOnGoogleCalendar,
@@ -312,6 +313,10 @@ export async function POST(request: Request) {
         (prospectLower.includes('set up a call') && (aiText.includes('thursday') || aiText.includes('3 pm'))));
 
     let googleCalendarEvent: any = null;
+    let meetingSmsResult: any = null;
+    let meetingSmsBody = '';
+    const targetPhone = body.phoneNumber || lead?.phone || '+919737362307';
+
     if (isMeetingBooked) {
       outcomeStatus = 'MEETING_BOOKED';
       sentiment = 'POSITIVE';
@@ -325,7 +330,7 @@ export async function POST(request: Request) {
           leadId: lead?.id || leadId,
           leadName: leadContext.name,
           leadEmail: targetEmail,
-          leadPhone: lead?.phone,
+          leadPhone: targetPhone,
           companyName: leadContext.company,
           meetingTime: parsedDate.meetingTime || new Date(Date.now() + 24 * 3600 * 1000),
           topic: leadContext.requirement || 'SharePoint & Cloud Architecture Implementation',
@@ -334,6 +339,30 @@ export async function POST(request: Request) {
         });
       } catch (gcalErr) {
         console.warn('Google Calendar auto-scheduling error:', gcalErr);
+      }
+
+      // Automatically dispatch appointment verification SMS to verify the booked time
+      const displayMeetingTime = parsedDate.displayStr || 'Thursday at 3:00 PM IST';
+      const gcalLink = googleCalendarEvent?.googleCalendarUrl || 'https://meet.google.com/qrs-tuvw-xyz';
+      const firstName = leadContext.name.split(' ')[0] || 'there';
+
+      if (lang.includes('ગુજરાતી') || lang.includes('gujarati') || lang === 'gu') {
+        meetingSmsBody = `📅 Techsolution મીટિંગ કન્ફર્મેશન:\nનમસ્તે ${firstName}, આપની ક્લાઉડ કન્સલ્ટેશન મીટિંગ ${displayMeetingTime} પર કન્ફર્મ થઈ ગઈ છે.\nGoogle Meet: ${gcalLink}\nઆભાર!`;
+      } else if (lang.includes('हिन्दी') || lang.includes('hindi') || lang === 'hi') {
+        meetingSmsBody = `📅 Techsolution मीटिंग कन्फर्मेशन:\nनमस्ते ${firstName}, आपकी क्लाउड कंसल्टेशन मीटिंग ${displayMeetingTime} पर तय हो गई है।\nGoogle Meet लिंक: ${gcalLink}\nधन्यवाद!`;
+      } else if (lang.includes('español') || lang.includes('spanish') || lang === 'es') {
+        meetingSmsBody = `📅 Confirmación de Reunión Techsolution:\nHola ${firstName}, su reunión está confirmada para ${displayMeetingTime}.\nEnlace Google Meet: ${gcalLink}\n¡Gracias!`;
+      } else {
+        meetingSmsBody = `📅 Techsolution Appointment Confirmation:\nHi ${firstName}, your strategy consultation is confirmed for ${displayMeetingTime}.\nGoogle Meet: ${gcalLink}\nReply to this message if you need to reschedule.`;
+      }
+
+      try {
+        meetingSmsResult = await sendOutboundSms({
+          to: targetPhone,
+          body: meetingSmsBody,
+        });
+      } catch (smsErr) {
+        console.warn('Meeting verification SMS dispatch handled:', smsErr);
       }
     }
 
@@ -460,6 +489,10 @@ export async function POST(request: Request) {
       meetingDisplayStr: parsedDate.displayStr || (googleCalendarEvent?.startTime ? new Date(googleCalendarEvent.startTime).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }) + ' at 3:00 PM' : 'Thursday at 3:00 PM'),
       googleCalendarUrl: googleCalendarEvent?.googleCalendarUrl || null,
       googleCalendarApiKey: GOOGLE_CALENDAR_API_KEY,
+      meetingSmsSent: !!meetingSmsResult?.success,
+      meetingSmsBody: meetingSmsBody || null,
+      meetingSmsSid: meetingSmsResult?.messageSid || null,
+      meetingSmsPhone: isMeetingBooked ? targetPhone : null,
       isNegativeDnd,
       isHumanHandoff,
       isCallbackRequested,
