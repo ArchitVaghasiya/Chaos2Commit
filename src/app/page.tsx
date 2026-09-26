@@ -324,8 +324,8 @@ export default function HomePage() {
 
   const openCallModalForLead = (lead: LeadItem, mode?: 'BROWSER_SIM' | 'TWILIO_PSTN') => {
     setSelectedLead(lead);
-    const isYashPhone = lead.phone?.includes('9737362307');
-    const targetMode = mode || (isYashPhone ? 'TWILIO_PSTN' : 'BROWSER_SIM');
+    const isVerifiedPhone = ['9737362307', '9726838581', '9023227455'].some((p) => lead.phone?.includes(p));
+    const targetMode = mode || (isVerifiedPhone ? 'TWILIO_PSTN' : 'BROWSER_SIM');
     setCallModalMode(targetMode);
     setIsCallMinimized(false);
     setIsCallModalOpen(true);

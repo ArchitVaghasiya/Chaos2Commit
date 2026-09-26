@@ -54,20 +54,25 @@ export const DEMO_PRESENTATION_NUMBERS = [
     isVerified: true,
   },
   {
-    id: 'jury-line-1',
-    name: 'Twilio Gateway (Jury Line 1)',
-    phone: '+1 737-250-8034',
-    badge: 'Austin TX Gateway',
-    isVerified: false,
+    id: 'kavy-live',
+    name: 'Kavy Chauhan (Verified Mobile)',
+    phone: '+91 9726838581',
+    badge: 'Live Physical Ring (Twilio)',
+    isVerified: true,
   },
   {
-    id: 'jury-line-2',
-    name: 'Enterprise VIP Mobile (Jury Line 2)',
-    phone: '+91 98765 43210',
-    badge: 'Mumbai VIP Line',
-    isVerified: false,
+    id: 'jayrajsinh-live',
+    name: 'Jayrajsinh Bhatti (Verified Mobile)',
+    phone: '+91 9023227455',
+    badge: 'Live Physical Ring (Twilio)',
+    isVerified: true,
   },
 ];
+
+export const isVerifiedTeamNumber = (num: string) => {
+  const digits = (num || '').replace(/[^\d]/g, '');
+  return ['9737362307', '9726838581', '9023227455'].some((v) => digits.includes(v));
+};
 
 export const formatCallTime = (secs: number) => {
   const mins = Math.floor(secs / 60);
@@ -125,10 +130,10 @@ export default function LiveCallSimulatorModal({
   defaultLanguage = 'English',
   initialTelephonyMode,
 }: LiveCallSimulatorModalProps) {
-  // Mode Selection: Default to Browser Demo Web Call unless specified or Yash's verified phone
-  const isDefaultYash = lead?.phone?.includes('9737362307') || lead?.name?.toLowerCase().includes('yash');
+  // Mode Selection: Default to Browser Demo Web Call unless specified or any team verified phone
+  const isDefaultVerified = isVerifiedTeamNumber(lead?.phone || '') || lead?.name?.toLowerCase().includes('yash');
   const [telephonyMode, setTelephonyMode] = useState<'BROWSER_SIM' | 'TWILIO_PSTN'>(
-    initialTelephonyMode || (isDefaultYash ? 'TWILIO_PSTN' : 'BROWSER_SIM')
+    initialTelephonyMode || (isDefaultVerified ? 'TWILIO_PSTN' : 'BROWSER_SIM')
   );
 
   useEffect(() => {
@@ -139,7 +144,7 @@ export default function LiveCallSimulatorModal({
 
   // Shared Core State - uses lead's own phone number!
   const [phoneNumber, setPhoneNumber] = useState(
-    lead?.phone || (isDefaultYash ? '+91 9737362307' : '+1 415-890-2341')
+    lead?.phone || (isDefaultVerified ? (lead?.phone || '+91 9737362307') : '+1 415-890-2341')
   );
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>(
     (defaultLanguage as SupportedLanguage) || 'English'
@@ -894,9 +899,9 @@ export default function LiveCallSimulatorModal({
           data.error?.includes('verified') ||
           data.trialNotice;
 
-        if (isTrialPolicy && !cleanTarget.includes('9737362307')) {
+        if (isTrialPolicy && !isVerifiedTeamNumber(cleanTarget)) {
           setTrialNotice(
-            `Twilio Free Sandbox Notice: Carrier dialing to ${cleanTarget} requires number verification in Twilio Console. Verified number +91 9737362307 is active and ready.`
+            `Twilio Free Sandbox Notice: Carrier dialing to ${cleanTarget} requires number verification in Twilio Console. Verified numbers (+91 9737362307, +91 9726838581, +91 9023227455) are active and ready.`
           );
           setErrorMessage(data.error || 'Destination number not verified in Twilio trial account.');
           setCallStatus('ENDED');
@@ -933,8 +938,8 @@ export default function LiveCallSimulatorModal({
   // Reset & load on modal open
   useEffect(() => {
     if (isOpen && lead) {
-      const isLeadYash = lead.phone?.includes('9737362307') || lead.name.toLowerCase().includes('yash');
-      const initialTarget = lead.phone || (isLeadYash ? '+91 9737362307' : '+1 415-890-2341');
+      const isLeadVerified = isVerifiedTeamNumber(lead.phone || '') || lead.name.toLowerCase().includes('yash');
+      const initialTarget = lead.phone || (isLeadVerified ? (lead.phone || '+91 9737362307') : '+1 415-890-2341');
       setPhoneNumber(initialTarget);
       setDuration(0);
       setMessages([]);
@@ -965,16 +970,16 @@ export default function LiveCallSimulatorModal({
 
       // Smart Mode Resolution:
       // If caller explicitly passed initialTelephonyMode, respect it.
-      // Otherwise: ONLY Yash's verified phone number defaults to Twilio PSTN;
+      // Otherwise: Team verified phone numbers default to Twilio PSTN;
       // All other prospects default to Browser Demo Web Call!
-      const isYashVerified = initialTarget.includes('9737362307');
+      const isTargetVerified = isVerifiedTeamNumber(initialTarget);
       const resolvedMode = initialTelephonyMode
         ? initialTelephonyMode
-        : (isYashVerified ? 'TWILIO_PSTN' : 'BROWSER_SIM');
+        : (isTargetVerified ? 'TWILIO_PSTN' : 'BROWSER_SIM');
 
       setTelephonyMode(resolvedMode);
 
-      if (resolvedMode === 'TWILIO_PSTN' && isYashVerified) {
+      if (resolvedMode === 'TWILIO_PSTN' && isTargetVerified) {
         // Place real physical carrier call to verified device
         handleStartRealCall(initialTarget, detectedLang);
       } else {
@@ -1663,15 +1668,15 @@ export default function LiveCallSimulatorModal({
                   stopSpeech();
                   setDuration(0);
                   setMessages([]);
-                  const isYashNumber = phoneNumber.includes('9737362307');
-                  if (isYashNumber) {
+                  const isVerifiedNumber = isVerifiedTeamNumber(phoneNumber);
+                  if (isVerifiedNumber) {
                     handleStartRealCall(phoneNumber, selectedLanguage);
                   } else {
                     setCallStatus('IDLE');
                     setMessages([
                       {
                         speaker: 'system',
-                        text: `Twilio PSTN Carrier Mode active for ${phoneNumber}. Click "Dial Physical Call" or select verified phone (+91 9737362307) to ring physical device.`,
+                        text: `Twilio PSTN Carrier Mode active for ${phoneNumber}. Click "Dial Physical Call" or select a verified phone to ring the physical device.`,
                         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                       },
                     ]);
@@ -1921,8 +1926,8 @@ export default function LiveCallSimulatorModal({
                 </select>
               </div>
 
-              {/* Center: Direct Number Input & 1-Click Shuffle */}
-              <div className="flex items-center gap-1.5">
+              {/* Center: Direct Number Input & 1-Click Verified Quick-Dial */}
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <div className="flex items-center gap-1.5 bg-black/60 border border-white/15 rounded-lg px-2.5 py-1">
                   <PhoneCall className="w-3 h-3 text-emerald-400 shrink-0" />
                   <input
@@ -1936,26 +1941,35 @@ export default function LiveCallSimulatorModal({
                   />
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    const nextNum = phoneNumber.includes('9737362307')
-                      ? (lead?.phone || '+1 (555) 718-4920')
-                      : '+91 9737362307';
-                    setPhoneNumber(nextNum);
-                    if (telephonyMode === 'TWILIO_PSTN' && nextNum.includes('9737362307')) {
-                      handleStartRealCall(nextNum, selectedLanguage);
-                    } else if (telephonyMode === 'BROWSER_SIM') {
-                      startBrowserCallSimulation(selectedLanguage, nextNum);
-                    }
-                  }}
-                  disabled={callStatus === 'CONNECTED' || callStatus === 'RINGING' || isDialingTwilio}
-                  className="px-2 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 border border-white/10 text-xs font-medium flex items-center gap-1 cursor-pointer transition-all disabled:opacity-40"
-                  title="Shuffle between Prospect Phone and Verified Line (+91 9737362307)"
-                >
-                  <RefreshCw className="w-3 h-3 text-indigo-400" />
-                  <span>Shuffle</span>
-                </button>
+                <div className="flex items-center gap-1">
+                  {DEMO_PRESENTATION_NUMBERS.map((p) => {
+                    const isSelected = phoneNumber.replace(/[^\d]/g, '').includes(p.phone.replace(/[^\d]/g, ''));
+                    const shortName = p.name.split(' ')[0];
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          setPhoneNumber(p.phone);
+                          if (telephonyMode === 'TWILIO_PSTN') {
+                            handleStartRealCall(p.phone, selectedLanguage);
+                          } else {
+                            startBrowserCallSimulation(selectedLanguage, p.phone);
+                          }
+                        }}
+                        disabled={callStatus === 'CONNECTED' || callStatus === 'RINGING' || isDialingTwilio}
+                        className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                            : 'bg-white/[0.04] text-slate-300 border border-white/10 hover:bg-white/[0.08]'
+                        } disabled:opacity-40`}
+                        title={`Dial verified physical line: ${p.name} (${p.phone})`}
+                      >
+                        ✓ {shortName}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Right: Audio Waveform Equalizer & Direct Meeting Verification SMS Button */}

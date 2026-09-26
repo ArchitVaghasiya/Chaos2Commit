@@ -55,10 +55,7 @@ Your goal:
 
   const modelsToTry = [
     'llama-3.3-70b-versatile',
-    'llama-3.1-8b-instant',
-    'groq/compound-mini',
-    'qwen/qwen3.8-27b',
-    'openai/gpt-oss-20b'
+    'llama-3.1-8b-instant'
   ];
 
   for (const model of modelsToTry) {
@@ -102,7 +99,7 @@ Return strictly a valid JSON array of objects with keys:
 "name", "jobTitle", "companyName", "companyWebsite", "industry", "companySize", "email", "phone", "linkedinProfile", "sourcePlatform", "originalPostUrl", "originalPostSnippet", "intentScore" (85-96), "budgetSignal" ("Approved"|"High"), "urgencyLevel" ("High"|"Medium"), "decisionMaker" (true), "activeRequirement" (true), "matchReasoning" (string), "fitScore" (number 90-98), "keyMatches" (array of strings), "recommendedPitch" (string), "scoreBreakdown" ({"authority": 25, "budget": 24, "urgency": 23, "fit": 24}).
 Output only the JSON array, no markdown fences or preambles.`;
 
-  const modelsToTry = ['openai/gpt-oss-20b', 'groq/compound-mini'];
+  const modelsToTry = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
   for (const model of modelsToTry) {
     try {
       const completion = await groq.chat.completions.create({
