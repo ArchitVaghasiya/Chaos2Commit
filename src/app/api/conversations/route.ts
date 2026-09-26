@@ -31,6 +31,13 @@ export async function GET() {
       }
     }
 
+    // Ensure strict descending chronological sorting by real timestamp
+    rawCalls.sort((a: any, b: any) => {
+      const timeA = new Date(a.createdAt).getTime();
+      const timeB = new Date(b.createdAt).getTime();
+      return timeB - timeA;
+    });
+
     const formattedCalls = (rawCalls || []).map((call: any) => {
       let parsedTranscript: { speaker: string; text: string; time: string; timestamp?: string; offsetSeconds?: number }[] = [];
       const durSec = Number(call.durationSeconds) || 75;
@@ -164,7 +171,55 @@ export async function POST(request: Request) {
       language = 'en',
       calendlyLinkSent = false,
       calendlyUrl = null,
+      twilioCallSid = null,
     } = body;
+
+    // 0. If this is a Twilio call with an existing CallLog, update it directly
+    if (twilioCallSid) {
+      try {
+        const existing = await prisma.callLog.findFirst({
+          where: { twilioCallSid },
+        });
+        if (existing) {
+          const finalDuration = Math.max(Number(existing.durationSeconds) || 0, Number(durationSeconds) || 0);
+          const finalSummary = summary || existing.callSummary;
+          const finalNextAction = nextBestAction || existing.nextBestAction;
+
+          let finalTranscript = existing.transcriptJson;
+          if (messages && Array.isArray(messages) && messages.length > 0) {
+            let existingTurns: any[] = [];
+            try {
+              if (existing.transcriptJson) existingTurns = JSON.parse(existing.transcriptJson);
+            } catch (_) {}
+
+            if (messages.length >= existingTurns.length) {
+              finalTranscript = JSON.stringify(messages);
+            }
+          }
+
+          const updated = await prisma.callLog.update({
+            where: { id: existing.id },
+            data: {
+              status: 'COMPLETED',
+              durationSeconds: finalDuration,
+              outcome: outcome || existing.outcome,
+              sentiment: sentiment || existing.sentiment,
+              callSummary: finalSummary,
+              nextBestAction: finalNextAction,
+              ...(finalTranscript ? { transcriptJson: finalTranscript } : {}),
+            },
+          });
+
+          return NextResponse.json({
+            success: true,
+            call: updated,
+            message: 'Existing Twilio CallLog updated successfully',
+          });
+        }
+      } catch (twilioUpdateErr) {
+        console.warn('Error updating existing Twilio call log:', twilioUpdateErr);
+      }
+    }
 
     // Resolve or create lead in DB
     let lead: any = null;
@@ -262,7 +317,8 @@ export async function POST(request: Request) {
 
     const transcriptJson = JSON.stringify(formattedTranscript);
     const callLogId = `call-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-    const nowIso = new Date().toISOString();
+    const nowMs = Date.now();
+    const nowIso = new Date(nowMs).toISOString();
     const finalSummary = summary || `AI voice qualification completed with ${resolvedLeadName} (${resolvedCompanyName}).`;
     const finalNextAction = nextBestAction || 'Send solution summary and schedule next call.';
 
@@ -285,7 +341,7 @@ export async function POST(request: Request) {
       transcriptJson,
       calendlyLinkSent ? 1 : 0,
       calendlyUrl || null,
-      nowIso
+      nowMs
     );
 
     // Update lead status in DB

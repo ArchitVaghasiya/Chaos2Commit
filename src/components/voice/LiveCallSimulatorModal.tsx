@@ -1151,6 +1151,9 @@ export default function LiveCallSimulatorModal({
             } else if (data.status === 'completed' || data.status === 'failed' || data.status === 'canceled' || data.status === 'COMPLETED') {
               setCallStatus('ENDED');
               callStatusRef.current = 'ENDED';
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('call-completed'));
+              }
             }
 
             if (typeof data.durationSeconds === 'number' && data.durationSeconds > 0) {
@@ -1161,11 +1164,28 @@ export default function LiveCallSimulatorModal({
             if (data.callSummary) setCallSummary(data.callSummary);
             if (data.nextBestAction) setNextBestAction(data.nextBestAction);
 
-            // Sync live dialogue transcript from database directly into modal chat
+            // Sync live dialogue transcript from database directly into modal chat without repeating messages
             if (data.transcript && Array.isArray(data.transcript) && data.transcript.length > 0) {
-              setMessages((prev) => {
-                const initialSystemMsgs = prev.filter((m) => m.speaker === 'system');
-                return [...initialSystemMsgs, ...data.transcript];
+              setMessages(() => {
+                const uniqueMsgs: Message[] = [];
+                const seenKeys = new Set<string>();
+
+                for (const t of data.transcript) {
+                  const txt = (t.text || t.content || '').trim();
+                  if (!txt) continue;
+                  const key = `${t.speaker || 'system'}:${txt}`;
+                  if (!seenKeys.has(key)) {
+                    seenKeys.add(key);
+                    uniqueMsgs.push({
+                      speaker: t.speaker === 'agent' ? 'agent' : t.speaker === 'prospect' ? 'prospect' : 'system',
+                      text: txt,
+                      time: t.time || '00:00',
+                      timestamp: t.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                      offsetSeconds: t.offsetSeconds ?? 0,
+                    });
+                  }
+                }
+                return uniqueMsgs;
               });
             }
 
@@ -1537,11 +1557,14 @@ export default function LiveCallSimulatorModal({
       offsetSeconds: finalDuration,
     };
 
-    setMessages((prev) => [...prev, endMsg]);
+    setMessages((prev) => {
+      if (prev.some((m) => m.text.startsWith('Call ended.'))) return prev;
+      return [...prev, endMsg];
+    });
 
     // Persist conversation to /api/conversations so it immediately appears in the Conversations tab!
     const dialogueTurns = messagesRef.current.filter((m) => m.speaker === 'agent' || m.speaker === 'prospect');
-    if (dialogueTurns.length > 0) {
+    if (dialogueTurns.length > 0 || (telephonyModeRef.current === 'TWILIO_PSTN' && twilioSid)) {
       try {
         const payload = {
           leadId: lead?.id,
@@ -1565,6 +1588,7 @@ export default function LiveCallSimulatorModal({
           language: selectedLanguage,
           calendlyLinkSent,
           calendlyUrl,
+          twilioCallSid: telephonyModeRef.current === 'TWILIO_PSTN' ? (twilioSid || null) : null,
         };
 
         const res = await fetch('/api/conversations', {

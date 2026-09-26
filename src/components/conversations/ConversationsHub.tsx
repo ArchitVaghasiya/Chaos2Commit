@@ -178,7 +178,13 @@ export default function ConversationsHub() {
     window.addEventListener('call-completed', handleCallCompleted);
     window.addEventListener('focus', handleCallCompleted);
 
+    // Auto-sync polling every 3 seconds so newest conversations show immediately
+    const pollInterval = setInterval(() => {
+      fetchCalls(true);
+    }, 3000);
+
     return () => {
+      clearInterval(pollInterval);
       window.removeEventListener('call-completed', handleCallCompleted);
       window.removeEventListener('focus', handleCallCompleted);
       stopAudioPlayback();
@@ -550,8 +556,21 @@ export default function ConversationsHub() {
 
                 <div className="space-y-3 max-h-[380px] overflow-y-auto pr-2 text-xs">
                   {selectedCall.transcript.map((msg, idx) => {
-                    const isAgent = msg.speaker.includes('Ava') || msg.speaker.includes('AI');
+                    const isSystem = (msg.speaker || '').toLowerCase() === 'system';
+                    const isAgent = !isSystem && (msg.speaker.includes('Ava') || msg.speaker.includes('AI'));
                     const isActiveSpokenTurn = activeSpeechIdx === idx;
+
+                    if (isSystem) {
+                      return (
+                        <div key={idx} className="flex justify-center my-1.5">
+                          <span className="text-[10.5px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.06] px-3 py-1 rounded-full flex items-center gap-1.5 font-mono">
+                            <Clock className="w-3 h-3 text-slate-400" />
+                            {msg.time && <span className="text-emerald-500 dark:text-emerald-400 font-bold">[{msg.time}]</span>}
+                            <span>{msg.text}</span>
+                          </span>
+                        </div>
+                      );
+                    }
 
                     return (
                       <div
