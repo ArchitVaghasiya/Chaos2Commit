@@ -137,7 +137,7 @@ export async function generateVoiceTurnWithGemini(
   },
   language = 'English'
 ): Promise<string | null> {
-  const model = getGeminiModel('gemini-2.5-flash');
+  const model = getGeminiModel('gemini-3.8-flash');
   if (!model) return null;
 
   const orgName = leadContext.orgCompanyName || 'Techsolution';

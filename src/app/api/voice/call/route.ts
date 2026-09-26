@@ -292,25 +292,53 @@ export async function POST(request: Request) {
     // =========================================================================
     // 3.5 GOOGLE CALENDAR & DATE/TIME SCHEDULING (API KEY SYNC)
     // =========================================================================
-    const combinedSpeech = `${prospectSpeech} ${aiResponse}`;
-    const parsedDate = extractMeetingDateTime(combinedSpeech);
+    // Extract meeting date/time requested explicitly by the prospect
+    const parsedDate = extractMeetingDateTime(prospectSpeech);
 
-    // Meeting booked detection
-    const aiText = (aiResponse || '').toLowerCase();
+    // Strict whole-word affirmative match to avoid substring false positives (e.g., "ha" in "sharepoint")
+    const isAffirmative =
+      /\b(yes|yeah|yep|sure|okay|ok|done|fine|perfect|sounds good|let's do it|lets do it)\b/i.test(prospectLower) ||
+      /(?:^|\s)(ha|haan|haa|haji|હા|હાજી|हाँ|हां|चलेगा|ठीक है|ચાલશે|બરાબર|સરસ)(?:$|\s|[.,!?])/i.test(prospectLower);
+
+    const isQuestion =
+      prospectSpeech.includes('?') ||
+      /\b(what|who|when|where|why|how|which)\b/i.test(prospectLower) ||
+      /(?:^|\s)(શું|કેમ|ક્યારે|ક્યાં|કોણ|કેવી રીતે|क्या|कब|कहाँ|कैसे|कौन)(?:$|\s|[.,!?])/i.test(prospectLower);
+
+    const hasDirectBookingIntent =
+      /\b(book\s+(?:a\s+)?meeting|schedule\s+(?:a\s+)?(?:call|meeting)|confirm\s+(?:the\s+)?meeting|set\s+up\s+a\s+call|lock\s+in|let's\s+meet|lets\s+meet)\b/i.test(prospectLower) ||
+      prospectLower.includes('મીટિંગ બુક') ||
+      prospectLower.includes('મીટિંગ નક્કી') ||
+      prospectLower.includes('મીટિંગ શેડ્યૂલ') ||
+      prospectLower.includes('મીટીંગ રાખો') ||
+      prospectLower.includes('मीटिंग बुक') ||
+      prospectLower.includes('मीटिंग तय') ||
+      prospectLower.includes('कॉल शेड्यूल');
+
+    // Check if the previous agent turn actually proposed/offered a meeting
+    const prevTurns = Array.isArray(history) ? history : [];
+    const lastAgentTurn = (prevTurns.filter((h: any) => h.role === 'assistant' || h.speaker === 'agent').slice(-1)[0]?.content || '').toLowerCase();
+    const wasMeetingProposed =
+      lastAgentTurn.includes('meeting') ||
+      lastAgentTurn.includes('મીટિંગ') ||
+      lastAgentTurn.includes('મીટીંગ') ||
+      lastAgentTurn.includes('मीटिंग') ||
+      lastAgentTurn.includes('schedule') ||
+      lastAgentTurn.includes('વાત કરીએ') ||
+      lastAgentTurn.includes('ગુરુવારે') ||
+      lastAgentTurn.includes('thursday') ||
+      lastAgentTurn.includes('tomorrow') ||
+      lastAgentTurn.includes('આવતીકાલે');
+
+    // Meeting booked detection: ONLY if not DND, not a question, and prospect genuinely agrees or requests
     const isMeetingBooked =
       !isNegativeDnd &&
-      (parsedDate.detected ||
-        aiText.includes('booked') ||
-        aiText.includes('calendar invite') ||
-        aiText.includes('look forward to connecting on thursday') ||
-        aiText.includes('agendado') ||
-        aiText.includes('réservé') ||
-        aiText.includes('gebucht') ||
-        aiText.includes('बैठक तय') ||
-        aiText.includes('મીટિંગ નક્કી') ||
-        aiText.includes('ગુરુવારે બપોરે 3') ||
-        aiText.includes('حجزت') ||
-        (prospectLower.includes('set up a call') && (aiText.includes('thursday') || aiText.includes('3 pm'))));
+      !isQuestion &&
+      !isHumanHandoff &&
+      !isCallbackRequested &&
+      ((wasMeetingProposed && isAffirmative) ||
+        (parsedDate.detected && (isAffirmative || hasDirectBookingIntent)) ||
+        hasDirectBookingIntent);
 
     let googleCalendarEvent: any = null;
     let meetingSmsResult: any = null;

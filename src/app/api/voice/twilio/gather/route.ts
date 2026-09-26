@@ -319,7 +319,6 @@ async function handleGather(request: Request) {
       prospectLower.includes('मैसेज भेजो') ||
       prospectLower.includes('लिंक भेजो') ||
       prospectLower.includes('कैलेंडली');
-
     // 3. Callback / Busy Detection
     const isCallbackRequested =
       prospectLower.includes('busy right now') ||
@@ -346,62 +345,40 @@ async function handleGather(request: Request) {
       lastAgentText.includes('मीटिंग') ||
       lastAgentText.includes('schedule') ||
       lastAgentText.includes('શેડ્યૂલ') ||
-      lastAgentText.includes('કન્ફર્મ') ||
+      lastAgentText.includes('વાત કરીએ') ||
       lastAgentText.includes('તય') ||
-      lastAgentText.includes('तय');
+      lastAgentText.includes('तય');
+
+    const isQuestion =
+      prospectText.includes('?') ||
+      /\b(what|who|when|where|why|how|which)\b/i.test(prospectLower) ||
+      /(?:^|\s)(શું|કેમ|ક્યારે|ક્યાં|કોણ|કેવી રીતે|क्या|कब|कहाँ|कैसे|कौन)(?:$|\s|[.,!?])/i.test(prospectLower);
 
     const isAffirmative =
-      prospectLower.includes('yes') ||
-      prospectLower.includes('sure') ||
-      prospectLower.includes('sounds good') ||
-      prospectLower.includes('perfect') ||
-      prospectLower.includes('okay') ||
-      prospectLower.includes('ok') ||
-      prospectLower.includes('done') ||
-      prospectLower.includes('fine') ||
-      prospectLower.includes('haan') ||
-      prospectLower.includes('ha') ||
-      prospectLower.includes('હા') ||
-      prospectLower.includes('ચાલશે') ||
-      prospectLower.includes('બરાબર') ||
-      prospectLower.includes('સરસ') ||
-      prospectLower.includes('हाँ') ||
-      prospectLower.includes('चलेगा') ||
-      prospectLower.includes('ठीक है') ||
-      prospectLower.includes('थैंक यू') ||
-      prospectLower.includes('thank you');
+      /\b(yes|yeah|yep|sure|okay|ok|done|fine|perfect|sounds good|let's do it|lets do it)\b/i.test(prospectLower) ||
+      /(?:^|\s)(ha|haan|haa|haji|હા|હાજી|हाँ|हां|चलेगा|ठीक है|ચાલશે|બરાબર|સરસ|थैंक यू|thank you)(?:$|\s|[.,!?])/i.test(prospectLower);
 
-    const hasDirectMeetingWord =
-      prospectLower.includes('meeting') ||
-      prospectLower.includes('schedule') ||
-      prospectLower.includes('book') ||
-      prospectLower.includes('calendar') ||
-      prospectLower.includes('appointment') ||
-      prospectLower.includes('slot') ||
-      prospectLower.includes('call me at') ||
-      prospectLower.includes('let us meet') ||
-      prospectLower.includes("let's meet") ||
-      prospectLower.includes('let’s meet') ||
-      prospectLower.includes('set up a call') ||
-      prospectLower.includes('confirm meeting') ||
-      prospectLower.includes('મીટિંગ') ||
-      prospectLower.includes('શેડ્યૂલ') ||
-      prospectLower.includes('બુક') ||
-      prospectLower.includes('નક્કી') ||
-      prospectLower.includes('મીટીંગ') ||
-      prospectLower.includes('मीटिंग') ||
-      prospectLower.includes('शेड्यूल') ||
-      prospectLower.includes('તય') ||
-      prospectLower.includes('तय');
+    const hasDirectBookingIntent =
+      /\b(book\s+(?:a\s+)?meeting|schedule\s+(?:a\s+)?(?:call|meeting)|confirm\s+(?:the\s+)?meeting|set\s+up\s+a\s+call|lock\s+in|let's\s+meet|lets\s+meet)\b/i.test(prospectLower) ||
+      prospectLower.includes('મીટિંગ બુક') ||
+      prospectLower.includes('મીટિંગ નક્કી') ||
+      prospectLower.includes('મીટિંગ શેડ્યૂલ') ||
+      prospectLower.includes('મીટીંગ રાખો') ||
+      prospectLower.includes('मीटिंग बुक') ||
+      prospectLower.includes('मीटिंग तय') ||
+      prospectLower.includes('कॉल शेड्यूल');
 
     const isMeetingBooked =
       !isNegativeDnd &&
-      (hasDirectMeetingWord ||
-        (parsedMeeting.detected && (hasDirectMeetingWord || isAffirmative || wasMeetingPreviouslyMentioned)) ||
-        (wasMeetingPreviouslyMentioned && isAffirmative));
+      !isCallbackRequested &&
+      !isHumanHandoff &&
+      !isQuestion &&
+      ((wasMeetingPreviouslyMentioned && isAffirmative) ||
+        (parsedMeeting.detected && (isAffirmative || hasDirectBookingIntent)) ||
+        hasDirectBookingIntent);
 
     const isMeetingWrapUp =
-      wasMeetingPreviouslyMentioned && isAffirmative && !parsedMeeting.detected && !hasDirectMeetingWord;
+      wasMeetingPreviouslyMentioned && isAffirmative && !parsedMeeting.detected && !hasDirectBookingIntent;
 
     let aiReply = '';
     let shouldHangup = false;

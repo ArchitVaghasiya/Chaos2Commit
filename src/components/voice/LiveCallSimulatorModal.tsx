@@ -54,25 +54,20 @@ export const DEMO_PRESENTATION_NUMBERS = [
     isVerified: true,
   },
   {
-    id: 'kavy-live',
-    name: 'Kavy Chauhan (Verified Mobile)',
-    phone: '+91 9726838581',
-    badge: 'Live Physical Ring (Twilio)',
-    isVerified: true,
+    id: 'jury-line-1',
+    name: 'Twilio Gateway (Jury Line 1)',
+    phone: '+1 737-250-8034',
+    badge: 'Austin TX Gateway',
+    isVerified: false,
   },
   {
-    id: 'jayrajsinh-live',
-    name: 'Jayrajsinh Bhatti (Verified Mobile)',
-    phone: '+91 9023227455',
-    badge: 'Live Physical Ring (Twilio)',
-    isVerified: true,
+    id: 'jury-line-2',
+    name: 'Enterprise VIP Mobile (Jury Line 2)',
+    phone: '+91 98765 43210',
+    badge: 'Mumbai VIP Line',
+    isVerified: false,
   },
 ];
-
-export const isVerifiedTeamNumber = (num: string) => {
-  const digits = (num || '').replace(/[^\d]/g, '');
-  return ['9737362307', '9726838581', '9023227455'].some((v) => digits.includes(v));
-};
 
 export const formatCallTime = (secs: number) => {
   const mins = Math.floor(secs / 60);
@@ -130,10 +125,10 @@ export default function LiveCallSimulatorModal({
   defaultLanguage = 'English',
   initialTelephonyMode,
 }: LiveCallSimulatorModalProps) {
-  // Mode Selection: Default to Browser Demo Web Call unless specified or any team verified phone
-  const isDefaultVerified = isVerifiedTeamNumber(lead?.phone || '') || lead?.name?.toLowerCase().includes('yash');
+  // Mode Selection: Default to Browser Demo Web Call unless specified or Yash's verified phone
+  const isDefaultYash = lead?.phone?.includes('9737362307') || lead?.name?.toLowerCase().includes('yash');
   const [telephonyMode, setTelephonyMode] = useState<'BROWSER_SIM' | 'TWILIO_PSTN'>(
-    initialTelephonyMode || (isDefaultVerified ? 'TWILIO_PSTN' : 'BROWSER_SIM')
+    initialTelephonyMode || (isDefaultYash ? 'TWILIO_PSTN' : 'BROWSER_SIM')
   );
 
   useEffect(() => {
@@ -144,7 +139,7 @@ export default function LiveCallSimulatorModal({
 
   // Shared Core State - uses lead's own phone number!
   const [phoneNumber, setPhoneNumber] = useState(
-    lead?.phone || (isDefaultVerified ? (lead?.phone || '+91 9737362307') : '+1 415-890-2341')
+    lead?.phone || (isDefaultYash ? '+91 9737362307' : '+1 415-890-2341')
   );
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>(
     (defaultLanguage as SupportedLanguage) || 'English'
@@ -270,6 +265,14 @@ export default function LiveCallSimulatorModal({
   const isAiSpeakingRef = useRef(isAiSpeaking);
   const hasTriggeredMeetingSuccessRef = useRef(false);
   const onMeetingBookedSuccessRef = useRef(onMeetingBookedSuccess);
+  const telephonyModeRef = useRef(telephonyMode);
+  const browserSimTimer1Ref = useRef<NodeJS.Timeout | null>(null);
+  const browserSimTimer2Ref = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    telephonyModeRef.current = telephonyMode;
+  }, [telephonyMode]);
 
   useEffect(() => {
     isAiThinkingRef.current = isAiThinking;
@@ -329,6 +332,7 @@ export default function LiveCallSimulatorModal({
       try {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
+        audioRef.current.src = '';
       } catch (_) {}
       audioRef.current = null;
     }
@@ -345,6 +349,12 @@ export default function LiveCallSimulatorModal({
   const fallbackWebSpeech = useCallback(
     (text: string, lang: string, onEnd?: () => void) => {
       if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+        if (onEnd) onEnd();
+        return;
+      }
+      if (callStatusRef.current === 'ENDED' || telephonyModeRef.current === 'TWILIO_PSTN') {
+        setIsAiSpeaking(false);
+        isAiSpeakingRef.current = false;
         if (onEnd) onEnd();
         return;
       }
@@ -370,6 +380,12 @@ export default function LiveCallSimulatorModal({
         }
 
         utterance.onstart = () => {
+          if (callStatusRef.current === 'ENDED' || telephonyModeRef.current === 'TWILIO_PSTN') {
+            try { window.speechSynthesis.cancel(); } catch (_) {}
+            setIsAiSpeaking(false);
+            isAiSpeakingRef.current = false;
+            return;
+          }
           setIsAiSpeaking(true);
           isAiSpeakingRef.current = true;
         };
@@ -405,6 +421,14 @@ export default function LiveCallSimulatorModal({
         return;
       }
 
+      // STRICT GUARD: Never play audio if call is ended or user is on Twilio physical phone call!
+      if (callStatusRef.current === 'ENDED' || telephonyModeRef.current === 'TWILIO_PSTN') {
+        setIsAiSpeaking(false);
+        isAiSpeakingRef.current = false;
+        if (onEnd) onEnd();
+        return;
+      }
+
       stopSpeech();
 
       const activeLang = langOverride || selectedLanguage || 'English';
@@ -426,6 +450,16 @@ export default function LiveCallSimulatorModal({
         audioRef.current = audio;
 
         audio.onplay = () => {
+          if (callStatusRef.current === 'ENDED' || telephonyModeRef.current === 'TWILIO_PSTN') {
+            try {
+              audio.pause();
+              audio.src = '';
+            } catch (_) {}
+            audioRef.current = null;
+            setIsAiSpeaking(false);
+            isAiSpeakingRef.current = false;
+            return;
+          }
           setIsAiSpeaking(true);
           isAiSpeakingRef.current = true;
         };
@@ -438,16 +472,26 @@ export default function LiveCallSimulatorModal({
         };
 
         audio.onerror = (err) => {
-          console.warn('Audio TTS stream error, falling back to Web Speech API:', err);
           audioRef.current = null;
+          if (callStatusRef.current === 'ENDED' || telephonyModeRef.current === 'TWILIO_PSTN') {
+            setIsAiSpeaking(false);
+            isAiSpeakingRef.current = false;
+            return;
+          }
+          console.warn('Audio TTS stream error, falling back to Web Speech API:', err);
           fallbackWebSpeech(cleanSpeech, activeLang, onEnd);
         };
 
         const playPromise = audio.play();
         if (playPromise !== undefined) {
           playPromise.catch((playErr) => {
-            console.warn('Audio play auto-play policy block or error:', playErr);
             audioRef.current = null;
+            if (callStatusRef.current === 'ENDED' || telephonyModeRef.current === 'TWILIO_PSTN') {
+              setIsAiSpeaking(false);
+              isAiSpeakingRef.current = false;
+              return;
+            }
+            console.warn('Audio play auto-play policy block or error:', playErr);
             fallbackWebSpeech(cleanSpeech, activeLang, onEnd);
           });
         }
@@ -660,13 +704,18 @@ export default function LiveCallSimulatorModal({
       recognition.lang = getLocaleForVoice(selectedLanguage);
 
       recognition.onstart = () => {
+        if (telephonyModeRef.current !== 'BROWSER_SIM' || callStatusRef.current === 'ENDED') {
+          try { recognition.abort(); } catch (_) {}
+          setIsMicListening(false);
+          return;
+        }
         setIsMicListening(true);
         setSpeechTranscript('');
       };
 
       recognition.onresult = (event: any) => {
-        // Prevent speech loopback if AI is currently synthesizing or thinking
-        if (isAiThinkingRef.current || isAiSpeakingRef.current) return;
+        // Strictly prevent speech recognition in Twilio PSTN mode, when AI speaks, or when call ended
+        if (telephonyModeRef.current !== 'BROWSER_SIM' || callStatusRef.current !== 'CONNECTED' || isAiThinkingRef.current || isAiSpeakingRef.current) return;
 
         let interim = '';
         let finalPhrase = '';
@@ -729,10 +778,10 @@ export default function LiveCallSimulatorModal({
       };
 
       recognition.onend = () => {
-        // Dispatch any pending speech remaining in buffer when microphone stops
+        // Dispatch any pending speech remaining in buffer when microphone stops (ONLY for BROWSER_SIM)
         if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
         const pending = (lastTrackedTextRef.current || lastSpokenRef.current).trim();
-        if (pending && !isAiThinkingRef.current && !isAiSpeakingRef.current) {
+        if (telephonyModeRef.current === 'BROWSER_SIM' && callStatusRef.current === 'CONNECTED' && pending && !isAiThinkingRef.current && !isAiSpeakingRef.current) {
           lastTrackedTextRef.current = '';
           lastSpokenRef.current = '';
           setSpeechTranscript('');
@@ -741,8 +790,8 @@ export default function LiveCallSimulatorModal({
         }
         setIsMicListening(false);
 
-        // Auto-restart recognition if call is connected and AI is not speaking
-        if (callStatusRef.current === 'CONNECTED' && !isAiThinkingRef.current && !isAiSpeakingRef.current) {
+        // Auto-restart recognition ONLY if browser demo call is connected, AI not speaking, and NOT Twilio mode
+        if (telephonyModeRef.current === 'BROWSER_SIM' && callStatusRef.current === 'CONNECTED' && !isAiThinkingRef.current && !isAiSpeakingRef.current) {
           try {
             recognition.start();
             setIsMicListening(true);
@@ -763,6 +812,11 @@ export default function LiveCallSimulatorModal({
   }, [selectedLanguage]);
 
   const toggleMic = async () => {
+    if (telephonyModeRef.current === 'TWILIO_PSTN') {
+      alert('Physical Carrier Line Active: Speak directly into your mobile phone handset. Browser microphone is disabled during Twilio carrier calls.');
+      return;
+    }
+
     const SpeechRecognition =
       typeof window !== 'undefined' &&
       ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
@@ -883,14 +937,13 @@ export default function LiveCallSimulatorModal({
           },
         ]);
 
-        // Start hands-free speech recognition in browser so user can speak directly into console or mobile
+        // Explicitly ensure browser microphone is disabled in Twilio PSTN mode
         if (recognitionRef.current) {
           try {
-            recognitionRef.current.lang = getLocaleForVoice(lang);
-            recognitionRef.current.start();
-            setIsMicListening(true);
+            recognitionRef.current.stop();
           } catch (_) {}
         }
+        setIsMicListening(false);
       } else {
         const isTrialPolicy =
           data.error?.includes('573002') ||
@@ -899,9 +952,9 @@ export default function LiveCallSimulatorModal({
           data.error?.includes('verified') ||
           data.trialNotice;
 
-        if (isTrialPolicy && !isVerifiedTeamNumber(cleanTarget)) {
+        if (isTrialPolicy && !cleanTarget.includes('9737362307')) {
           setTrialNotice(
-            `Twilio Free Sandbox Notice: Carrier dialing to ${cleanTarget} requires number verification in Twilio Console. Verified numbers (+91 9737362307, +91 9726838581, +91 9023227455) are active and ready.`
+            `Twilio Free Sandbox Notice: Carrier dialing to ${cleanTarget} requires number verification in Twilio Console. Verified number +91 9737362307 is active and ready.`
           );
           setErrorMessage(data.error || 'Destination number not verified in Twilio trial account.');
           setCallStatus('ENDED');
@@ -938,8 +991,8 @@ export default function LiveCallSimulatorModal({
   // Reset & load on modal open
   useEffect(() => {
     if (isOpen && lead) {
-      const isLeadVerified = isVerifiedTeamNumber(lead.phone || '') || lead.name.toLowerCase().includes('yash');
-      const initialTarget = lead.phone || (isLeadVerified ? (lead.phone || '+91 9737362307') : '+1 415-890-2341');
+      const isLeadYash = lead.phone?.includes('9737362307') || lead.name.toLowerCase().includes('yash');
+      const initialTarget = lead.phone || (isLeadYash ? '+91 9737362307' : '+1 415-890-2341');
       setPhoneNumber(initialTarget);
       setDuration(0);
       setMessages([]);
@@ -970,17 +1023,17 @@ export default function LiveCallSimulatorModal({
 
       // Smart Mode Resolution:
       // If caller explicitly passed initialTelephonyMode, respect it.
-      // Otherwise: Team verified phone numbers default to Twilio PSTN;
+      // Otherwise: ONLY Yash's verified phone number defaults to Twilio PSTN;
       // All other prospects default to Browser Demo Web Call!
-      const isTargetVerified = isVerifiedTeamNumber(initialTarget);
+      const isYashVerified = initialTarget.includes('9737362307');
       const resolvedMode = initialTelephonyMode
         ? initialTelephonyMode
-        : (isTargetVerified ? 'TWILIO_PSTN' : 'BROWSER_SIM');
+        : (isYashVerified ? 'TWILIO_PSTN' : 'BROWSER_SIM');
 
       setTelephonyMode(resolvedMode);
 
-      if (resolvedMode === 'TWILIO_PSTN' && isTargetVerified) {
-        // Place real physical carrier call to verified device
+      if (resolvedMode === 'TWILIO_PSTN') {
+        // Place real physical carrier call to device
         handleStartRealCall(initialTarget, detectedLang);
       } else {
         // Run in-browser AI duplex voice call with real speech synthesis
@@ -990,10 +1043,14 @@ export default function LiveCallSimulatorModal({
       // Check Twilio diagnostics in background
       checkDiagnostics(initialTarget);
     } else {
+      if (browserSimTimer1Ref.current) clearTimeout(browserSimTimer1Ref.current);
+      if (browserSimTimer2Ref.current) clearTimeout(browserSimTimer2Ref.current);
       stopSpeech();
       setCallStatus('IDLE');
     }
     return () => {
+      if (browserSimTimer1Ref.current) clearTimeout(browserSimTimer1Ref.current);
+      if (browserSimTimer2Ref.current) clearTimeout(browserSimTimer2Ref.current);
       stopSpeech();
     };
   }, [isOpen, lead?.id, initialTelephonyMode]);
@@ -1001,8 +1058,12 @@ export default function LiveCallSimulatorModal({
   // Start in-browser simulated call
   const startBrowserCallSimulation = (lang: SupportedLanguage, targetOverride?: string) => {
     if (!lead) return;
+    if (browserSimTimer1Ref.current) clearTimeout(browserSimTimer1Ref.current);
+    if (browserSimTimer2Ref.current) clearTimeout(browserSimTimer2Ref.current);
+
     const targetDisplay = targetOverride || phoneNumber || lead.phone || '+1 415-890-2341';
     setCallStatus('DIALING');
+    callStatusRef.current = 'DIALING';
     setMessages([
       {
         speaker: 'system',
@@ -1013,8 +1074,10 @@ export default function LiveCallSimulatorModal({
       },
     ]);
 
-    setTimeout(() => {
+    browserSimTimer1Ref.current = setTimeout(() => {
+      if (callStatusRef.current === 'ENDED' || telephonyModeRef.current === 'TWILIO_PSTN') return;
       setCallStatus('RINGING');
+      callStatusRef.current = 'RINGING';
       setMessages((prev) => [
         ...prev,
         {
@@ -1026,8 +1089,10 @@ export default function LiveCallSimulatorModal({
         },
       ]);
 
-      setTimeout(() => {
+      browserSimTimer2Ref.current = setTimeout(() => {
+        if (callStatusRef.current === 'ENDED' || telephonyModeRef.current === 'TWILIO_PSTN') return;
         setCallStatus('CONNECTED');
+        callStatusRef.current = 'CONNECTED';
         const firstName = lead.name.split(' ')[0] || 'there';
         const requirement = lead.originalPostSnippet
           ? lead.originalPostSnippet.substring(0, 45) + '...'
@@ -1054,10 +1119,11 @@ export default function LiveCallSimulatorModal({
         ]);
 
         speakText(greeting, () => {
-          if (recognitionRef.current && callStatusRef.current === 'CONNECTED') {
+          if (recognitionRef.current && callStatusRef.current === 'CONNECTED' && telephonyModeRef.current === 'BROWSER_SIM') {
             try {
               recognitionRef.current.lang = getLocaleForVoice(lang);
               recognitionRef.current.start();
+              setIsMicListening(true);
             } catch (_) {}
           }
         }, lang);
@@ -1067,20 +1133,24 @@ export default function LiveCallSimulatorModal({
 
   // Poll Twilio call status if using Twilio mode
   useEffect(() => {
-    if (!isOpen || telephonyMode !== 'TWILIO_PSTN' || !twilioSid || callStatus === 'ENDED') return;
+    if (!isOpen || telephonyMode !== 'TWILIO_PSTN' || (!twilioSid && !lead?.id) || callStatus === 'IDLE') return;
 
     const pollInterval = setInterval(async () => {
       try {
-        const res = await fetch(`/api/voice/twilio/status?callSid=${encodeURIComponent(twilioSid)}`);
+        const query = twilioSid ? `callSid=${encodeURIComponent(twilioSid)}` : `leadId=${encodeURIComponent(lead?.id || '')}`;
+        const res = await fetch(`/api/voice/twilio/status?${query}`);
         if (res.ok) {
           const data = await res.json();
           if (data.success) {
             if (data.status === 'in-progress' || data.status === 'answered' || data.status === 'CONNECTED') {
               setCallStatus('CONNECTED');
+              callStatusRef.current = 'CONNECTED';
             } else if (data.status === 'ringing' || data.status === 'DIALING' || data.status === 'queued') {
               setCallStatus('RINGING');
-            } else if (data.status === 'completed' || data.status === 'failed' || data.status === 'canceled') {
+              callStatusRef.current = 'RINGING';
+            } else if (data.status === 'completed' || data.status === 'failed' || data.status === 'canceled' || data.status === 'COMPLETED') {
               setCallStatus('ENDED');
+              callStatusRef.current = 'ENDED';
             }
 
             if (typeof data.durationSeconds === 'number' && data.durationSeconds > 0) {
@@ -1091,10 +1161,12 @@ export default function LiveCallSimulatorModal({
             if (data.callSummary) setCallSummary(data.callSummary);
             if (data.nextBestAction) setNextBestAction(data.nextBestAction);
 
-            // Only update messages from database if DB has MORE messages than local state
-            // to prevent overwriting active live conversation
-            if (data.transcript && Array.isArray(data.transcript) && data.transcript.length > messagesRef.current.length) {
-              setMessages(data.transcript);
+            // Sync live dialogue transcript from database directly into modal chat
+            if (data.transcript && Array.isArray(data.transcript) && data.transcript.length > 0) {
+              setMessages((prev) => {
+                const initialSystemMsgs = prev.filter((m) => m.speaker === 'system');
+                return [...initialSystemMsgs, ...data.transcript];
+              });
             }
 
             if (data.outcome === 'MEETING_BOOKED') {
@@ -1103,16 +1175,16 @@ export default function LiveCallSimulatorModal({
                 hasTriggeredMeetingSuccessRef.current = true;
                 onMeetingBookedSuccessRef.current?.();
               }
-            } else if (data.outcome === 'DO_NOT_CALL') {
+            } else if (data.outcome === 'DO_NOT_CALL' || data.outcome === 'DND') {
               setIsNegativeDnd(true);
             }
           }
         }
       } catch (_) {}
-    }, 1500);
+    }, 1000);
 
     return () => clearInterval(pollInterval);
-  }, [isOpen, telephonyMode, twilioSid, callStatus]);
+  }, [isOpen, telephonyMode, twilioSid, lead?.id]);
 
   // Handle Prospect Speech / User Message directly in console & live call
   const handleSendMessage = async (textToSend?: string) => {
@@ -1122,6 +1194,21 @@ export default function LiveCallSimulatorModal({
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     lastSpokenRef.current = '';
     lastTrackedTextRef.current = '';
+
+    // If on physical Twilio PSTN call, do NOT run browser audio or web calling simulation
+    if (telephonyModeRef.current === 'TWILIO_PSTN') {
+      const currentOffset = durationRef.current;
+      const noteMsg: Message = {
+        speaker: 'system',
+        text: `Console Note: "${text}" (Physical call active on carrier phone line ${phoneNumber})`,
+        time: formatCallTime(currentOffset),
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        offsetSeconds: currentOffset,
+      };
+      setMessages((prev) => [...prev, noteMsg]);
+      setInputText('');
+      return;
+    }
 
     // Stop mic recognition while Ava is responding to prevent self-echo loopback
     if (recognitionRef.current) {
@@ -1406,7 +1493,31 @@ export default function LiveCallSimulatorModal({
 
   // Handle Hanging Up and Persisting Completed Conversation
   const handleHangup = async () => {
+    // 1. Immediately update status and refs so nothing can speak or listen
+    callStatusRef.current = 'ENDED';
+    isAiThinkingRef.current = false;
+    isAiSpeakingRef.current = false;
+    setCallStatus('ENDED');
+    setIsAiThinking(false);
+    setIsAiSpeaking(false);
+    setIsMicListening(false);
+
+    // 2. Clear all browser timers and abort in-flight work
+    if (browserSimTimer1Ref.current) clearTimeout(browserSimTimer1Ref.current);
+    if (browserSimTimer2Ref.current) clearTimeout(browserSimTimer2Ref.current);
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+
+    // 3. Immediately abort speech recognition
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+      } catch (_) {}
+    }
+
+    // 4. Force stop any speech synthesis or audio streams
     stopSpeech();
+
+    // 5. Hang up Twilio call if in Twilio mode
     if (telephonyMode === 'TWILIO_PSTN' && twilioSid) {
       try {
         await fetch('/api/voice/twilio/hangup', {
@@ -1417,7 +1528,6 @@ export default function LiveCallSimulatorModal({
       } catch (_) {}
     }
 
-    setCallStatus('ENDED');
     const finalDuration = durationRef.current || duration || 0;
     const endMsg: Message = {
       speaker: 'system',
@@ -1644,6 +1754,9 @@ export default function LiveCallSimulatorModal({
                 type="button"
                 onClick={() => {
                   setTelephonyMode('BROWSER_SIM');
+                  telephonyModeRef.current = 'BROWSER_SIM';
+                  if (browserSimTimer1Ref.current) clearTimeout(browserSimTimer1Ref.current);
+                  if (browserSimTimer2Ref.current) clearTimeout(browserSimTimer2Ref.current);
                   stopSpeech();
                   setDuration(0);
                   setMessages([]);
@@ -1665,22 +1778,17 @@ export default function LiveCallSimulatorModal({
                 type="button"
                 onClick={() => {
                   setTelephonyMode('TWILIO_PSTN');
+                  telephonyModeRef.current = 'TWILIO_PSTN';
+                  if (browserSimTimer1Ref.current) clearTimeout(browserSimTimer1Ref.current);
+                  if (browserSimTimer2Ref.current) clearTimeout(browserSimTimer2Ref.current);
+                  if (recognitionRef.current) {
+                    try { recognitionRef.current.stop(); } catch (_) {}
+                  }
+                  setIsMicListening(false);
                   stopSpeech();
                   setDuration(0);
                   setMessages([]);
-                  const isVerifiedNumber = isVerifiedTeamNumber(phoneNumber);
-                  if (isVerifiedNumber) {
-                    handleStartRealCall(phoneNumber, selectedLanguage);
-                  } else {
-                    setCallStatus('IDLE');
-                    setMessages([
-                      {
-                        speaker: 'system',
-                        text: `Twilio PSTN Carrier Mode active for ${phoneNumber}. Click "Dial Physical Call" or select a verified phone to ring the physical device.`,
-                        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                      },
-                    ]);
-                  }
+                  handleStartRealCall(phoneNumber, selectedLanguage);
                 }}
                 className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                   telephonyMode === 'TWILIO_PSTN'
@@ -1926,8 +2034,8 @@ export default function LiveCallSimulatorModal({
                 </select>
               </div>
 
-              {/* Center: Direct Number Input & 1-Click Verified Quick-Dial */}
-              <div className="flex items-center gap-1.5 flex-wrap">
+              {/* Center: Direct Number Input & 1-Click Shuffle */}
+              <div className="flex items-center gap-1.5">
                 <div className="flex items-center gap-1.5 bg-black/60 border border-white/15 rounded-lg px-2.5 py-1">
                   <PhoneCall className="w-3 h-3 text-emerald-400 shrink-0" />
                   <input
@@ -1941,35 +2049,26 @@ export default function LiveCallSimulatorModal({
                   />
                 </div>
 
-                <div className="flex items-center gap-1">
-                  {DEMO_PRESENTATION_NUMBERS.map((p) => {
-                    const isSelected = phoneNumber.replace(/[^\d]/g, '').includes(p.phone.replace(/[^\d]/g, ''));
-                    const shortName = p.name.split(' ')[0];
-                    return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => {
-                          setPhoneNumber(p.phone);
-                          if (telephonyMode === 'TWILIO_PSTN') {
-                            handleStartRealCall(p.phone, selectedLanguage);
-                          } else {
-                            startBrowserCallSimulation(selectedLanguage, p.phone);
-                          }
-                        }}
-                        disabled={callStatus === 'CONNECTED' || callStatus === 'RINGING' || isDialingTwilio}
-                        className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
-                            : 'bg-white/[0.04] text-slate-300 border border-white/10 hover:bg-white/[0.08]'
-                        } disabled:opacity-40`}
-                        title={`Dial verified physical line: ${p.name} (${p.phone})`}
-                      >
-                        ✓ {shortName}
-                      </button>
-                    );
-                  })}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextNum = phoneNumber.includes('9737362307')
+                      ? (lead?.phone || '+1 (555) 718-4920')
+                      : '+91 9737362307';
+                    setPhoneNumber(nextNum);
+                    if (telephonyMode === 'TWILIO_PSTN' && nextNum.includes('9737362307')) {
+                      handleStartRealCall(nextNum, selectedLanguage);
+                    } else if (telephonyMode === 'BROWSER_SIM') {
+                      startBrowserCallSimulation(selectedLanguage, nextNum);
+                    }
+                  }}
+                  disabled={callStatus === 'CONNECTED' || callStatus === 'RINGING' || isDialingTwilio}
+                  className="px-2 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 border border-white/10 text-xs font-medium flex items-center gap-1 cursor-pointer transition-all disabled:opacity-40"
+                  title="Shuffle between Prospect Phone and Verified Line (+91 9737362307)"
+                >
+                  <RefreshCw className="w-3 h-3 text-indigo-400" />
+                  <span>Shuffle</span>
+                </button>
               </div>
 
               {/* Right: Audio Waveform Equalizer & Direct Meeting Verification SMS Button */}
@@ -1981,7 +2080,7 @@ export default function LiveCallSimulatorModal({
                       <div className="w-2 h-2 rounded-full bg-emerald-500 relative" />
                     </div>
                     <span className="text-slate-300 font-medium">
-                      {isAiSpeaking ? 'Ava Speaking' : isMicListening ? 'Listening...' : 'Live Audio'}
+                      {telephonyMode === 'TWILIO_PSTN' ? 'Carrier Call Active' : isAiSpeaking ? 'Ava Speaking' : isMicListening ? 'Listening...' : 'Live Audio'}
                     </span>
                     <div className="flex items-center gap-0.5 ml-1">
                       <span className={`w-0.5 rounded-full bg-emerald-400 transition-all ${isAiSpeaking || isMicListening ? 'h-3.5 animate-pulse' : 'h-1.5'}`} />
@@ -2226,8 +2325,8 @@ export default function LiveCallSimulatorModal({
               </div>
             </div>
 
-            {/* Live Microphone Listening Indicator */}
-            {isMicListening && (
+            {/* Live Microphone Listening Indicator - ONLY in Browser Demo Mode */}
+            {isMicListening && telephonyMode === 'BROWSER_SIM' && (
               <div className="mt-3 px-3 py-1.5 rounded-xl bg-rose-950/70 border border-rose-500/50 text-rose-200 text-xs flex items-center justify-between animate-in fade-in shadow-lg shadow-rose-900/20">
                 <div className="flex items-center gap-2 truncate">
                   <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping shrink-0" />
@@ -2238,18 +2337,38 @@ export default function LiveCallSimulatorModal({
               </div>
             )}
 
+            {/* Twilio Carrier Line Active Banner */}
+            {telephonyMode === 'TWILIO_PSTN' && callStatus === 'CONNECTED' && (
+              <div className="mt-3 px-3 py-1.5 rounded-xl bg-indigo-950/70 border border-indigo-500/50 text-indigo-200 text-xs flex items-center justify-between animate-in fade-in shadow-lg shadow-indigo-900/20">
+                <div className="flex items-center gap-2 truncate">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                  <span className="font-bold text-indigo-300 shrink-0">Mobile Phone Connected:</span>
+                  <span className="truncate text-white">Carrier audio active on {phoneNumber}. Speak into mobile handset — conversation syncs live below.</span>
+                </div>
+                <span className="text-[10px] text-emerald-400 font-mono shrink-0 ml-2">PSTN Live</span>
+              </div>
+            )}
+
             {/* Input Bar: Hands-Free Microphone + Text Typing */}
             <div className="mt-3 pt-2 border-t border-white/[0.08] flex items-center gap-2">
               <button
                 type="button"
                 onClick={toggleMic}
-                disabled={callStatus === 'ENDED'}
+                disabled={callStatus === 'ENDED' || telephonyMode === 'TWILIO_PSTN'}
                 className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
-                  isMicListening
+                  telephonyMode === 'TWILIO_PSTN'
+                    ? 'bg-white/[0.03] text-slate-500 border-white/5 opacity-40 cursor-not-allowed'
+                    : isMicListening
                     ? 'bg-rose-600 text-white border-rose-500 shadow-lg shadow-rose-600/40 animate-pulse'
                     : 'bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 border-white/10'
                 } disabled:opacity-40`}
-                title={isMicListening ? 'Stop listening' : 'Start speaking with microphone'}
+                title={
+                  telephonyMode === 'TWILIO_PSTN'
+                    ? 'Microphone is disabled during Twilio calls. Speak into your mobile phone.'
+                    : isMicListening
+                    ? 'Stop listening'
+                    : 'Start speaking with microphone'
+                }
               >
                 {isMicListening ? <Mic className="w-4 h-4 text-white" /> : <MicOff className="w-4 h-4" />}
               </button>
@@ -2266,7 +2385,11 @@ export default function LiveCallSimulatorModal({
                     }
                   }}
                   placeholder={
-                    isMicListening
+                    telephonyMode === 'TWILIO_PSTN'
+                      ? callStatus === 'CONNECTED'
+                        ? 'Phone call live. Speak into your mobile handset...'
+                        : 'Twilio Carrier Mode active. Dial or answer physical call...'
+                      : isMicListening
                       ? 'Listening to your speech...'
                       : callStatus === 'ENDED'
                       ? 'Call ended. Click Dial or Re-dial to call again.'
